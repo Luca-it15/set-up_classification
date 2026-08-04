@@ -39,6 +39,8 @@ export default function App() {
   const [expanded, setExpanded] = useState(new Set());
   const [fullscreen, setFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState(null);
   const [simOpen, setSimOpen] = useState(false);
@@ -49,6 +51,7 @@ export default function App() {
   const graphRef = useRef();
   const hubRef = useRef();
   const groupRefs = useRef({});
+  const dragRef = useRef(null);
   const palette = PALETTES[paletteId];
 
   const groups = useMemo(() => Object.entries(CATEGORY_META)
@@ -116,6 +119,23 @@ export default function App() {
       placeAbove: top > graphBox.height * .58
     });
   };
+  const startPan = (event) => {
+    if (event.target.closest('button, textarea, input')) return;
+    dragRef.current = { x: event.clientX, y: event.clientY, pan };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsPanning(true);
+  };
+  const movePan = (event) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    setPan({ x: drag.pan.x + event.clientX - drag.x, y: drag.pan.y + event.clientY - drag.y });
+  };
+  const stopPan = (event) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    setIsPanning(false);
+  };
   const toggle = (id) => setExpanded((current) => {
     const next = new Set(current);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -141,9 +161,9 @@ export default function App() {
         <section className="legend"><div className="side-title"><span>COLLEGAMENTI</span></div><p>Le linee mostrano le relazioni del workspace con il tool centrale.</p><p>{edges.length} connessioni visibili</p></section>
       </aside>
       <section className="graph-wrap">
-        <div className="graph-toolbar"><span>AWDF · {report.format_version}</span><div><button onClick={() => setZoom((value) => Math.max(.7, +(value - .1).toFixed(1)))} aria-label="Riduci zoom">−</button><button className="zoom-level" onClick={() => setZoom(1)} title="Reimposta zoom">{Math.round(zoom * 100)}%</button><button onClick={() => setZoom((value) => Math.min(1.5, +(value + .1).toFixed(1)))} aria-label="Aumenta zoom">+</button><button onClick={() => setExpanded(new Set())}>Comprimi</button><button onClick={() => setExpanded(new Set(groups.map((group) => group.id)))}>Espandi</button><button className="fullscreen-toggle" onClick={() => setFullscreen((value) => !value)}>{fullscreen ? '× Esci' : '⛶ Schermo intero'}</button></div></div>
-        <div ref={graphRef} className="graph">
-          <div className="graph-stage" style={{ transform: `scale(${zoom})` }}>
+        <div className="graph-toolbar"><span>AWDF · {report.format_version}</span><div><button onClick={() => setZoom((value) => Math.max(.7, +(value - .1).toFixed(1)))} aria-label="Riduci zoom">−</button><button className="zoom-level" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} title="Reimposta zoom e posizione">{Math.round(zoom * 100)}%</button><button onClick={() => setZoom((value) => Math.min(1.5, +(value + .1).toFixed(1)))} aria-label="Aumenta zoom">+</button><button onClick={() => setPan({ x: 0, y: 0 })}>⌖ Centra</button><button onClick={() => setExpanded(new Set())}>Comprimi</button><button onClick={() => setExpanded(new Set(groups.map((group) => group.id)))}>Espandi</button><button className="fullscreen-toggle" onClick={() => setFullscreen((value) => !value)}>{fullscreen ? '× Esci' : '⛶ Schermo intero'}</button></div></div>
+        <div ref={graphRef} className={`graph ${isPanning ? 'is-panning' : ''}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan}>
+          <div className="graph-stage" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
           <svg className="edges" viewBox={`0 0 ${graphRef.current?.clientWidth || 1} ${graphRef.current?.clientHeight || 1}`} preserveAspectRatio="none" aria-hidden="true">
             {edges.map((edge) => <g key={edge.id}><line x1={edge.start.x} y1={edge.start.y} x2={edge.end.x} y2={edge.end.y} stroke={edge.color} /><circle cx={edge.end.x} cy={edge.end.y} r="6" fill={edge.color} /></g>)}
           </svg>

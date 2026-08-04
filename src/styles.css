@@ -33,7 +33,9 @@ button.ghost { background: transparent; }
 .graph-toolbar > div { gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .fullscreen-toggle { border-color: #a7dd4c; color: #cafa7d; }
 .zoom-level { min-width: 56px; padding-inline: 8px; font-family: 'DM Mono', monospace; }
-.graph { position: relative; flex: 1; min-height: 620px; overflow: hidden; background-image: radial-gradient(var(--grid) .75px, transparent .75px); background-size: 20px 20px; }
+.graph { position: relative; flex: 1; min-height: 620px; overflow: hidden; cursor: grab; touch-action: none; background-image: radial-gradient(var(--grid) .75px, transparent .75px); background-size: 20px 20px; }
+.graph.is-panning { cursor: grabbing; user-select: none; }
+.graph button { cursor: pointer; }
 .graph-stage { position: absolute; inset: 0; transform-origin: center; transition: transform .18s ease; }
 .edges { pointer-events: none; position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; overflow: visible; }
 .edges line { stroke-width: 5; stroke-linecap: round; opacity: .9; filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 20%, transparent)); }
