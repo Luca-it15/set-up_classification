@@ -1,24 +1,32 @@
-# Setup Visualizer
+# AI Workspace Description Format (AWDF)
 
-Applicazione React locale per esplorare i report JSON prodotti da `setup-evaluator`.
+AWDF is an open, versioned JSON format for describing AI-enabled development workspaces, including tools, agents, skills, knowledge sources, workflows, relationships, evidence, risks and recommendations.
 
-## Avvio
+This repository is the AWDF 1.0.0 reference implementation: the **AWDF Evaluator** produces documents, the validator checks them, and the **AWDF Viewer** explores them locally.
+
+```text
+Real AI Workspace
+        ↓
+AWDF Evaluator
+        ↓
+ai-setup.json
+        ↓
+AWDF Validator
+        ↓
+AWDF Viewer
+```
+
+## Use
 
 ```bash
 npm install
 npm start
+npm run validate:awdf
+npm run test:awdf
 ```
 
-Apri `http://localhost:3000`.
+The viewer runs at `http://localhost:3000` and loads `ai-setup.json` by default. It also accepts AWDF JSON uploads. See `specification/` for the English specification, versioning and changelog; `schemas/` for Draft 2020-12 schemas; `examples/` for sample documents.
 
-L'app parte con un report demo. Usa **Importa JSON** per caricare un report: il parsing e l'elaborazione rimangono nel browser.
+AWDF uses Semantic Versioning. Consumers accept supported major versions, ignore unknown optional fields and extensions, and reject unsupported majors. Never put credentials, tokens, private keys, cookies or passwords in an AWDF document.
 
-## Funzioni incluse
-
-- grafo radiale con tool centrale e categorie;
-- import e validazione del report JSON;
-- ricerca e filtro per confidenza;
-- pannelli per categorie, componenti, relazioni, evidenze raw e finding;
-- distinzione visiva per relazioni verificate, dichiarate e inferite;
-- palette predefinite e colori categoria modificabili, memorizzati in `localStorage`;
-- layout responsivo e alternativa testuale del grafo nei pannelli laterali.
+Current status: AWDF 1.0.0 baseline with schema validation, cross-reference conformance tests, a migrated Codex workspace example, evaluator skill and React viewer. Roadmap: richer workflow view, comparison and server-side sharing.

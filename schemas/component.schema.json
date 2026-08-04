@@ -1,0 +1,8 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"component.schema.json",
+  "type":"object",
+  "required":["id","kind","subtype","name","description","path","parent_id","properties","tags","confidence","verification_status","evidence_ids"],
+  "properties":{"id":{"$ref":"awdf.schema.json#/$defs/id"},"kind":{"enum":["folder","repository","application","tool","model","service","mcp_server","agent","skill","knowledge_base","document","chat_source","workflow","configuration","data_store","script","integration","other"]},"subtype":{"type":"string"},"name":{"type":"string","minLength":1},"description":{"type":["string","null"]},"path":{"type":["string","null"]},"parent_id":{"type":["string","null"]},"properties":{"type":"object"},"tags":{"type":"array","items":{"type":"string"}},"confidence":{"type":"number","minimum":0,"maximum":1},"verification_status":{"$ref":"awdf.schema.json#/$defs/verificationStatus"},"evidence_ids":{"type":"array","items":{"$ref":"awdf.schema.json#/$defs/id"}}},
+  "additionalProperties":true
+}

@@ -1,5 +1,5 @@
 {
-  "name": "setup-visualizer",
+  "name": "awdf-reference-implementation",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -7,13 +7,17 @@
     "dev": "vite --host 0.0.0.0 --port 3000",
     "start": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 3000"
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "validate:awdf": "node scripts/validate-awdf.mjs ai-setup.json",
+    "test:awdf": "node scripts/test-awdf.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "vite": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
   },
   "devDependencies": {}
 }

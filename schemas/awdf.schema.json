@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"awdf.schema.json",
+  "title":"AI Workspace Description Format",
+  "type":"object",
+  "required":["format","format_name","format_version","metadata","workspace","scope","methodology","inventory","components","relationships","workflows","assessments","findings","recommendations","evidence","limitations","unverified_items","executive_summary","extensions"],
+  "$defs":{"id":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_-]{1,127}$"},"verificationStatus":{"enum":["verified","partially_verified","declared_only","inferred","not_verified"]}},
+  "properties":{
+    "$schema":{"type":"string"},"format":{"const":"awdf"},"format_name":{"const":"AI Workspace Description Format"},"format_version":{"type":"string","pattern":"^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"},
+    "metadata":{"type":"object","required":["report_id","title","created_at","updated_at","language","generator","analysis_level"],"properties":{"report_id":{"$ref":"#/$defs/id"},"title":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":["string","null"],"format":"date-time"},"language":{"type":"string"},"generator":{"type":"object","required":["name","version"],"properties":{"name":{"type":"string"},"version":{"type":"string"}},"additionalProperties":true},"analysis_level":{"enum":["inventory","standard","deep"]}},"additionalProperties":true},
+    "workspace":{"type":"object","required":["id","name","type","purpose","maturity"],"properties":{"id":{"$ref":"#/$defs/id"},"name":{"type":"string"},"type":{"enum":["personal","team","organization","project","unknown"]},"purpose":{"type":["string","null"]},"maturity":{"enum":["initial","emerging","defined","managed","optimized","unknown"]}},"additionalProperties":true},
+    "scope":{"type":"object"},"methodology":{"type":"object"},"inventory":{"type":"object"},"components":{"type":"array","items":{"$ref":"component.schema.json"}},"relationships":{"type":"array","items":{"$ref":"relationship.schema.json"}},"workflows":{"type":"array","items":{"$ref":"workflow.schema.json"}},"assessments":{"type":"array","items":{"$ref":"assessment.schema.json"}},"findings":{"type":"array","items":{"$ref":"finding.schema.json"}},"recommendations":{"type":"array","items":{"$ref":"recommendation.schema.json"}},"evidence":{"type":"array","items":{"$ref":"evidence.schema.json"}},"limitations":{"type":"array","items":{"type":"object"}},"unverified_items":{"type":"array","items":{"type":"object"}},"executive_summary":{"type":"object"},"extensions":{"type":"object","propertyNames":{"pattern":"^[a-z0-9]+(?:[.-][a-z0-9]+)+$"}},
+    "additionalProperties":true
+  },
+  "additionalProperties":true
+}
