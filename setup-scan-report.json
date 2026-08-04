@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0",
+  "report": {
+    "id": "codex-home-scan-2026-08-04",
+    "name": "Codex local setup — prima scansione",
+    "generated_at": "2026-08-04T21:10:29+02:00",
+    "analysis_level": "standard"
+  },
+  "subject": {
+    "name": "Codex local setup",
+    "type": "personal",
+    "purpose": "Ambiente locale Codex con skill, plugin e server MCP configurati",
+    "maturity": "emerging"
+  },
+  "scope": {
+    "authorized_folders": ["."],
+    "path_representation": "relative",
+    "excluded": [".sandbox-secrets", ".sandbox", ".tmp", "cache", "tmp", "vendor_imports", "sessions", "archived_sessions", "sqlite", "logs", "node_repl", "plugins/cache"],
+    "chat_sources": []
+  },
+  "methodology": {
+    "mode": "read_only",
+    "executed_discovered_code": false,
+    "sensitive_values_redacted": true,
+    "notes": ["Sono stati letti solo metadati e configurazioni testuali rilevanti.", "Una directory riservata non era accessibile ed è stata esclusa dalla copertura."]
+  },
+  "inventory": {
+    "file_count": 156,
+    "directory_count": 106,
+    "total_bytes": 655518689,
+    "latest_modified": "2026-08-04T21:10:29+02:00",
+    "top_extensions": [{"extension":"none","count":44},{"extension":".md","count":30},{"extension":".py","count":12},{"extension":".sample","count":10},{"extension":".yaml","count":8},{"extension":".json","count":6}],
+    "notes": ["Le statistiche escludono cache, log, sessioni, dati temporanei e directory riservate."]
+  },
+  "components": [
+    {"id":"tool-codex","name":"Codex","type":"tool","description":"Runtime Codex configurato come ambiente AI locale.","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-config","ev-skills"]},
+    {"id":"config-main","name":"Configurazione Codex","type":"configuration","description":"Configurazione principale dell'ambiente, inclusi modello, feature, progetti attendibili, plugin e MCP.","path":"config.toml","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-config"]},
+    {"id":"mcp-stitch","name":"Stitch MCP","type":"mcp_server","description":"Server MCP dichiarato nella configurazione principale.","confidence":0.98,"verification_status":"verified","evidence_ids":["ev-config"]},
+    {"id":"mcp-node-repl","name":"Node REPL MCP","type":"mcp_server","description":"Server MCP locale dichiarato nella configurazione principale.","confidence":0.98,"verification_status":"verified","evidence_ids":["ev-config"]},
+    {"id":"skill-mediapipe","name":"mediapipe-scan-keypoint-reviewer","type":"skill","description":"Skill locale rilevata dalla definizione SKILL.md.","path":"skills/mediapipe-scan-keypoint-reviewer/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-mediapipe"]},
+    {"id":"skill-quantum","name":"quantum-prompting","type":"skill","description":"Skill locale rilevata dalla definizione SKILL.md.","path":"skills/quantum-prompting/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-quantum"]},
+    {"id":"skill-imagegen","name":"imagegen","type":"skill","description":"Skill di sistema rilevata dalla definizione SKILL.md.","path":"skills/.system/imagegen/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]},
+    {"id":"skill-openai-docs","name":"openai-docs","type":"skill","description":"Skill di sistema rilevata dalla definizione SKILL.md.","path":"skills/.system/openai-docs/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]},
+    {"id":"skill-plugin-creator","name":"plugin-creator","type":"skill","description":"Skill di sistema rilevata dalla definizione SKILL.md.","path":"skills/.system/plugin-creator/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]},
+    {"id":"skill-review-agent","name":"review-agent","type":"skill","description":"Skill di sistema rilevata dalla definizione SKILL.md.","path":"skills/.system/review-agent/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]},
+    {"id":"skill-skill-creator","name":"skill-creator","type":"skill","description":"Skill di sistema rilevata dalla definizione SKILL.md.","path":"skills/.system/skill-creator/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]},
+    {"id":"skill-skill-installer","name":"skill-installer","type":"skill","description":"Skill di sistema rilevata dalla definizione SKILL.md.","path":"skills/.system/skill-installer/SKILL.md","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]},
+    {"id":"plugins-enabled","name":"Plugin Codex abilitati","type":"service","description":"Undici plugin abilitati nella configurazione: documenti, fogli, presentazioni, GitHub, Google Drive, Superpowers, PDF, template, visualizzazione, siti e browser.","confidence":0.98,"verification_status":"verified","evidence_ids":["ev-config","ev-plugin-manifests"]},
+    {"id":"auth-store","name":"Archivio di autenticazione locale","type":"configuration","description":"File di autenticazione rilevato; contenuto deliberatamente non analizzato.","path":"auth.json","confidence":0.99,"verification_status":"not_verified","evidence_ids":["ev-auth-file"]}
+  ],
+  "knowledge_bases": [],
+  "documentation": [{"id":"doc-agents","name":"AGENTS.md","type":"document","path":"AGENTS.md","status":"empty","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-agents"]}],
+  "agents": [],
+  "chat_analysis": {"sources":[],"status":"not_analyzed","reason":"Nessuna chat o log è stata fornita esplicitamente."},
+  "relationships": [
+    {"id":"rel-codex-config","source_id":"tool-codex","target_id":"config-main","type":"configured_by","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-config"]},
+    {"id":"rel-codex-stitch","source_id":"tool-codex","target_id":"mcp-stitch","type":"uses","confidence":0.98,"verification_status":"declared_only","evidence_ids":["ev-config"]},
+    {"id":"rel-codex-node","source_id":"tool-codex","target_id":"mcp-node-repl","type":"uses","confidence":0.98,"verification_status":"declared_only","evidence_ids":["ev-config"]},
+    {"id":"rel-codex-plugins","source_id":"tool-codex","target_id":"plugins-enabled","type":"uses","confidence":0.98,"verification_status":"declared_only","evidence_ids":["ev-config","ev-plugin-manifests"]},
+    {"id":"rel-codex-mediapipe","source_id":"tool-codex","target_id":"skill-mediapipe","type":"contains","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-mediapipe"]},
+    {"id":"rel-codex-quantum","source_id":"tool-codex","target_id":"skill-quantum","type":"contains","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-quantum"]},
+    {"id":"rel-codex-system-skills","source_id":"tool-codex","target_id":"skill-imagegen","type":"contains","confidence":0.99,"verification_status":"verified","evidence_ids":["ev-skill-system"]}
+  ],
+  "workflows": [],
+  "scores": {
+    "coverage": 0.62,
+    "dimensions": {
+      "discoverability":{"value":3,"motivation":"La configurazione e le skill sono in percorsi convenzionali, ma AGENTS.md è vuoto.","evidence_ids":["ev-config","ev-agents"]},
+      "agent_design":{"value":2,"motivation":"Sono presenti skill, ma non sono stati osservati agenti o workflow locali nella scansione autorizzata.","evidence_ids":["ev-skills"]},
+      "integration_quality":{"value":3,"motivation":"MCP e plugin sono dichiarati nella configurazione, senza evidenza di utilizzo runtime.","evidence_ids":["ev-config"]},
+      "security":{"value":2,"motivation":"È stata rilevata una credenziale in configurazione; il valore non è riportato.","evidence_ids":["ev-config"]},
+      "privacy":{"value":3,"motivation":"Sono presenti archivi di autenticazione e sessione esclusi dalla lettura; non è stato possibile valutarne le policy.","evidence_ids":["ev-auth-file"]},
+      "governance":{"value":2,"motivation":"Nessuna ownership o istruzione locale è stata osservata in AGENTS.md.","evidence_ids":["ev-agents"]},
+      "observability":{"value":1,"motivation":"Log e sessioni sono stati esclusi; non sono state osservate metriche o tracing configurati.","evidence_ids":[]},
+      "portability":{"value":3,"motivation":"La configurazione dichiara componenti, ma include percorsi specifici della macchina.","evidence_ids":["ev-config"]}
+    }
+  },
+  "findings": [
+    {"id":"finding-credential-in-config","component_id":"config-main","category":"security","severity":"high","title":"Credenziale configurata direttamente nel file principale","description":"La configurazione contiene un'intestazione di autenticazione. Il valore è stato omesso dal report.","impact":"Una copia, condivisione o commit non controllato del file potrebbe esporre la credenziale.","evidence_ids":["ev-config"],"recommendation":"Spostare la credenziale in un secret store o in una variabile d'ambiente non versionata, quindi ruotarla se è stata esposta.","effort":"small","confidence":0.99},
+    {"id":"finding-empty-agents","component_id":"doc-agents","category":"documentation","severity":"medium","title":"Istruzioni AGENTS.md assenti","description":"Il file AGENTS.md è presente ma vuoto.","impact":"Regole operative, ownership e convenzioni possono restare implicite.","evidence_ids":["ev-agents"],"recommendation":"Documentare scope, regole di sicurezza, convenzioni e responsabilità essenziali.","effort":"small","confidence":0.99},
+    {"id":"finding-runtime-unverified","component_id":"mcp-stitch","category":"integration","severity":"low","title":"Utilizzo runtime di MCP e plugin non verificato","description":"La configurazione dichiara server MCP e plugin, ma la scansione non ha analizzato log o chat esplicitamente forniti.","impact":"Non è possibile distinguere componenti attivi da componenti solo configurati.","evidence_ids":["ev-config"],"recommendation":"Fornire log esportati o introdurre un inventario di utilizzo non sensibile.","effort":"medium","confidence":0.95}
+  ],
+  "recommendations": {
+    "quick_wins":[{"finding_id":"finding-credential-in-config","action":"Rimuovere la credenziale dal file di configurazione e ruotarla.","expected_result":"Nessun segreto persistito in config.toml.","completion_criteria":"La configurazione usa un riferimento a secret/variabile senza valore segreto."},{"finding_id":"finding-empty-agents","action":"Aggiungere istruzioni minime in AGENTS.md.","expected_result":"Regole e responsabilità esplicite.","completion_criteria":"Il file contiene scope, convenzioni e vincoli di sicurezza."}],
+    "short_term":[{"finding_id":"finding-runtime-unverified","action":"Esportare log non sensibili o un inventario d'uso di MCP/plugin.","expected_result":"Stato di utilizzo verificabile.","completion_criteria":"Ogni integrazione critica ha una fonte di evidenza aggiornata."}],
+    "medium_term":[],
+    "strategic":[]
+  },
+  "evidence": [
+    {"id":"ev-config","type":"configuration","path":"config.toml","summary":"Configurazione Codex con modello, feature, due server MCP e plugin abilitati.","confidence":0.99},
+    {"id":"ev-skills","type":"directory","path":"skills/","summary":"Directory di skill locali e di sistema rilevata.","confidence":0.99},
+    {"id":"ev-skill-mediapipe","type":"skill_definition","path":"skills/mediapipe-scan-keypoint-reviewer/SKILL.md","summary":"Definizione di skill locale rilevata.","confidence":0.99},
+    {"id":"ev-skill-quantum","type":"skill_definition","path":"skills/quantum-prompting/SKILL.md","summary":"Definizione di skill locale rilevata.","confidence":0.99},
+    {"id":"ev-skill-system","type":"skill_definition","path":"skills/.system/","summary":"Sei definizioni di skill di sistema rilevate.","confidence":0.99},
+    {"id":"ev-plugin-manifests","type":"plugin_manifest","path":"plugins/cache/","summary":"Manifest di plugin installati rilevati; contenuto cache escluso dall'inventario dettagliato.","confidence":0.95},
+    {"id":"ev-agents","type":"document","path":"AGENTS.md","summary":"File presente con dimensione zero byte.","confidence":0.99},
+    {"id":"ev-auth-file","type":"sensitive_file","path":"auth.json","summary":"File di autenticazione rilevato ma non letto.","confidence":0.99}
+  ],
+  "unverified_items": [{"item":"Uso effettivo di MCP, plugin e skill","reason":"Nessun log o chat autorizzato è stato analizzato."},{"item":"Contenuto e policy degli archivi di autenticazione/sessione","reason":"File sensibili e dati runtime esclusi dalla lettura."}],
+  "errors": [],
+  "warnings": ["La directory .sandbox-secrets non era accessibile ed è stata esclusa.", "Il report copre solo C:\\Users\\Luca\\.codex e non i repository di progetto.", "Non sono state analizzate chat, sessioni né log."],
+  "executive_summary": {"purpose":"Ambiente Codex locale configurato con skill, plugin e due integrazioni MCP.","strengths":["Configurazione centralizzata.","Skill locali e di sistema individuabili.","Plugin dichiarati esplicitamente."],"criticalities":["Credenziale presente nella configurazione principale.","Assenza di istruzioni locali in AGENTS.md.","Utilizzo runtime delle integrazioni non verificabile nel perimetro analizzato."],"maturity":"emerging","coverage":0.62,"priority_actions":["Spostare e ruotare la credenziale configurata.","Compilare AGENTS.md.","Aggiungere evidenze non sensibili dell'uso di MCP e plugin."]}
+}
