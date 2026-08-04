@@ -1,0 +1,3 @@
+import {catalog,resources,outputs} from './intentCatalog.js';
+const hits=(text,map)=>Object.entries(map).filter(([,words])=>words.some(word=>text.includes(word))).map(([key])=>key);
+export function interpretPrompt(prompt){const text=prompt.toLowerCase().trim();return {intents:hits(text,catalog).length?hits(text,catalog):['unknown'],requested_outputs:hits(text,outputs).length?hits(text,outputs):['unknown'],required_resources:hits(text,resources).length?hits(text,resources):['unknown'],keywords:text.split(/[^\p{L}\p{N}_-]+/u).filter(word=>word.length>2),language:/\b(the|and|create|validate|without)\b/.test(text)?'en':'it',confidence:text?0.8:0};}

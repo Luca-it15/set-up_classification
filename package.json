@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "validate:awdf": "node scripts/validate-awdf.mjs ai-setup.json",
-    "test:awdf": "node scripts/test-awdf.mjs"
+    "test:awdf": "node scripts/test-awdf.mjs",
+    "validate:simulation": "node scripts/validate-awdf-simulation.mjs simulation-result.json ai-setup.json"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

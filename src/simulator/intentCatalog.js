@@ -1,0 +1,3 @@
+export const catalog={repository_analysis:['analizza','analyze','repository','repo'],security_review:['sicurezza','security','vulnerability'],documentation_generation:['documentazione','documentation','docs'],pdf_generation:['pdf'],validation:['valida','validate'],github_publish:['github','publish','push'],code_modification:['modifica','modify','code']};
+export const resources={repository:['repository','repo'],knowledge_base:['knowledge base','knowledge'],file:['file','document']};
+export const outputs={pdf:['pdf'],report:['report'],markdown:['markdown','documentazione'],code:['code','codice'],json:['json']};
