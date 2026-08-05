@@ -29,4 +29,14 @@ The viewer runs at `http://localhost:3000` and loads `ai-setup.json` by default.
 
 AWDF uses Semantic Versioning. Consumers accept supported major versions, ignore unknown optional fields and extensions, and reject unsupported majors. Never put credentials, tokens, private keys, cookies or passwords in an AWDF document.
 
+## AI Setup Classifier
+
+Generate a repository-grounded technical report with:
+
+```bash
+npm run scan:setup
+```
+
+The scanner is read-only and excludes dependencies, build artefacts and sensitive files. It evaluates seven categories: Behavior Contract, Knowledge, Skills, Custom Agents, Tool & integrations, Validation and Maintainability. `AGENTS.md` is treated as a behavior contract: its actionable rules are assessed separately from the repository inventory, and length alone never increases its score. The resulting `ai-setup.json` is an AWDF document that can be opened in the Viewer.
+
 Current status: AWDF 1.0.0 baseline with schema validation, cross-reference conformance tests, a migrated Codex workspace example, evaluator skill and React viewer. Roadmap: richer workflow view, comparison and server-side sharing.

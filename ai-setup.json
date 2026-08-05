@@ -1,58 +1,861 @@
 {
-  "$schema":"./schemas/awdf.schema.json","format":"awdf","format_name":"AI Workspace Description Format","format_version":"1.0.0",
-  "metadata":{"report_id":"awdf_codex_local_20260804","title":"Codex Local Workspace — initial AWDF scan","created_at":"2026-08-04T21:10:29+02:00","updated_at":null,"language":"it","generator":{"name":"AWDF Evaluator","version":"1.0.0"},"analysis_level":"standard"},
-  "workspace":{"id":"workspace_codex_local","name":"Codex Local Workspace","type":"personal","purpose":"Ambiente locale per sviluppo assistito da AI","maturity":"emerging"},
-  "scope":{"authorized_folders":["."],"path_representation":"relative","excluded":[".sandbox-secrets","cache","sessions","logs","plugins/cache"],"chat_sources":[]},
-  "methodology":{"mode":"read_only","executed_discovered_code":false,"sensitive_values_redacted":true},
-  "inventory":{"file_count":156,"directory_count":106,"total_bytes":655518689,"top_extensions":[{"extension":".md","count":30},{"extension":".py","count":12},{"extension":".yaml","count":8},{"extension":".json","count":6}]},
-  "components":[
-    {"id":"cmp_codex","kind":"tool","subtype":"ai_development_tool","name":"Codex","description":"Runtime AI utilizzato per attività di sviluppo.","path":null,"parent_id":null,"properties":{"model":"gpt-5.6-terra"},"tags":["ai","development"],"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_config","ev_skills"]},
-    {"id":"cmp_config","kind":"configuration","subtype":"codex_configuration","name":"Configurazione Codex","description":"Configurazione principale con feature, progetti attendibili, plugin e MCP.","path":"config.toml","parent_id":null,"properties":{},"tags":["configuration"],"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_config"]},
-    {"id":"cmp_stitch","kind":"mcp_server","subtype":"remote_mcp_server","name":"Stitch MCP","description":"Server MCP dichiarato nella configurazione.","path":null,"parent_id":null,"properties":{},"tags":["mcp"],"confidence":0.98,"verification_status":"verified","evidence_ids":["ev_config"]},
-    {"id":"cmp_node_repl","kind":"mcp_server","subtype":"local_mcp_server","name":"Node REPL MCP","description":"Server MCP locale dichiarato nella configurazione.","path":null,"parent_id":null,"properties":{},"tags":["mcp","local"],"confidence":0.98,"verification_status":"verified","evidence_ids":["ev_config"]},
-    {"id":"cmp_skill_mediapipe","kind":"skill","subtype":"computer_vision_review","name":"mediapipe-scan-keypoint-reviewer","description":"Skill locale per revisione keypoint.","path":"skills/mediapipe-scan-keypoint-reviewer/SKILL.md","parent_id":null,"properties":{},"tags":["local"],"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_skill_mediapipe"]},
-    {"id":"cmp_skill_quantum","kind":"skill","subtype":"creative_strategy","name":"quantum-prompting","description":"Skill locale per ideazione strutturata.","path":"skills/quantum-prompting/SKILL.md","parent_id":null,"properties":{},"tags":["local"],"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_skill_quantum"]},
-    {"id":"cmp_system_skills","kind":"skill","subtype":"system_skill_collection","name":"Codex system skills","description":"Sei skill di sistema rilevate.","path":"skills/.system/","parent_id":null,"properties":{"count":6},"tags":["system"],"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_skills"]},
-    {"id":"cmp_plugins","kind":"service","subtype":"plugin_collection","name":"Plugin Codex abilitati","description":"Undici plugin abilitati nella configurazione.","path":null,"parent_id":null,"properties":{"count":11},"tags":["plugins"],"confidence":0.98,"verification_status":"verified","evidence_ids":["ev_config","ev_plugins"]},
-    {"id":"cmp_auth_store","kind":"configuration","subtype":"authentication_store","name":"Archivio di autenticazione locale","description":"File di autenticazione rilevato; contenuto non analizzato.","path":"auth.json","parent_id":null,"properties":{},"tags":["sensitive"],"confidence":0.99,"verification_status":"not_verified","evidence_ids":["ev_auth"]},
-    {"id":"cmp_agents_doc","kind":"document","subtype":"agent_instructions","name":"AGENTS.md","description":"File di istruzioni presente ma vuoto.","path":"AGENTS.md","parent_id":null,"properties":{"status":"empty"},"tags":["documentation"],"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_agents"]}
+  "$schema": "./schemas/awdf.schema.json",
+  "format": "awdf",
+  "format_name": "AI Workspace Description Format",
+  "format_version": "1.0.0",
+  "metadata": {
+    "report_id": "awdf_11e3f3b248b4446f",
+    "title": "AI Setup Classifier deep report",
+    "created_at": "2026-08-05T18:27:22.744Z",
+    "updated_at": null,
+    "language": "it",
+    "generator": {
+      "name": "AI Setup Classifier",
+      "version": "1.2.0"
+    },
+    "analysis_level": "deep"
+  },
+  "workspace": {
+    "id": "workspace",
+    "name": "classificatore",
+    "type": "project",
+    "purpose": "Valutazione automatica approfondita del setup AI.",
+    "maturity": "emerging"
+  },
+  "scope": {
+    "authorized_folders": [
+      "."
+    ],
+    "excluded": [
+      "node_modules",
+      "dist",
+      ".git",
+      ".vite",
+      "coverage",
+      ".cache",
+      ".sandbox",
+      ".sandbox-bin",
+      ".sandbox-secrets",
+      ".tmp",
+      "tmp",
+      "cache",
+      "sessions",
+      "archived_sessions",
+      "sqlite",
+      "logs",
+      "memories",
+      "attachments",
+      "browser",
+      "computer-use",
+      "mcp-oauth-locks",
+      "process_manager",
+      "thread-writer-locks",
+      "visualizations",
+      "vendor_imports",
+      ".env*"
+    ],
+    "path_representation": "relative"
+  },
+  "methodology": {
+    "mode": "read_only",
+    "quality_over_quantity": true,
+    "behavior_contract_evaluated_separately": true,
+    "executed_discovered_code": false,
+    "sensitive_values_redacted": true,
+    "analysis_depth": "semantic",
+    "component_descriptions_and_triggers_extracted": true
+  },
+  "inventory": {
+    "file_count": 48,
+    "directory_count": 10
+  },
+  "components": [
+    {
+      "id": "cmp_76ebb83886",
+      "kind": "skill",
+      "subtype": "custom_skill",
+      "name": "setup-evaluator",
+      "description": "Produces validated AI Workspace Description Format (AWDF) documents from explicitly authorized AI-development workspace sources.",
+      "path": "skills/setup-evaluator/SKILL.md",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "skills",
+        "extracted_from": "SKILL.md",
+        "trigger_source": "Produces validated AI Workspace Description Format (AWDF) documents from explicitly authorized AI-development workspace sources."
+      },
+      "tags": [
+        "skills"
+      ],
+      "confidence": 0.98,
+      "verification_status": "verified",
+      "evidence_ids": [
+        "ev_fbe0cfc0dd"
+      ],
+      "capabilities": [
+        "documentation_generation",
+        "validation"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "produces",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "validated",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "workspace",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "format",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "awdf",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "documents",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "authorized",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "ai-development",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "sources",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_e6674edf02",
+      "kind": "document",
+      "subtype": "technical_documentation",
+      "name": "README.md",
+      "description": "Documentazione tecnica del repository.",
+      "path": "README.md",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "knowledge"
+      },
+      "tags": [
+        "knowledge"
+      ],
+      "confidence": 0.98,
+      "verification_status": "verified",
+      "evidence_ids": [
+        "ev_85ea6c16cf"
+      ]
+    },
+    {
+      "id": "cmp_74d2f32a68",
+      "kind": "workflow",
+      "subtype": "automated_validation",
+      "name": "Validazione automatica",
+      "description": "12 artefatti di test, lint o CI rilevati.",
+      "path": null,
+      "parent_id": null,
+      "properties": {
+        "setup_category": "validation",
+        "artifact_count": 12,
+        "sample_paths": [
+          "tests/invalid/assessment-over-five.json",
+          "tests/invalid/bad-date.json",
+          "tests/invalid/bad-version.json",
+          "tests/invalid/confidence-over-one.json",
+          "tests/invalid/duplicate-id.json",
+          "tests/invalid/invalid-priority.json",
+          "tests/invalid/missing-component-id.json",
+          "tests/invalid/missing-evidence.json",
+          "tests/invalid/missing-target.json",
+          "tests/invalid/wrong-format.json",
+          "tests/valid/minimal.json",
+          "tests/valid/workflow.json"
+        ]
+      },
+      "tags": [
+        "validation"
+      ],
+      "confidence": 0.98,
+      "verification_status": "verified",
+      "evidence_ids": [
+        "ev_27bb3f47b3"
+      ],
+      "capabilities": [
+        "validation"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "test",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "lint",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "build",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "validate",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "automated",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "tests",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "continuous",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "integration",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "validation",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_d91e9ae3fd",
+      "kind": "tool",
+      "subtype": "ai_development_tool",
+      "name": "AI Setup Classifier",
+      "description": "Strumento principale per analizzare e visualizzare il setup AI.",
+      "path": "package.json",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "tool_integrations"
+      },
+      "tags": [
+        "tool_integrations"
+      ],
+      "confidence": 0.98,
+      "verification_status": "verified",
+      "evidence_ids": [
+        "ev_a650ac6fde"
+      ]
+    }
   ],
-  "relationships":[
-    {"id":"rel_codex_config","source_id":"cmp_codex","target_id":"cmp_config","type":"configured_by","description":null,"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_config"]},
-    {"id":"rel_codex_stitch","source_id":"cmp_codex","target_id":"cmp_stitch","type":"uses","description":null,"confidence":0.98,"verification_status":"declared_only","evidence_ids":["ev_config"]},
-    {"id":"rel_codex_node","source_id":"cmp_codex","target_id":"cmp_node_repl","type":"uses","description":null,"confidence":0.98,"verification_status":"declared_only","evidence_ids":["ev_config"]},
-    {"id":"rel_codex_plugins","source_id":"cmp_codex","target_id":"cmp_plugins","type":"uses","description":null,"confidence":0.98,"verification_status":"declared_only","evidence_ids":["ev_config","ev_plugins"]},
-    {"id":"rel_codex_mediapipe","source_id":"cmp_codex","target_id":"cmp_skill_mediapipe","type":"contains","description":null,"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_skill_mediapipe"]},
-    {"id":"rel_codex_quantum","source_id":"cmp_codex","target_id":"cmp_skill_quantum","type":"contains","description":null,"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_skill_quantum"]},
-    {"id":"rel_codex_system","source_id":"cmp_codex","target_id":"cmp_system_skills","type":"contains","description":null,"confidence":0.99,"verification_status":"verified","evidence_ids":["ev_skills"]}
+  "relationships": [
+    {
+      "id": "rel_375a4394b1",
+      "source_id": "cmp_d91e9ae3fd",
+      "target_id": "cmp_76ebb83886",
+      "type": "uses",
+      "description": "Relazione derivata dalla configurazione e dalla struttura del setup.",
+      "confidence": 0.75,
+      "verification_status": "inferred",
+      "evidence_ids": [
+        "ev_fbe0cfc0dd"
+      ]
+    },
+    {
+      "id": "rel_8e8d824eba",
+      "source_id": "cmp_d91e9ae3fd",
+      "target_id": "cmp_e6674edf02",
+      "type": "documented_by",
+      "description": "Relazione derivata dalla configurazione e dalla struttura del setup.",
+      "confidence": 0.75,
+      "verification_status": "inferred",
+      "evidence_ids": [
+        "ev_85ea6c16cf"
+      ]
+    },
+    {
+      "id": "rel_99708ab4ef",
+      "source_id": "cmp_d91e9ae3fd",
+      "target_id": "cmp_74d2f32a68",
+      "type": "uses",
+      "description": "Relazione derivata dalla configurazione e dalla struttura del setup.",
+      "confidence": 0.75,
+      "verification_status": "inferred",
+      "evidence_ids": [
+        "ev_27bb3f47b3"
+      ]
+    }
   ],
-  "workflows":[],
-  "assessments":[
-    {"id":"asm_discoverability","dimension":"discoverability","score":3,"scale":"0-5","rationale":"Configurazione e skill sono in percorsi convenzionali, ma AGENTS.md è vuoto.","evidence_ids":["ev_config","ev_agents"],"limitations":[],"recommendation_ids":["rec_agents"],"confidence":0.9,"verification_status":"partially_verified"},
-    {"id":"asm_security","dimension":"security","score":2,"scale":"0-5","rationale":"La configurazione ha una credenziale, il cui valore è stato omesso.","evidence_ids":["ev_config"],"limitations":[],"recommendation_ids":["rec_secret"],"confidence":0.99,"verification_status":"verified"},
-    {"id":"asm_integration","dimension":"integration_quality","score":3,"scale":"0-5","rationale":"MCP e plugin sono dichiarati, senza evidenza di utilizzo runtime.","evidence_ids":["ev_config"],"limitations":["Nessun log analizzato"],"recommendation_ids":["rec_runtime"],"confidence":0.95,"verification_status":"declared_only"}
+  "workflows": [],
+  "assessments": [
+    {
+      "id": "asm_behavior_contract",
+      "dimension": "behavior_contract",
+      "score": 0,
+      "scale": "0-5",
+      "rationale": "AGENTS.md non è presente.",
+      "strengths": [],
+      "weaknesses": [
+        "Manca una regola esplicita su anti hallucination.",
+        "Manca una regola esplicita su ambiguity.",
+        "Manca una regola esplicita su stop conditions.",
+        "Manca una regola esplicita su source priority.",
+        "Manca una regola esplicita su code quality."
+      ],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [
+        "rec_behavior_contract"
+      ],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_knowledge",
+      "dimension": "knowledge",
+      "score": 2.8,
+      "scale": "0-5",
+      "rationale": "Documentazione e fonti tecniche vengono valutate per struttura e reperibilità.",
+      "strengths": [
+        "Fonti tecniche rilevate in percorsi standard."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [
+        "ev_85ea6c16cf"
+      ],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_skills",
+      "dimension": "skills",
+      "score": 3,
+      "scale": "0-5",
+      "rationale": "Il punteggio non cresce linearmente con il numero di skill.",
+      "strengths": [
+        "Skill modulari rilevate."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [
+        "ev_fbe0cfc0dd"
+      ],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_custom_agents",
+      "dimension": "custom_agents",
+      "score": 3,
+      "scale": "0-5",
+      "rationale": "La presenza di agenti non è premiata senza ruoli osservabili e distinti.",
+      "strengths": [
+        "Setup semplice: nessun agente custom da coordinare."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_tool_integrations",
+      "dimension": "tool_integrations",
+      "score": 2.3,
+      "scale": "0-5",
+      "rationale": "Le integrazioni sono rilevate dalla configurazione; il loro uso runtime resta non verificato.",
+      "strengths": [
+        "Configurazioni e tool rilevati."
+      ],
+      "weaknesses": [
+        "Per misurare il reale utilizzo servono log o altre evidenze runtime."
+      ],
+      "evidence_ids": [
+        "ev_a650ac6fde"
+      ],
+      "limitations": [],
+      "recommendation_ids": [
+        "rec_tool_integrations"
+      ],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_validation",
+      "dimension": "validation",
+      "score": 5,
+      "scale": "0-5",
+      "rationale": "Test, lint o CI rilevati.",
+      "strengths": [
+        "Controlli automatici presenti."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [
+        "ev_27bb3f47b3"
+      ],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_maintainability",
+      "dimension": "maintainability",
+      "score": 4,
+      "scale": "0-5",
+      "rationale": "Valutazione della separazione delle responsabilità osservabile nella struttura.",
+      "strengths": [
+        "Directory funzionali separate rilevate."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_tool_ergonomics",
+      "dimension": "tool_ergonomics",
+      "score": 3.1,
+      "scale": "0-5",
+      "rationale": "Misura descrizioni discriminanti, trigger espliciti e contratti di output dei componenti instradabili.",
+      "strengths": [
+        "La maggior parte dei componenti ha una descrizione utilizzabile dal modello."
+      ],
+      "weaknesses": [
+        "Alcuni componenti non espongono trigger osservabili.",
+        "Molti componenti non dichiarano output strutturati."
+      ],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_permission_safety",
+      "dimension": "permission_safety",
+      "score": 1.5,
+      "scale": "0-5",
+      "rationale": "Valuta least privilege, approvazioni e isolamento senza acquisire valori sensibili.",
+      "strengths": [],
+      "weaknesses": [
+        "Nessuna policy esplicita di autorizzazione o sandbox rilevata."
+      ],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [
+        "rec_permission_safety"
+      ],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_context_efficiency",
+      "dimension": "context_efficiency",
+      "score": 5,
+      "scale": "0-5",
+      "rationale": "Valuta sovrapposizione dei trigger e probabilità di caricare componenti irrilevanti.",
+      "strengths": [
+        "Trigger prevalentemente distintivi."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_instruction_hierarchy",
+      "dimension": "instruction_hierarchy",
+      "score": 0,
+      "scale": "0-5",
+      "rationale": "Valuta presenza, specificità e distribuzione gerarchica delle istruzioni persistenti.",
+      "strengths": [],
+      "weaknesses": [
+        "Il contratto comportamentale principale è assente o vuoto."
+      ],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [
+        "rec_instruction_hierarchy"
+      ],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_architectural_proportionality",
+      "dimension": "architectural_proportionality",
+      "score": 4.5,
+      "scale": "0-5",
+      "rationale": "Premia semplicità e responsabilità distinguibili; la quantità di componenti non aumenta il punteggio.",
+      "strengths": [
+        "Nessuna sovrapposizione grave di capacità rilevata."
+      ],
+      "weaknesses": [],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_observability",
+      "dimension": "observability",
+      "score": 0,
+      "scale": "0-5",
+      "rationale": "Valuta trace, metriche, audit e possibilità di ricostruire routing ed esito.",
+      "strengths": [],
+      "weaknesses": [
+        "Nessuna evidenza di trace o metriche del comportamento agentico."
+      ],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [
+        "rec_observability"
+      ],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "asm_evaluation_maturity",
+      "dimension": "evaluation_maturity",
+      "score": 0,
+      "scale": "0-5",
+      "rationale": "Valuta dataset di prompt, aspettative, grader e regressioni di routing.",
+      "strengths": [],
+      "weaknesses": [
+        "Nessun dataset di prompt con risultati attesi o grader rilevato."
+      ],
+      "evidence_ids": [],
+      "limitations": [],
+      "recommendation_ids": [
+        "rec_evaluation_maturity"
+      ],
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    }
   ],
-  "findings":[
-    {"id":"finding_secret","title":"Credenziale configurata direttamente nel file principale","category":"security","severity":"high","description":"È stata rilevata un'intestazione di autenticazione; il valore è omesso.","impact":"Una condivisione non controllata del file può esporre la credenziale.","affected_component_ids":["cmp_config"],"evidence_ids":["ev_config"],"recommendation_ids":["rec_secret"],"effort":"small","confidence":0.99,"verification_status":"verified"},
-    {"id":"finding_agents","title":"Istruzioni AGENTS.md assenti","category":"documentation","severity":"medium","description":"AGENTS.md è presente ma vuoto.","impact":"Regole e ownership possono restare implicite.","affected_component_ids":["cmp_agents_doc"],"evidence_ids":["ev_agents"],"recommendation_ids":["rec_agents"],"effort":"small","confidence":0.99,"verification_status":"verified"},
-    {"id":"finding_runtime","title":"Utilizzo runtime di MCP e plugin non verificato","category":"integration","severity":"low","description":"La configurazione dichiara integrazioni, senza log autorizzati.","impact":"Non è possibile distinguere componenti attivi da componenti solo configurati.","affected_component_ids":["cmp_stitch","cmp_plugins"],"evidence_ids":["ev_config"],"recommendation_ids":["rec_runtime"],"effort":"medium","confidence":0.95,"verification_status":"not_verified"}
+  "findings": [
+    {
+      "id": "finding_behavior_contract",
+      "title": "Maturità da rafforzare: behavior contract",
+      "category": "behavior_contract",
+      "severity": "high",
+      "description": "Manca una regola esplicita su anti hallucination.",
+      "impact": "Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.",
+      "affected_component_ids": [],
+      "evidence_ids": [],
+      "recommendation_ids": [
+        "rec_behavior_contract"
+      ],
+      "effort": "small",
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "finding_tool_integrations",
+      "title": "Maturità da rafforzare: tool integrations",
+      "category": "tool_integrations",
+      "severity": "medium",
+      "description": "Per misurare il reale utilizzo servono log o altre evidenze runtime.",
+      "impact": "Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.",
+      "affected_component_ids": [],
+      "evidence_ids": [
+        "ev_a650ac6fde"
+      ],
+      "recommendation_ids": [
+        "rec_tool_integrations"
+      ],
+      "effort": "small",
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "finding_permission_safety",
+      "title": "Maturità da rafforzare: permission safety",
+      "category": "permission_safety",
+      "severity": "medium",
+      "description": "Nessuna policy esplicita di autorizzazione o sandbox rilevata.",
+      "impact": "Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.",
+      "affected_component_ids": [],
+      "evidence_ids": [],
+      "recommendation_ids": [
+        "rec_permission_safety"
+      ],
+      "effort": "small",
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "finding_instruction_hierarchy",
+      "title": "Maturità da rafforzare: instruction hierarchy",
+      "category": "instruction_hierarchy",
+      "severity": "high",
+      "description": "Il contratto comportamentale principale è assente o vuoto.",
+      "impact": "Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.",
+      "affected_component_ids": [],
+      "evidence_ids": [],
+      "recommendation_ids": [
+        "rec_instruction_hierarchy"
+      ],
+      "effort": "small",
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "finding_observability",
+      "title": "Maturità da rafforzare: observability",
+      "category": "observability",
+      "severity": "high",
+      "description": "Nessuna evidenza di trace o metriche del comportamento agentico.",
+      "impact": "Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.",
+      "affected_component_ids": [],
+      "evidence_ids": [],
+      "recommendation_ids": [
+        "rec_observability"
+      ],
+      "effort": "small",
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    },
+    {
+      "id": "finding_evaluation_maturity",
+      "title": "Maturità da rafforzare: evaluation maturity",
+      "category": "evaluation_maturity",
+      "severity": "high",
+      "description": "Nessun dataset di prompt con risultati attesi o grader rilevato.",
+      "impact": "Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.",
+      "affected_component_ids": [],
+      "evidence_ids": [],
+      "recommendation_ids": [
+        "rec_evaluation_maturity"
+      ],
+      "effort": "small",
+      "confidence": 0.9,
+      "verification_status": "partially_verified"
+    }
   ],
-  "recommendations":[
-    {"id":"rec_secret","priority":"quick_win","title":"Rimuovere e ruotare la credenziale","description":"Usare una variabile d'ambiente o secret store non versionato.","finding_ids":["finding_secret"],"expected_result":"Nessun segreto persistito in configurazione.","completion_criteria":["Il valore non è presente nel file","La credenziale precedente è stata ruotata"],"effort":"small","status":"proposed"},
-    {"id":"rec_agents","priority":"quick_win","title":"Compilare AGENTS.md","description":"Documentare scope, convenzioni e vincoli di sicurezza.","finding_ids":["finding_agents"],"expected_result":"Regole operative esplicite.","completion_criteria":["AGENTS.md include scope e regole essenziali"],"effort":"small","status":"proposed"},
-    {"id":"rec_runtime","priority":"short_term","title":"Aggiungere evidenze di utilizzo","description":"Esportare log non sensibili o un inventario d'uso.","finding_ids":["finding_runtime"],"expected_result":"Stato di utilizzo verificabile.","completion_criteria":["Ogni integrazione critica ha una fonte aggiornata"],"effort":"medium","status":"proposed"}
+  "recommendations": [
+    {
+      "id": "rec_behavior_contract",
+      "priority": "quick_win",
+      "title": "Rafforzare behavior contract",
+      "description": "Manca una regola esplicita su anti hallucination.",
+      "finding_ids": [
+        "finding_behavior_contract"
+      ],
+      "expected_result": "Setup più robusto e governabile.",
+      "completion_criteria": [
+        "La pratica è documentata e verificabile nel repository."
+      ],
+      "effort": "small",
+      "status": "proposed"
+    },
+    {
+      "id": "rec_tool_integrations",
+      "priority": "quick_win",
+      "title": "Rafforzare tool integrations",
+      "description": "Per misurare il reale utilizzo servono log o altre evidenze runtime.",
+      "finding_ids": [
+        "finding_tool_integrations"
+      ],
+      "expected_result": "Setup più robusto e governabile.",
+      "completion_criteria": [
+        "La pratica è documentata e verificabile nel repository."
+      ],
+      "effort": "small",
+      "status": "proposed"
+    },
+    {
+      "id": "rec_permission_safety",
+      "priority": "quick_win",
+      "title": "Rafforzare permission safety",
+      "description": "Nessuna policy esplicita di autorizzazione o sandbox rilevata.",
+      "finding_ids": [
+        "finding_permission_safety"
+      ],
+      "expected_result": "Setup più robusto e governabile.",
+      "completion_criteria": [
+        "La pratica è documentata e verificabile nel repository."
+      ],
+      "effort": "small",
+      "status": "proposed"
+    },
+    {
+      "id": "rec_instruction_hierarchy",
+      "priority": "quick_win",
+      "title": "Rafforzare instruction hierarchy",
+      "description": "Il contratto comportamentale principale è assente o vuoto.",
+      "finding_ids": [
+        "finding_instruction_hierarchy"
+      ],
+      "expected_result": "Setup più robusto e governabile.",
+      "completion_criteria": [
+        "La pratica è documentata e verificabile nel repository."
+      ],
+      "effort": "small",
+      "status": "proposed"
+    },
+    {
+      "id": "rec_observability",
+      "priority": "quick_win",
+      "title": "Rafforzare observability",
+      "description": "Nessuna evidenza di trace o metriche del comportamento agentico.",
+      "finding_ids": [
+        "finding_observability"
+      ],
+      "expected_result": "Setup più robusto e governabile.",
+      "completion_criteria": [
+        "La pratica è documentata e verificabile nel repository."
+      ],
+      "effort": "small",
+      "status": "proposed"
+    },
+    {
+      "id": "rec_evaluation_maturity",
+      "priority": "quick_win",
+      "title": "Rafforzare evaluation maturity",
+      "description": "Nessun dataset di prompt con risultati attesi o grader rilevato.",
+      "finding_ids": [
+        "finding_evaluation_maturity"
+      ],
+      "expected_result": "Setup più robusto e governabile.",
+      "completion_criteria": [
+        "La pratica è documentata e verificabile nel repository."
+      ],
+      "effort": "small",
+      "status": "proposed"
+    }
   ],
-  "evidence":[
-    {"id":"ev_config","type":"configuration","source_id":"cmp_config","path":"config.toml","location":null,"summary":"Configurazione Codex con modello, due MCP e plugin abilitati.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.99,"sensitive":true},
-    {"id":"ev_skills","type":"directory","source_id":null,"path":"skills/","location":null,"summary":"Directory di skill locali e di sistema.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.99,"sensitive":false},
-    {"id":"ev_skill_mediapipe","type":"skill_definition","source_id":"cmp_skill_mediapipe","path":"skills/mediapipe-scan-keypoint-reviewer/SKILL.md","location":null,"summary":"Definizione skill locale.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.99,"sensitive":false},
-    {"id":"ev_skill_quantum","type":"skill_definition","source_id":"cmp_skill_quantum","path":"skills/quantum-prompting/SKILL.md","location":null,"summary":"Definizione skill locale.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.99,"sensitive":false},
-    {"id":"ev_plugins","type":"plugin_manifest","source_id":"cmp_plugins","path":"plugins/cache/","location":null,"summary":"Manifest plugin rilevati.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.95,"sensitive":false},
-    {"id":"ev_agents","type":"document","source_id":"cmp_agents_doc","path":"AGENTS.md","location":null,"summary":"File presente con dimensione zero.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.99,"sensitive":false},
-    {"id":"ev_auth","type":"sensitive_file","source_id":"cmp_auth_store","path":"auth.json","location":null,"summary":"File di autenticazione rilevato ma non letto.","content_hash":null,"observed_at":"2026-08-04T21:10:29+02:00","confidence":0.99,"sensitive":true}
+  "evidence": [
+    {
+      "id": "ev_fbe0cfc0dd",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "skills/setup-evaluator/SKILL.md",
+      "location": null,
+      "summary": "Elemento custom skill rilevato automaticamente.",
+      "content_hash": null,
+      "observed_at": "2026-08-05T18:27:22.744Z",
+      "confidence": 0.98,
+      "sensitive": false
+    },
+    {
+      "id": "ev_85ea6c16cf",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "README.md",
+      "location": null,
+      "summary": "Elemento technical documentation rilevato automaticamente.",
+      "content_hash": null,
+      "observed_at": "2026-08-05T18:27:22.744Z",
+      "confidence": 0.98,
+      "sensitive": false
+    },
+    {
+      "id": "ev_27bb3f47b3",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": null,
+      "location": null,
+      "summary": "Elemento automated validation rilevato automaticamente.",
+      "content_hash": null,
+      "observed_at": "2026-08-05T18:27:22.744Z",
+      "confidence": 0.98,
+      "sensitive": false
+    },
+    {
+      "id": "ev_a650ac6fde",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "package.json",
+      "location": null,
+      "summary": "Elemento ai development tool rilevato automaticamente.",
+      "content_hash": null,
+      "observed_at": "2026-08-05T18:27:22.744Z",
+      "confidence": 0.98,
+      "sensitive": false
+    }
   ],
-  "limitations":[{"id":"lim_secrets","description":"Dati sensibili, sessioni e directory riservate non sono stati letti."},{"id":"lim_runtime","description":"Chat e log non sono stati analizzati."}],
-  "unverified_items":[{"id":"unv_runtime","item":"Uso effettivo di MCP, plugin e skill","reason":"Nessun log autorizzato."}],
-  "executive_summary":{"purpose":"Ambiente Codex locale con skill, plugin e due MCP.","strengths":["Configurazione centralizzata","Skill individuabili"],"criticalities":["Credenziale in configurazione","AGENTS.md vuoto"],"maturity":"emerging","coverage":0.62,"priority_actions":["Rimuovere e ruotare la credenziale","Compilare AGENTS.md","Raccogliere evidenze runtime"]},
-  "extensions":{"org.openai.migration":{"version":"1.0.0","data":{"source_document":"setup-scan-report.json"}}}
+  "limitations": [
+    {
+      "id": "lim_runtime",
+      "description": "L’uso effettivo di tool e integrazioni non viene dedotto dalla struttura dei file."
+    }
+  ],
+  "unverified_items": [],
+  "executive_summary": {
+    "overall_score": 2.4,
+    "scale": "0-5",
+    "purpose": "Report architetturale approfondito basato su configurazioni, manifest e definizioni semantiche.",
+    "strengths": [
+      "Fonti tecniche rilevate in percorsi standard.",
+      "Skill modulari rilevate.",
+      "Setup semplice: nessun agente custom da coordinare.",
+      "Configurazioni e tool rilevati.",
+      "Controlli automatici presenti."
+    ],
+    "criticalities": [
+      "Maturità da rafforzare: behavior contract",
+      "Maturità da rafforzare: tool integrations",
+      "Maturità da rafforzare: permission safety",
+      "Maturità da rafforzare: instruction hierarchy",
+      "Maturità da rafforzare: observability",
+      "Maturità da rafforzare: evaluation maturity"
+    ],
+    "priority_actions": [
+      "Rafforzare behavior contract",
+      "Rafforzare tool integrations",
+      "Rafforzare permission safety"
+    ],
+    "design_score": 2.4,
+    "verified_runtime_score": null,
+    "runtime_status": "unverified",
+    "score_policy": "Il runtime verificato prevale sul design quando sono disponibili eval con ground truth."
+  },
+  "extensions": {
+    "ai-setup-classifier.report": {
+      "version": "1.1",
+      "data": {
+        "quality_over_quantity": true,
+        "semantic_scan": true
+      }
+    }
+  }
 }

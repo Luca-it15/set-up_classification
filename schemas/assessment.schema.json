@@ -1,1 +1,14 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"assessment.schema.json","type":"object","required":["id","dimension","score","scale","rationale","evidence_ids","limitations","recommendation_ids","confidence","verification_status"],"properties":{"id":{"$ref":"awdf.schema.json#/$defs/id"},"dimension":{"enum":["discoverability","documentation_quality","knowledge_management","agent_design","integration_quality","maintainability","security","privacy","governance","observability","portability","automation"]},"score":{"type":"number","minimum":0,"maximum":5},"scale":{"const":"0-5"},"rationale":{"type":"string"},"evidence_ids":{"type":"array","items":{"$ref":"awdf.schema.json#/$defs/id"}},"limitations":{"type":"array","items":{"type":"string"}},"recommendation_ids":{"type":"array","items":{"$ref":"awdf.schema.json#/$defs/id"}},"confidence":{"type":"number","minimum":0,"maximum":1},"verification_status":{"$ref":"awdf.schema.json#/$defs/verificationStatus"}},"additionalProperties":true}
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"assessment.schema.json",
+  "type":"object",
+  "required":["id","dimension","score","scale","rationale","evidence_ids","limitations","recommendation_ids","confidence","verification_status"],
+  "properties":{
+    "id":{"$ref":"awdf.schema.json#/$defs/id"},
+    "dimension":{"enum":["behavior_contract","knowledge","skills","custom_agents","tool_integrations","validation","maintainability","tool_ergonomics","permission_safety","context_efficiency","instruction_hierarchy","architectural_proportionality","observability","evaluation_maturity","discoverability","documentation_quality","knowledge_management","agent_design","integration_quality","security","privacy","governance","portability","automation"]},
+    "score":{"type":"number","minimum":0,"maximum":5},"scale":{"const":"0-5"},"rationale":{"type":"string"},
+    "strengths":{"type":"array","items":{"type":"string"}},"weaknesses":{"type":"array","items":{"type":"string"}},
+    "evidence_ids":{"type":"array","items":{"$ref":"awdf.schema.json#/$defs/id"}},"limitations":{"type":"array","items":{"type":"string"}},"recommendation_ids":{"type":"array","items":{"$ref":"awdf.schema.json#/$defs/id"}},"confidence":{"type":"number","minimum":0,"maximum":1},"verification_status":{"$ref":"awdf.schema.json#/$defs/verificationStatus"}
+  },
+  "additionalProperties":true
+}
