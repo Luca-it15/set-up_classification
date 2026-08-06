@@ -1,0 +1,4 @@
+{
+  "command_output_filter": "rtk",
+  "context_compressor": "headroom"
+}

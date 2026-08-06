@@ -2,21 +2,51 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-const root = path.resolve(process.argv[2] || '.');
+const requestedRoot = path.resolve(process.argv[2] || '.');
 const output = path.resolve(process.argv[3] || 'ai-setup.json');
-const skip = new Set(['node_modules', 'dist', '.git', '.vite', 'coverage', '.cache', '.sandbox', '.sandbox-bin', '.sandbox-secrets', '.tmp', 'tmp', 'cache', 'sessions', 'archived_sessions', 'sqlite', 'logs', 'memories', 'attachments', 'browser', 'computer-use', 'mcp-oauth-locks', 'process_manager', 'thread-writer-locks', 'visualizations', 'vendor_imports']);
+const settingsPath = path.resolve(process.argv[4] || 'ai-setup-settings.json');
+let settings = null;
+if (fs.existsSync(settingsPath)) {
+  try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); }
+  catch { throw new Error(`Settings non validi: ${settingsPath}`); }
+}
+if (settings && (!settings.initialized || !settings.workspace?.folders?.length)) {
+  throw new Error(`Workspace non configurato. Apri Settings nell'app oppure compila ${settingsPath} prima della scansione.`);
+}
+const settingsBase = path.dirname(settingsPath);
+const relativeFolders = settings?.workspace?.folders?.filter(folder => !path.isAbsolute(folder)) || [];
+if (relativeFolders.length) throw new Error(`Il workspace deve usare path assoluti. Correggi: ${relativeFolders.join(', ')}`);
+const roots = (settings?.workspace?.folders?.length ? settings.workspace.folders : [requestedRoot])
+  .map(folder => path.resolve(settingsBase, folder));
+for (const folder of roots) if (!fs.existsSync(folder) || !fs.statSync(folder).isDirectory()) throw new Error(`Cartella workspace non trovata: ${folder}`);
+const root = roots[0];
+const rootLabels = new Map(roots.map((folder, index) => {
+  const basename = path.basename(folder);
+  const duplicate = roots.filter(candidate => path.basename(candidate).toLowerCase() === basename.toLowerCase()).length > 1;
+  return [folder, duplicate ? `${basename}-${index + 1}` : basename];
+}));
+const skip = new Set(['node_modules', 'dist', '.git', '.vite', 'coverage', '.cache', '.pytest_cache', '__pycache__', 'venv', '.venv', 'site-packages', '.tools', 'target', 'vendor', '.sandbox', '.sandbox-bin', '.sandbox-secrets', '.tmp', 'tmp', 'cache', 'sessions', 'archived_sessions', 'sqlite', 'logs', 'memories', 'attachments', 'browser', 'computer-use', 'mcp-oauth-locks', 'process_manager', 'thread-writer-locks', 'visualizations', 'vendor_imports', ...(settings?.workspace?.excluded || [])]);
 const sensitive = /(^|\/)(sessions?|chats?|conversations?|\.env(?:\..+)?|.*(?:secret|token|credential|password|auth).*)(?:$|\/)/i;
 const files = [];
-function walk(dir) {
-  for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+const inaccessiblePaths = [];
+function walk(dir, workspaceRoot) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch (error) {
+    inaccessiblePaths.push({ path: path.relative(workspaceRoot, dir).replaceAll('\\', '/') || '.', code: error.code || 'READ_ERROR' });
+    return;
+  }
+  for (const item of entries) {
     if (skip.has(item.name)) continue;
     const absolute = path.join(dir, item.name);
-    const relative = path.relative(root, absolute).replaceAll('\\', '/');
-    if (item.isDirectory()) walk(absolute);
-    if (item.isFile()) files.push({ absolute, relative });
+    const localRelative = path.relative(workspaceRoot, absolute).replaceAll('\\', '/');
+    const rootLabel = rootLabels.get(workspaceRoot);
+    const relative = roots.length > 1 ? `${rootLabel}/${localRelative}` : localRelative;
+    if (item.isDirectory()) walk(absolute, workspaceRoot);
+    if (item.isFile()) files.push({ absolute, relative, localRelative, workspaceRoot });
   }
 }
-walk(root);
+for (const workspaceRoot of roots) walk(workspaceRoot, workspaceRoot);
 function contentText(value) {
   if (typeof value === 'string') return value;
   if (Array.isArray(value)) return value.map(contentText).filter(Boolean).join('\n');
@@ -43,7 +73,7 @@ function findSessionFiles(dir, found = []) {
   return found;
 }
 function extractChatSamples() {
-  const sources = ['sessions', 'chats', 'conversations'].flatMap(folder => findSessionFiles(path.join(root, folder))).sort((a, b) => b.mtime - a.mtime).slice(0, 12);
+  const sources = roots.flatMap(workspaceRoot => ['sessions', 'chats', 'conversations'].flatMap(folder => findSessionFiles(path.join(workspaceRoot, folder)))).sort((a, b) => b.mtime - a.mtime).slice(0, 12);
   const samples = [];
   for (const source of sources) {
     let current = null;
@@ -91,12 +121,11 @@ if (agents) {
 }
 const areas = [
   ['skills', 'skill', 'skill_collection', 'skills'], ['agents', 'agent', 'custom_agents', 'custom_agents'],
-  ['mcp', 'mcp_server', 'mcp_collection', 'tool_integrations'], ['knowledge', 'knowledge_base', 'knowledge_base', 'knowledge'],
-  ['llm-wiki', 'knowledge_base', 'llm_wiki', 'knowledge'], ['docs', 'document', 'technical_documentation', 'knowledge'],
+  ['mcp', 'mcp_server', 'mcp_collection', 'tool_integrations'],
   ['.codex', 'configuration', 'codex_configuration', 'tool_integrations'], ['.github', 'configuration', 'github_automation', 'validation']
 ];
 for (const [folder, kind, subtype, category] of areas) {
-  const matches = files.filter(file => file.relative.startsWith(`${folder}/`));
+  const matches = files.filter(file => file.localRelative.startsWith(`${folder}/`));
   if (matches.length && folder !== 'skills') addComponent(kind, subtype, folder, folder, category, `${matches.length} file rilevati in una directory convenzionale.`);
 }
 const stopWords = new Set(['about','after','also','apply','assessment','available','before','between','codex','current','declared','description','develop','development','does','each','explicitly','files','first','from','have','into','landmarks','model','must','only','other','output','project','quality','requests','should','skill','skills','that','their','these','this','those','through','using','when','with','without','where','which','will','your','della','delle','dello','degli','della','dopo','come','con','quando','nelle','nello','sono','solo','qualsiasi','richiesta','utente']);
@@ -121,13 +150,26 @@ function textDetails(file) {
   const description = declared || paragraph || heading || `Artefatto ${path.basename(file.relative)}.`;
   return { description: description.slice(0, 1000), details: { ...semanticDetails(`${heading || ''} ${description}`), properties: { extracted_from: file.relative, heading: heading || null } } };
 }
-for (const file of files.filter(file => /^agents\/.+\.(md|mdx|ya?ml|json)$/i.test(file.relative))) {
+for (const file of files.filter(file => /^agents\/.+\.(md|mdx|ya?ml|json)$/i.test(file.localRelative))) {
   const meta = textDetails(file);
   addComponent('agent', 'custom_agent', path.basename(file.relative, path.extname(file.relative)), file.relative, 'custom_agents', meta.description, meta.details);
 }
-for (const file of files.filter(file => /^(knowledge|llm-wiki|docs)\/.+\.(md|mdx|txt|ya?ml|json)$/i.test(file.relative))) {
+const knowledgeBaseByKey = new Map();
+function addKnowledgeBase(key, name, basePath, subtype, members) {
+  if (knowledgeBaseByKey.has(key)) return knowledgeBaseByKey.get(key);
+  const id = addComponent('knowledge_base', subtype, name, basePath, 'knowledge', `Knowledge base composta da ${members.length} documenti osservabili.`, { properties: { document_count: members.length, source_root: basePath } });
+  knowledgeBaseByKey.set(key, id);
+  return id;
+}
+const conventionalKnowledgeFiles = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && /^(knowledge|llm-wiki|docs)\/.+\.(md|mdx|txt|ya?ml|json)$/i.test(file.localRelative));
+for (const file of conventionalKnowledgeFiles) {
+  const folder = file.localRelative.split('/')[0];
+  const key = `${file.workspaceRoot}:${folder}`;
+  const members = conventionalKnowledgeFiles.filter(candidate => candidate.workspaceRoot === file.workspaceRoot && candidate.localRelative.startsWith(`${folder}/`));
+  const basePath = roots.length > 1 ? `${rootLabels.get(file.workspaceRoot)}/${folder}` : folder;
+  const parentId = addKnowledgeBase(key, `${path.basename(file.workspaceRoot)} · ${folder}`, basePath, folder === 'llm-wiki' ? 'llm_wiki' : 'document_collection', members);
   const meta = textDetails(file);
-  addComponent(file.relative.startsWith('docs/') ? 'document' : 'knowledge_base', file.relative.startsWith('llm-wiki/') ? 'llm_wiki' : 'knowledge_source', path.basename(file.relative, path.extname(file.relative)), file.relative, 'knowledge', meta.description, meta.details);
+  addComponent('document', 'knowledge_document', path.basename(file.relative, path.extname(file.relative)), file.relative, 'knowledge', meta.description, { ...meta.details, parent_id: parentId });
 }
 function skillDetails(file) {
   const text = fs.readFileSync(file.absolute, 'utf8');
@@ -157,7 +199,7 @@ function findPluginManifests(dir, found = []) {
   }
   return found;
 }
-const pluginManifests = findPluginManifests(path.join(root, 'plugins', 'cache')).flatMap(absolute => {
+const pluginManifests = roots.flatMap(workspaceRoot => findPluginManifests(path.join(workspaceRoot, 'plugins', 'cache'))).flatMap(absolute => {
   try { return [{ absolute, data: JSON.parse(fs.readFileSync(absolute, 'utf8')) }]; } catch { return []; }
 });
 function pluginDetails(configuredName) {
@@ -191,21 +233,72 @@ for (const file of files.filter(file => /(^|\/)config\.toml$/i.test(file.relativ
   }
 }
 for (const folder of ['plugins', 'rules', 'node_repl']) {
-  const matches = files.filter(file => file.relative.startsWith(`${folder}/`));
+  const matches = files.filter(file => file.localRelative.startsWith(`${folder}/`));
   if (matches.length && folder !== 'plugins') addComponent('configuration', `${folder}_collection`, folder, folder, folder === 'rules' ? 'behavior_contract' : 'tool_integrations', `${matches.length} artefatti non sensibili rilevati in ${folder}/.`);
 }
-for (const file of files.filter(file => /^(README|CONTRIBUTING|ARCHITECTURE|ADR).*\.(md|mdx)$/i.test(path.basename(file.relative)))) {
-  addComponent('document', 'technical_documentation', path.basename(file.relative), file.relative, 'knowledge', 'Documentazione tecnica del repository.');
+const repositoryDocuments = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && /^(README|CONTRIBUTING|ARCHITECTURE|ADR).*\.(md|mdx)$/i.test(path.basename(file.relative)) && !/^(knowledge|llm-wiki|docs)\//i.test(file.localRelative));
+const repositoryDocumentGroups = new Map();
+for (const file of repositoryDocuments) {
+  const segments = file.localRelative.split('/');
+  const projectName = segments.length > 1 ? segments[0] : path.basename(file.workspaceRoot);
+  const key = `${file.workspaceRoot}:repository-docs:${projectName}`;
+  if (!repositoryDocumentGroups.has(key)) repositoryDocumentGroups.set(key, []);
+  repositoryDocumentGroups.get(key).push(file);
+}
+for (const [key, members] of repositoryDocumentGroups) {
+  const first = members[0];
+  const projectName = first.localRelative.includes('/') ? first.localRelative.split('/')[0] : path.basename(first.workspaceRoot);
+  const projectPath = roots.length > 1 ? `${rootLabels.get(first.workspaceRoot)}/${projectName}` : projectName;
+  const parentId = addKnowledgeBase(key, `Documentazione · ${projectName}`, projectPath, 'repository_documentation', members);
+  for (const file of members) addComponent('document', 'technical_documentation', path.basename(file.relative), file.relative, 'knowledge', 'Documento appartenente alla knowledge base tecnica del progetto.', { parent_id: parentId });
 }
 const validationFiles = files.filter(file => /(^|\/)(tests?|__tests__|\.github\/workflows)(\/|$)|(^|\/)(eslint|jest|vitest|playwright|pytest)/i.test(file.relative));
 if (validationFiles.length) addComponent('workflow', 'automated_validation', 'Validazione automatica', null, 'validation', `${validationFiles.length} artefatti di test, lint o CI rilevati.`, { ...semanticDetails('Automated tests, lint, build and continuous integration validation.', ['test','lint','build','validate']), properties: { artifact_count: validationFiles.length, sample_paths: validationFiles.slice(0, 20).map(file => file.relative) } });
-if (files.some(file => file.relative === 'package.json')) addComponent('tool', 'ai_development_tool', 'AI Setup Classifier', 'package.json', 'tool_integrations', 'Strumento principale per analizzare e visualizzare il setup AI.');
-if (files.some(file => file.relative === 'config.toml')) addComponent('tool', 'ai_development_tool', 'Codex', 'config.toml', 'tool_integrations', 'Tool AI principale per sviluppo, analisi e orchestrazione del setup.', { ...semanticDetails('AI development tool for repository analysis, code modification, tool orchestration and validation.', ['codex']), activation: { mode: 'always', triggers: [{ type: 'manual', value: 'user_prompt', weight: 1 }] } });
+if (files.some(file => file.localRelative === 'package.json')) addComponent('tool', 'ai_development_tool', 'AI Setup Classifier', 'package.json', 'tool_integrations', 'Strumento principale per analizzare e visualizzare il setup AI.');
+if (files.some(file => file.localRelative === 'config.toml')) addComponent('tool', 'ai_development_tool', 'Codex', 'config.toml', 'tool_integrations', 'Tool AI principale per sviluppo, analisi e orchestrazione del setup.', { ...semanticDetails('AI development tool for repository analysis, code modification, tool orchestration and validation.', ['codex']), activation: { mode: 'always', triggers: [{ type: 'manual', value: 'user_prompt', weight: 1 }] } });
 if (chatSamples.length) addComponent('chat_source', 'redacted_chat_samples', 'Esempi dalle chat del tool principale', 'sessions', 'other', `${chatSamples.length} prompt recenti estratti con redazione automatica; le risposte complete non sono incluse.`, { properties: { sample_count: chatSamples.length, redacted: true, full_conversations_stored: false }, activation: { mode: 'manual', triggers: [{ type: 'manual', value: 'prompt_evaluation', weight: 1 }] } });
 
-const primaryTool = components.find(component => component.kind === 'tool');
+function loadToolGlossary() {
+  const glossaryPath = path.resolve('skills/setup-evaluator/references/tool-glossary.md');
+  if (!fs.existsSync(glossaryPath)) return [];
+  return fs.readFileSync(glossaryPath, 'utf8').split(/\r?\n/).flatMap(line => {
+    if (!line.startsWith('|') || /^\|\s*(?:---|Nome canonico)/i.test(line)) return [];
+    const columns = line.split('|').slice(1, -1).map(value => value.trim());
+    if (columns.length < 9) return [];
+    return [{ name: columns[0], label: columns[1], category: columns[2], aliases: columns[3].split(',').map(value => value.trim()).filter(Boolean), repository: columns[4], summary: columns[8] }];
+  });
+}
+const glossary = loadToolGlossary();
+const configCandidates = files.filter(file => !/^tests?\//i.test(file.localRelative) && !sensitive.test(file.relative) && /(^|\/)(package\.json|pyproject\.toml|requirements[^/]*\.txt|cargo\.toml|config\.toml|settings\.(?:json|ya?ml)|.*\.mcp\.json|\.tool-versions)$/i.test(file.localRelative));
+const configTexts = configCandidates.flatMap(file => {
+  try { return [{ file, text: fs.readFileSync(file.absolute, 'utf8').slice(0, 128000).toLowerCase() }]; } catch { return []; }
+});
+const chatCorpus = chatSamples.map(sample => `${sample.prompt} ${(sample.observed_tools || []).join(' ')}`).join('\n').toLowerCase();
+const escaped = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+for (const tool of glossary) {
+  const patterns = tool.aliases.filter(alias => alias.length >= 3).map(alias => new RegExp(`(^|[^\\p{L}\\p{N}_-])${escaped(alias.toLowerCase())}([^\\p{L}\\p{N}_-]|$)`, 'u'));
+  const configMatches = configTexts.filter(source => patterns.some(pattern => pattern.test(source.text)));
+  const chatMatch = patterns.some(pattern => pattern.test(chatCorpus));
+  if (!configMatches.length && !chatMatch) continue;
+  if (components.some(component => component.name.toLowerCase() === tool.name.toLowerCase())) continue;
+  const sourceFile = configMatches[0]?.file.relative || (chatMatch ? 'sessions' : null);
+  const sourceKind = configMatches.length ? 'configuration' : 'chat_history';
+  const id = addComponent('tool', 'observed_ai_tool', tool.name, sourceFile, 'tool_integrations', `${tool.label}: ${tool.summary}`, {
+    ...semanticDetails(`${tool.label} ${tool.summary}`, tool.aliases),
+    properties: { tool_label: tool.label, tool_category: tool.category, repository: tool.repository, detected_from: sourceKind, matching_sources: configMatches.map(source => source.file.relative).slice(0, 10) },
+    confidence: configMatches.length ? .95 : .7,
+    verification_status: configMatches.length ? 'verified' : 'inferred'
+  });
+  const component = components.find(item => item.id === id);
+  if (chatMatch && component) component.evidence_ids.push(addEvidence('chat_observation', 'sessions', `Il nome ${tool.name} compare in chat autorizzate o nei tool osservati.`));
+}
+
+const primaryTool = components.find(component => component.kind === 'tool' && component.name === 'AI Setup Classifier') || components.find(component => component.kind === 'tool');
+for (const child of components.filter(component => component.parent_id)) {
+  relationships.push({ id: `rel_${crypto.createHash('sha1').update(`${child.parent_id}:${child.id}:contains`).digest('hex').slice(0, 10)}`, source_id: child.parent_id, target_id: child.id, type: 'contains', description: 'Il componente padre aggrega questo elemento osservato.', confidence: .98, verification_status: 'verified', evidence_ids: child.evidence_ids });
+}
 if (primaryTool) {
-  for (const target of components.filter(component => component.id !== primaryTool.id && ['skill', 'agent', 'mcp_server', 'integration', 'configuration', 'knowledge_base', 'document', 'workflow', 'chat_source'].includes(component.kind))) {
+  for (const target of components.filter(component => component.id !== primaryTool.id && !component.parent_id && ['skill', 'agent', 'mcp_server', 'integration', 'configuration', 'knowledge_base', 'document', 'workflow', 'chat_source', 'tool'].includes(component.kind))) {
     const type = target.kind === 'configuration' ? 'configured_by' : target.kind === 'document' && target.subtype !== 'behavior_contract' ? 'documented_by' : target.kind === 'knowledge_base' ? 'reads_from' : 'uses';
     relationships.push({ id: `rel_${crypto.createHash('sha1').update(`${primaryTool.id}:${target.id}:${type}`).digest('hex').slice(0, 10)}`, source_id: primaryTool.id, target_id: target.id, type, description: 'Relazione derivata dalla configurazione e dalla struttura del setup.', confidence: target.kind === 'mcp_server' || target.kind === 'integration' ? .9 : .75, verification_status: target.kind === 'mcp_server' || target.kind === 'integration' ? 'declared_only' : 'inferred', evidence_ids: target.evidence_ids });
   }
@@ -218,7 +311,7 @@ const rules = {
   source_priority: /fonti|source|documentazione.*codice/i.test(agentText),
   code_quality: /test|qualit|refactor|duplicaz/i.test(agentText)
 };
-const count = category => components.filter(component => component.properties.setup_category === category).length;
+const count = category => components.filter(component => component.properties.setup_category === category && !component.parent_id).length;
 const assessments = [];
 function assess(dimension, score, rationale, strengths, weaknesses) {
   const source = components.filter(component => component.properties.setup_category === dimension).flatMap(component => component.evidence_ids);
@@ -263,11 +356,12 @@ for (const assessment of assessments.filter(item => item.score < 2.5)) {
   assessment.recommendation_ids.push(recommendationId);
 }
 const overall = assessments.reduce((total, item) => total + item.score, 0) / assessments.length;
-const document = { $schema: './schemas/awdf.schema.json', format: 'awdf', format_name: 'AI Workspace Description Format', format_version: '1.0.0', metadata: { report_id: `awdf_${crypto.randomUUID().replaceAll('-', '').slice(0, 16)}`, title: 'AI Setup Classifier report', created_at: now, updated_at: null, language: 'it', generator: { name: 'AI Setup Classifier', version: '1.1.0' }, analysis_level: 'standard' }, workspace: { id: 'workspace', name: path.basename(root), type: 'project', purpose: 'Valutazione automatica del setup AI del repository.', maturity: overall >= 4 ? 'optimized' : overall >= 3 ? 'defined' : overall >= 2 ? 'emerging' : 'initial' }, scope: { authorized_folders: ['.'], excluded: [...skip, '.env*'], path_representation: 'relative' }, methodology: { mode: 'read_only', quality_over_quantity: true, behavior_contract_evaluated_separately: true, executed_discovered_code: false, sensitive_values_redacted: true }, inventory: { file_count: files.length, directory_count: new Set(files.map(file => path.dirname(file.relative))).size }, components, relationships: [], workflows: [], assessments, findings, recommendations, evidence, limitations: [{ id: 'lim_runtime', description: 'L’uso effettivo di tool e integrazioni non viene dedotto dalla struttura dei file.' }], unverified_items: [], executive_summary: { overall_score: +overall.toFixed(1), scale: '0-5', purpose: 'Report architetturale basato su evidenze di repository.', strengths: assessments.flatMap(item => item.strengths).slice(0, 5), criticalities: findings.map(item => item.title), priority_actions: recommendations.slice(0, 3).map(item => item.title) }, extensions: { 'ai-setup-classifier.report': { version: '1.0', data: { quality_over_quantity: true } } } };
+const configuredWorkspace = settings?.workspace || {};
+const document = { $schema: './schemas/awdf.schema.json', format: 'awdf', format_name: 'AI Workspace Description Format', format_version: '1.0.0', metadata: { report_id: `awdf_${crypto.randomUUID().replaceAll('-', '').slice(0, 16)}`, title: 'AI Setup Classifier report', created_at: now, updated_at: null, language: 'it', generator: { name: 'AI Setup Classifier', version: '1.1.0' }, analysis_level: configuredWorkspace.analysis_level || 'standard' }, workspace: { id: 'workspace', name: configuredWorkspace.name || (roots.length === 1 ? path.basename(root) : 'Workspace multi-cartella'), type: configuredWorkspace.type || 'project', purpose: configuredWorkspace.purpose || 'Valutazione automatica del setup AI del repository.', maturity: overall >= 4 ? 'optimized' : overall >= 3 ? 'defined' : overall >= 2 ? 'emerging' : 'initial' }, scope: { authorized_folders: settings?.workspace?.folders || [requestedRoot], excluded: [...skip, '.env*'], path_representation: configuredWorkspace.path_policy || 'relative' }, methodology: { mode: 'read_only', quality_over_quantity: true, behavior_contract_evaluated_separately: true, executed_discovered_code: false, sensitive_values_redacted: true }, inventory: { file_count: files.length, directory_count: new Set(files.map(file => path.dirname(file.relative))).size, workspace_folder_count: roots.length }, components, relationships: [], workflows: [], assessments, findings, recommendations, evidence, limitations: [{ id: 'lim_runtime', description: 'L’uso effettivo di tool e integrazioni può essere inferito da configurazioni e chat autorizzate, ma richiede evidenze runtime per essere verificato.' }], unverified_items: [], executive_summary: { overall_score: +overall.toFixed(1), scale: '0-5', purpose: 'Report architetturale basato su evidenze di repository.', strengths: assessments.flatMap(item => item.strengths).slice(0, 5), criticalities: findings.map(item => item.title), priority_actions: recommendations.slice(0, 3).map(item => item.title) }, extensions: { 'ai-setup-classifier.report': { version: '1.0', data: { quality_over_quantity: true } } } };
 document.metadata.title = 'AI Setup Classifier deep report';
 document.metadata.generator.version = '1.2.0';
-document.metadata.analysis_level = 'deep';
-document.workspace.purpose = 'Valutazione automatica approfondita del setup AI.';
+document.metadata.analysis_level = configuredWorkspace.analysis_level || 'deep';
+document.workspace.purpose = configuredWorkspace.purpose || 'Valutazione automatica approfondita del setup AI.';
 document.methodology.analysis_depth = 'semantic';
 document.methodology.component_descriptions_and_triggers_extracted = true;
 document.relationships = relationships;
@@ -280,5 +374,7 @@ document.executive_summary.score_policy = 'Il runtime verificato prevale sul des
 document.extensions['ai-setup-classifier.report'] = { version: '1.1', data: { quality_over_quantity: true, semantic_scan: true } };
 document.extensions['ai-setup-classifier.chat-evals'] = { version: '1.0', data: { source: 'default_ai_tool_local_history', privacy: 'redacted_prompt_samples_only', examples: chatSamples } };
 document.scope.chat_source_policy = { enabled: chatSamples.length > 0, directories: ['sessions', 'chats', 'conversations'], max_examples: 30, full_responses_included: false, secrets_redacted: true };
+if (inaccessiblePaths.length) document.limitations.push({ id: 'lim_inaccessible_paths', description: `${inaccessiblePaths.length} cartelle non sono state lette per limiti di accesso.`, paths: inaccessiblePaths.slice(0, 50) });
 fs.writeFileSync(output, `${JSON.stringify(document, null, 2)}\n`);
+console.log(`Workspace analizzato: ${roots.join(' | ')}`);
 console.log(`AI Setup report generated: ${output} (${overall.toFixed(1)}/5)`);

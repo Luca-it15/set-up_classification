@@ -1,0 +1,113 @@
+{
+  "version": "1.0",
+  "initialized": true,
+  "workspace": {
+    "name": "il mio setup",
+    "folders": [
+      "C:\\Users\\Luca\\.codex",
+      "D:\\WM e SMM\\progetti"
+    ],
+    "excluded": [
+      "node_modules",
+      "dist",
+      ".git",
+      "coverage",
+      ".cache"
+    ],
+    "type": "project",
+    "purpose": "setup ai",
+    "path_policy": "absolute",
+    "analysis_level": "deep"
+  },
+  "viewer": {
+    "palette": "dark",
+    "palettes": {
+      "dark": {
+        "id": "dark",
+        "name": "Default Dark",
+        "mode": "dark",
+        "canvas": {
+          "background": "#101926",
+          "grid": "#243246",
+          "selection": "#d9f99d"
+        },
+        "centralTool": {
+          "background": "#e7f7c9",
+          "border": "#b7e870",
+          "text": "#163200"
+        },
+        "categories": {
+          "behavior_contract": "#79d5ff",
+          "validation": "#8fe8b5",
+          "custom_agents": "#8ee7e1",
+          "plugins": "#f5a8ce",
+          "tool_integrations": "#ffbe7b",
+          "knowledge": "#8fbcff",
+          "skills": "#d6b5ff",
+          "agents": "#8ee7e1",
+          "mcp_servers": "#ffbe7b",
+          "knowledge_bases": "#8fbcff",
+          "documentation": "#f5a8ce",
+          "prompts": "#ffc9a6",
+          "tools": "#b7e870",
+          "models": "#d0c6ff",
+          "workflows": "#f5da71",
+          "repositories": "#76d7ac",
+          "services": "#8fc9ff",
+          "configurations": "#d1bfa9",
+          "other": "#b8c0ca"
+        },
+        "severity": {
+          "critical": "#ff5a6d",
+          "high": "#ff966c",
+          "medium": "#f6d363",
+          "low": "#83d3a6",
+          "informational": "#8fbcff"
+        }
+      },
+      "light": {
+        "id": "light",
+        "name": "Default Light",
+        "mode": "light",
+        "canvas": {
+          "background": "#f5f8fb",
+          "grid": "#d9e2ea",
+          "selection": "#5d8e0f"
+        },
+        "centralTool": {
+          "background": "#e5f6c9",
+          "border": "#93c94d",
+          "text": "#1c3700"
+        },
+        "categories": {
+          "behavior_contract": "#167da8",
+          "validation": "#177a4e",
+          "custom_agents": "#007d78",
+          "plugins": "#bd3773",
+          "tool_integrations": "#bf6400",
+          "knowledge": "#2367b8",
+          "skills": "#7d48cc",
+          "agents": "#007d78",
+          "mcp_servers": "#bf6400",
+          "knowledge_bases": "#2367b8",
+          "documentation": "#bd3773",
+          "prompts": "#b94c0a",
+          "tools": "#568c00",
+          "models": "#6958ba",
+          "workflows": "#967000",
+          "repositories": "#087a4c",
+          "services": "#126eb0",
+          "configurations": "#735d48",
+          "other": "#64748b"
+        },
+        "severity": {
+          "critical": "#cc2440",
+          "high": "#c85228",
+          "medium": "#9c7200",
+          "low": "#18794e",
+          "informational": "#2367b8"
+        }
+      }
+    }
+  }
+}

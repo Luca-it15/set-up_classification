@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "setup-settings.schema.json",
+  "title": "AI Setup Classifier settings",
+  "type": "object",
+  "required": ["version", "initialized", "workspace", "viewer"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "initialized": { "type": "boolean" },
+    "workspace": {
+      "type": "object",
+      "required": ["name", "folders", "excluded", "type", "purpose", "path_policy", "analysis_level"],
+      "properties": {
+        "name": { "type": "string" },
+        "folders": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "excluded": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "type": { "enum": ["personal", "team", "organization", "project", "unknown"] },
+        "purpose": { "type": "string" },
+        "path_policy": { "enum": ["relative", "absolute", "anonymized"] },
+        "analysis_level": { "enum": ["inventory", "standard", "deep"] }
+      },
+      "additionalProperties": false
+    },
+    "viewer": {
+      "type": "object",
+      "required": ["palette"],
+      "properties": {
+        "palette": { "enum": ["dark", "light"] },
+        "palettes": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

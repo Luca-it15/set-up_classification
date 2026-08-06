@@ -4,15 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 3000",
-    "start": "vite --host 0.0.0.0 --port 3000",
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "validate:awdf": "node scripts/validate-awdf.mjs ai-setup.json",
+    "validate:settings": "node scripts/validate-settings.mjs ai-setup-settings.json",
     "test:awdf": "node scripts/test-awdf.mjs",
     "test:simulator": "node scripts/test-simulator.mjs",
+    "test:scanner": "node scripts/test-scanner.mjs",
     "validate:simulation": "node scripts/validate-awdf-simulation.mjs simulation-result.json ai-setup.json",
-    "scan:setup": "node scripts/scan-setup.mjs . ai-setup.json"
+    "scan:setup": "node scripts/scan-setup.mjs . ai-setup.json ai-setup-settings.json"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
