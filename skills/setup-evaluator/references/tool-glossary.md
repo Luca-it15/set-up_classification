@@ -2,6 +2,8 @@
 
 Snapshot dei metadati pubblici GitHub: 2026-08-06. Le stelle sono un segnale di diffusione, non una valutazione qualitativa. Lo scanner usa le colonne `Nome canonico`, `Label`, `Categoria` e `Alias rilevabili`; gli alias devono essere specifici e separati da virgole.
 
+Codex, Claude Code e GitHub Copilot non vengono classificati tramite alias testuali di questa tabella. Sono risolti dal registry deterministico `scripts/lib/ai-tool-rules.mjs`, che distingue firma canonica, compatibilità condivisa, superficie, scope, validità e stato runtime. Questo evita che una semplice menzione o un file condiviso come `AGENTS.md` assegni arbitrariamente un vendor.
+
 | Nome canonico | Label | Categoria | Alias rilevabili | Repository | Stelle | Linguaggio | Licenza | Funzione essenziale |
 |---|---|---|---|---|---:|---|---|---|
 | Headroom | Riduzione token | token_reduction | headroom, headroom-ai, headroomlabs-ai | https://github.com/headroomlabs-ai/headroom | 65,225 | Python | Apache-2.0 | Comprime output di tool, log, file, JSON e chunk RAG prima che entrino nel contesto del modello. |
@@ -24,4 +26,4 @@ Snapshot dei metadati pubblici GitHub: 2026-08-06. Le stelle sono un segnale di 
 | Aider | Coding agent | coding_agent | aider, aider-ai | https://github.com/Aider-AI/aider | 47,997 | Python | Apache-2.0 | Pair programming AI nel terminale. |
 | Continue | Coding agent | coding_agent | continuedev, continue.dev | https://github.com/continuedev/continue | 35,356 | TypeScript | Apache-2.0 | Coding agent open source per IDE e workflow di sviluppo. |
 
-Per aggiungere tool locali o meno noti, inserire una riga con alias non ambigui. Conservare `verification_status: inferred` finché l'installazione o l'uso non sono confermati da configurazioni o log osservabili.
+Per aggiungere tool locali o meno noti, inserire una riga con alias non ambigui. Applicare `tool_usage_evidence_v1`: una configurazione produce `configured`/`declared_only`, una semplice menzione produce `mentioned`/`inferred`, e soltanto un evento strutturato di invocazione produce `used`/`verified`.

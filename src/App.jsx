@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORY_META, PALETTES } from './data.js';
-import reportFile from '../ai-setup.json';
-import settingsFile from '../ai-setup-settings.json';
+import reportFile from '../examples/codex-workspace.ai-setup.json';
+import { DEFAULT_SETTINGS } from './defaultSettings.js';
 import { simulate } from './simulator/index.js';
 import { evaluateChatExamples } from './simulator/evaluateChats.js';
 import { EvaluationPage } from './components/EvaluationPage.jsx';
@@ -18,9 +18,19 @@ import {
   validateAwdf
 } from './utils/appUtils.js';
 
+const normalizeManualComponents = components => components.map(component => ({
+  ...component,
+  name: component.name.trim(),
+  description: component.description.trim(),
+  path: component.path?.trim() || null,
+  elements: normalizeManualComponents(component.elements || [])
+}));
+
+const hasUnnamedManualComponent = components => components.some(component => !component.name.trim() || hasUnnamedManualComponent(component.elements || []));
+
 export default function App() {
   const [report, setReport] = useState(() => validateAwdf(reportFile));
-  const [appSettings, setAppSettings] = useState(() => loadSettings(settingsFile));
+  const [appSettings, setAppSettings] = useState(() => loadSettings(DEFAULT_SETTINGS));
   const [paletteId, setPaletteId] = useState(() => appSettings.viewer?.palette || 'dark');
   const [paletteConfigs, setPaletteConfigs] = useState(() => loadPaletteConfigs(appSettings));
   const [settingsOpen, setSettingsOpen] = useState(() => !appSettings.initialized || !appSettings.workspace?.folders?.length);
@@ -69,7 +79,8 @@ export default function App() {
   const saveSettings = async (nextWorkspace = appSettings.workspace) => {
     const folders = (nextWorkspace.folders || []).map(value => value.trim()).filter(Boolean);
     if (!folders.length) return setNotice('Aggiungi almeno una cartella al workspace.');
-    const next = { ...appSettings, initialized: true, workspace: { ...nextWorkspace, folders }, viewer: { ...appSettings.viewer, palette: paletteId, palettes: paletteConfigs } };
+    if (hasUnnamedManualComponent(appSettings.manual_components || [])) return setNotice('Assegna un nome a ogni componente ed elemento manuale.');
+    const next = { ...appSettings, initialized: true, workspace: { ...nextWorkspace, folders }, manual_components: normalizeManualComponents(appSettings.manual_components || []), viewer: { ...appSettings.viewer, palette: paletteId, palettes: paletteConfigs } };
     try {
       const response = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) });
       const saved = await response.json();

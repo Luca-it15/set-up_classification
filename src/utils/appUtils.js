@@ -1,4 +1,5 @@
 import { PALETTES, TYPE_TO_CATEGORY } from '../data.js';
+import { validateReferenceToolsExtension } from './referenceToolsValidation.js';
 
 export const categoryFor = component => {
   if (component.subtype === 'installed_plugin') return 'plugins';
@@ -24,6 +25,27 @@ export const DIMENSION_GROUPS = [
 
 export function validateAwdf(value) {
   if (value?.format !== 'awdf' || !/^1\./.test(value.format_version || '')) throw Error('Carica un documento AWDF 1.x valido.');
+  if (!value.metadata?.report_id || !value.workspace?.id || !value.workspace?.name) throw Error('Il documento AWDF non contiene metadata e workspace obbligatori.');
+  for (const key of ['components', 'relationships', 'workflows', 'assessments', 'findings', 'recommendations', 'evidence']) {
+    if (!Array.isArray(value[key])) throw Error(`Il campo AWDF ${key} deve essere un array.`);
+  }
+  const componentIds = new Set();
+  for (const component of value.components) {
+    if (!component?.id || !component.kind || !component.name || componentIds.has(component.id)) throw Error(`Componente AWDF non valido o duplicato: ${component?.id || 'senza id'}.`);
+    const usageStatus = component.properties?.usage_status;
+    if (usageStatus && !['used', 'configured', 'mentioned'].includes(usageStatus)) throw Error(`${component.id} usa uno usage_status non supportato: ${usageStatus}.`);
+    componentIds.add(component.id);
+  }
+  const evidenceIds = new Set(value.evidence.map(item => item?.id).filter(Boolean));
+  for (const component of value.components) {
+    if (component.parent_id && !componentIds.has(component.parent_id)) throw Error(`${component.id} riferisce un parent_id inesistente.`);
+    if ((component.evidence_ids || []).some(id => !evidenceIds.has(id))) throw Error(`${component.id} riferisce evidence inesistente.`);
+  }
+  for (const relationship of value.relationships) {
+    if (!relationship?.id || !componentIds.has(relationship.source_id) || !componentIds.has(relationship.target_id)) throw Error(`Relazione AWDF non valida: ${relationship?.id || 'senza id'}.`);
+  }
+  const referenceToolErrors = validateReferenceToolsExtension(value);
+  if (referenceToolErrors.length) throw Error(referenceToolErrors[0]);
   return { ...value, findings: value.findings || [], assessments: value.assessments || [], limitations: value.limitations || [] };
 }
 

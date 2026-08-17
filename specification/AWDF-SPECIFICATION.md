@@ -12,6 +12,8 @@ AWDF makes an AI workspace portable, inspectable and machine-readable without pr
 
 A **producer** creates AWDF. A **consumer** reads it. A **component** is a named workspace entity. **Evidence** supports an observed conclusion. A relationship's `verification_status` expresses certainty independently from its semantic type.
 
+The reference producer's component taxonomy, knowledge-base criteria and tool-use evidence levels are defined in `CLASSIFICATION-STANDARD.md`.
+
 ## 4. Document structure
 
 Every document uses UTF-8 JSON, `format: "awdf"`, the format name, a Semantic Versioning `format_version`, metadata, workspace, scope, methodology, inventory, components, relationships, workflows, assessments, findings, recommendations, evidence, limitations, unverified items, executive summary and extensions. The normative machine contract is `schemas/awdf.schema.json`.
@@ -19,6 +21,8 @@ Every document uses UTF-8 JSON, `format: "awdf"`, the format name, a Semantic Ve
 ## 5. Components and relationships
 
 Components have globally unique IDs, a standard `kind`, extensible `subtype`, confidence, status and evidence references. Relationships always retain their real semantic type (for example `uses`); uncertain relationships use `verification_status: "inferred"`, never a synthetic `hypothesized` type. Relationships must target existing components.
+
+Components can form a hierarchy through `parent_id`; the producer emits a matching `contains` relationship. User-declared components use the same taxonomy as scanned components and remain `declared_only` until corroborated.
 
 ## 6. Workflows, assessments and findings
 

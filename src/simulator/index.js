@@ -1,4 +1,5 @@
 import { interpretPrompt } from './interpretPrompt.js';
+import { resolvePrimaryTool } from './primaryTool.js';
 
 const statusWeight = { verified: 1, partially_verified: .8, declared_only: .65, inferred: .45, not_verified: .2 };
 
@@ -36,8 +37,7 @@ export function simulate(prompt, report) {
   const intentSequence = interpreted_request.intent_sequence || [];
   const normalizedPrompt = normalize(prompt);
   const promptTokens = new Set(tokens(prompt));
-  const primaryTool = report.components.find(component => component.kind === 'tool' && normalize(component.name) === 'codex')
-    || report.components.find(component => component.kind === 'tool');
+  const { component: primaryTool, warning: primaryToolWarning } = resolvePrimaryTool(report);
   const triggerMatches = trigger => {
     if (trigger.type !== 'keyword') return trigger.type === 'intent' && intents.has(trigger.value);
     const value = normalize(trigger.value);
@@ -70,6 +70,7 @@ export function simulate(prompt, report) {
     return { component, total, matchedCapabilities, matchedTriggers, routePosition, routeIntent, isPrimaryTool, factors: { capability_match: capabilityMatch, trigger_match: triggerMatch, name_match: nameMatch, evidence_score: evidenceScore, verification_multiplier: verificationMultiplier } };
   }).filter(entry => entry.isPrimaryTool || (Number.isFinite(entry.routePosition) && entry.total >= .25)).sort((a, b) => a.routePosition - b.routePosition || b.total - a.total);
   const warnings = ['UNVERIFIED_RUNTIME'];
+  if (primaryToolWarning) warnings.push(primaryToolWarning);
   if (!scored.length) warnings.push('NO_MATCHING_COMPONENT');
   const steps = scored.map((entry, index) => ({
     id: `sim_step_${index + 1}`, order: index + 1, component_id: entry.component.id,
