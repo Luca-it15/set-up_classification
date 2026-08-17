@@ -42,15 +42,8 @@ async function readBody(request) {
 
 async function selectFolder() {
   if (process.platform === 'win32') {
-    const script = [
-      'Add-Type -AssemblyName System.Windows.Forms',
-      '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
-      "$dialog.Description = 'Scegli una cartella del workspace AI'",
-      '$dialog.RootFolder = [System.Environment+SpecialFolder]::MyComputer',
-      '$dialog.ShowNewFolderButton = $false',
-      'if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Write-Output $dialog.SelectedPath }'
-    ].join('; ');
-    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-Command', script], { windowsHide: true });
+    const script = path.join(root, 'scripts', 'select-folder.ps1');
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', script], { windowsHide: true });
     return stdout.trim();
   }
   if (process.platform === 'darwin') {

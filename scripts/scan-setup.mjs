@@ -316,6 +316,7 @@ for (const toolId of toolAnalysis.resolution.applicable_tool_ids) {
 
 const instructionTexts = [];
 for (const artifact of toolAnalysis.artifacts) {
+  if (artifact.category !== 'behavior_contract' && !safeText(artifact.file).trim()) continue;
   const owner = artifact.canonicalToolId ? toolAnalysis.profiles[artifact.canonicalToolId]?.name : artifact.canonicalOwner;
   const description = artifact.category === 'behavior_contract'
     ? `Regola ${owner}; ${artifact.recognizedBy.length} binding surface-specific, stato sintattico ${artifact.syntaxStatus}.`
@@ -563,22 +564,31 @@ const configTexts = configCandidates.flatMap(file => {
 const promptCorpus = chatSamples.map(sample => sample.prompt).join('\n').toLowerCase();
 const invokedToolNames = chatSamples.flatMap(sample => sample.observed_tools || []).map(value => value.toLowerCase());
 const escaped = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function isConfiguredToolReference(text, aliases) {
+  return aliases.some(alias => {
+    const escapedAlias = escaped(alias.toLowerCase());
+    const contextualKey = '[\\w.-]*?(?:tool|plugin|filter|compressor|provider|runtime|command|package)[\\w.-]*';
+    const namedEntry = `(?:^|[\\n,{])\\s*["']?${escapedAlias}["']?\\s*[:=]`;
+    const contextualValue = `(?:^|\\n)\\s*["']?${contextualKey}["']?\\s*[:=]\\s*["']?${escapedAlias}(?=["'\\s,}#]|$)`;
+    return new RegExp(`${namedEntry}|${contextualValue}`, 'im').test(text);
+  });
+}
 for (const tool of glossary) {
   const patterns = tool.aliases.filter(alias => alias.length >= 3).map(alias => new RegExp(`(^|[^\\p{L}\\p{N}_-])${escaped(alias.toLowerCase())}([^\\p{L}\\p{N}_-]|$)`, 'u'));
-  const configMatches = configTexts.filter(source => patterns.some(pattern => pattern.test(source.text)));
+  const configMatches = configTexts.filter(source => isConfiguredToolReference(source.text, tool.aliases));
   const invocationMatches = invokedToolNames.filter(name => patterns.some(pattern => pattern.test(name)));
   const mentionMatch = patterns.some(pattern => pattern.test(promptCorpus));
-  if (!configMatches.length && !invocationMatches.length && !mentionMatch) continue;
+  if (!configMatches.length && !invocationMatches.length) continue;
   if (components.some(component => component.name.toLowerCase() === tool.name.toLowerCase())) continue;
-  const usageStatus = invocationMatches.length ? 'used' : configMatches.length ? 'configured' : 'mentioned';
-  const sourceFile = invocationMatches.length || mentionMatch ? 'sessions' : configMatches[0]?.file.relative || null;
-  const id = addComponent('tool', usageStatus === 'used' ? 'observed_ai_tool' : usageStatus === 'configured' ? 'configured_ai_tool' : 'mentioned_ai_tool', tool.name, sourceFile, 'tool_integrations', `${tool.label}: ${tool.summary}`, {
+  const usageStatus = invocationMatches.length ? 'used' : 'configured';
+  const sourceFile = invocationMatches.length ? 'sessions' : configMatches[0]?.file.relative || null;
+  const id = addComponent('tool', usageStatus === 'used' ? 'observed_ai_tool' : 'configured_ai_tool', tool.name, sourceFile, 'tool_integrations', `${tool.label}: ${tool.summary}`, {
     ...semanticDetails(`${tool.label} ${tool.summary}`, tool.aliases),
-    properties: { tool_label: tool.label, tool_category: tool.category, repository: tool.repository, usage_status: usageStatus, usage_standard: 'tool_usage_evidence_v1', detected_from: [invocationMatches.length ? 'structured_invocation' : null, configMatches.length ? 'configuration' : null, mentionMatch ? 'prompt_mention' : null].filter(Boolean), matching_sources: configMatches.map(source => reportPath(source.file.relative)).slice(0, 10) },
-    evidenceType: invocationMatches.length ? 'tool_invocation' : configMatches.length ? 'configuration' : 'chat_mention',
-    evidenceSummary: invocationMatches.length ? `Invocazione strutturata di ${tool.name} osservata in una sessione autorizzata.` : configMatches.length ? `${tool.name} rilevato in configurazione; disponibilità dichiarata, uso runtime non provato.` : `${tool.name} soltanto menzionato in un prompt; installazione e uso non provati.`,
-    confidence: invocationMatches.length ? .99 : configMatches.length ? .9 : .5,
-    verification_status: invocationMatches.length ? 'verified' : configMatches.length ? 'declared_only' : 'inferred'
+    properties: { tool_label: tool.label, tool_category: tool.category, repository: tool.repository, usage_status: usageStatus, usage_standard: 'tool_usage_evidence_v1', detected_from: [invocationMatches.length ? 'structured_invocation' : null, configMatches.length ? 'configuration' : null].filter(Boolean), matching_sources: configMatches.map(source => reportPath(source.file.relative)).slice(0, 10) },
+    evidenceType: invocationMatches.length ? 'tool_invocation' : 'configuration',
+    evidenceSummary: invocationMatches.length ? `Invocazione strutturata di ${tool.name} osservata in una sessione autorizzata.` : `${tool.name} rilevato in configurazione; disponibilità dichiarata, uso runtime non provato.`,
+    confidence: invocationMatches.length ? .99 : .9,
+    verification_status: invocationMatches.length ? 'verified' : 'declared_only'
   });
   const component = components.find(item => item.id === id);
   if (configMatches.length && invocationMatches.length && component) component.evidence_ids.push(addEvidence('configuration', configMatches[0].file.relative, `${tool.name} è anche configurato nel workspace.`));

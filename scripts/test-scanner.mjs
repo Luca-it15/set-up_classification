@@ -65,8 +65,8 @@ try {
   if (!headroom || headroom.properties.tool_label !== 'Riduzione token' || headroom.verification_status !== 'verified' || headroom.properties.usage_status !== 'used') throw new Error('Headroom non classificato come tool usato.');
   const rtk = tools.get('RTK');
   if (!rtk || rtk.properties.tool_label !== 'Riduzione token' || rtk.verification_status !== 'declared_only' || rtk.properties.usage_status !== 'configured') throw new Error('RTK non classificato come tool configurato.');
-  const ollama = tools.get('Ollama');
-  if (!ollama || ollama.verification_status !== 'inferred' || ollama.properties.usage_status !== 'mentioned') throw new Error('Ollama non classificato come semplice menzione.');
+  if (rtk.properties.matching_sources?.length !== 1 || !rtk.properties.matching_sources[0].endsWith('settings.json')) throw new Error('RTK deve essere rilevato dalla dichiarazione di configurazione, non da un path incidentale.');
+  if (tools.has('Ollama')) throw new Error('Una semplice menzione in chat non deve creare un componente Tool.');
   const knowledgeBases = report.components.filter(component => component.kind === 'knowledge_base' && !component.parent_id);
   const knowledgeDocuments = report.components.filter(component => component.kind === 'document' && component.parent_id === knowledgeBases[0]?.id);
   if (knowledgeBases.length !== 1 || knowledgeDocuments.length !== 2 || knowledgeBases[0].verification_status !== 'declared_only') throw new Error('La knowledge base manuale non mantiene la gerarchia attesa.');
