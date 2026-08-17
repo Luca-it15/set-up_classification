@@ -513,13 +513,6 @@ for (const file of repositoryDocuments) {
 }
 const validationFiles = files.filter(file => /(^|\/)(tests?|__tests__|\.github\/workflows)(\/|$)|(^|\/)(eslint|jest|vitest|playwright|pytest)/i.test(file.relative));
 if (validationFiles.length) addComponent('workflow', 'automated_validation', 'Validazione automatica', null, 'validation', `${validationFiles.length} artefatti di test, lint o CI rilevati.`, { ...semanticDetails('Automated tests, lint, build and continuous integration validation.', ['test','lint','build','validate']), properties: { artifact_count: validationFiles.length, sample_paths: validationFiles.slice(0, 20).map(file => reportPath(file.relative)) } });
-const classifierPackage = files.find(file => file.localRelative === 'package.json' && (() => {
-  try {
-    const manifest = JSON.parse(safeText(file));
-    return manifest.name === 'awdf-reference-implementation' && typeof manifest.scripts?.['scan:setup'] === 'string';
-  } catch { return false; }
-})());
-if (classifierPackage) addComponent('tool', 'setup_classifier', 'AI Setup Classifier', classifierPackage.relative, 'tool_integrations', 'Strumento che produce e visualizza il report AWDF; non viene assunto come tool AI di riferimento.', { properties: { reference_tool: false } });
 if (chatSamples.length) addComponent('chat_source', 'redacted_chat_samples', 'Esempi dalle chat autorizzate', 'sessions', 'other', `${chatSamples.length} prompt recenti estratti con redazione best-effort; le risposte complete non sono incluse.`, { properties: { sample_count: chatSamples.length, redaction: 'best_effort', full_conversations_stored: false }, activation: { mode: 'manual', triggers: [{ type: 'manual', value: 'prompt_evaluation', weight: 1 }] } });
 
 const manualTypeMap = {

@@ -60,6 +60,7 @@ try {
   if (fs.readFileSync(output, 'utf8').includes('EXCLUDED_PLUGIN_SECRET_MUST_NOT_LEAK')) throw new Error('Un manifest plugin escluso è stato letto direttamente fuori dall’inventario autorizzato.');
   if (!report.extensions?.['ai-setup-classifier.chat-evals']?.data?.examples?.length) throw new Error('L’opt-in chat non ha prodotto la fixture autorizzata.');
   const tools = new Map(report.components.filter(component => component.kind === 'tool').map(component => [component.name, component]));
+  if (report.components.some(component => component.subtype === 'setup_classifier')) throw new Error('Il classifier è un generatore neutro del report e non deve comparire nell’inventario del setup.');
   const headroom = tools.get('Headroom');
   if (!headroom || headroom.properties.tool_label !== 'Riduzione token' || headroom.verification_status !== 'verified' || headroom.properties.usage_status !== 'used') throw new Error('Headroom non classificato come tool usato.');
   const rtk = tools.get('RTK');
