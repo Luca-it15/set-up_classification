@@ -4,6 +4,27 @@
   "title": "AI Setup Classifier settings",
   "type": "object",
   "required": ["version", "initialized", "workspace", "viewer"],
+  "$defs": {
+    "manualComponent": {
+      "type": "object",
+      "required": ["id", "type", "name", "description", "path", "elements"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,127}$" },
+        "type": {
+          "enum": [
+            "behavior_contract", "knowledge_base", "document", "skill", "agent",
+            "plugin", "mcp_server", "tool", "model", "prompt", "workflow",
+            "repository", "service", "configuration", "validation", "other"
+          ]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "path": { "type": ["string", "null"] },
+        "elements": { "type": "array", "items": { "$ref": "#/$defs/manualComponent" } }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "version": { "const": "1.0" },
     "initialized": { "type": "boolean" },
@@ -17,9 +38,15 @@
         "type": { "enum": ["personal", "team", "organization", "project", "unknown"] },
         "purpose": { "type": "string" },
         "path_policy": { "enum": ["relative", "absolute", "anonymized"] },
-        "analysis_level": { "enum": ["inventory", "standard", "deep"] }
+        "analysis_level": { "enum": ["inventory", "standard", "deep"] },
+        "reference_tool": { "enum": ["auto", "codex", "claude_code", "github_copilot"] },
+        "include_chat_history": { "type": "boolean", "default": false }
       },
       "additionalProperties": false
+    },
+    "manual_components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/manualComponent" }
     },
     "viewer": {
       "type": "object",

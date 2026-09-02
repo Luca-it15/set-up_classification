@@ -5,3 +5,9 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Local scan output and workspace-specific settings (may contain private paths/data)
+ai-setup.json
+ai-setup-settings.json
+*-setup-report.json
+setup-scan-report.json

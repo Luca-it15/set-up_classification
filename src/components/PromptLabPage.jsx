@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { simulate } from '../simulator/index.js';
-import { evaluateChatExamples } from '../simulator/evaluateChats.js';
+import { comparePredictedAndObservedTools, evaluateChatExamples } from '../simulator/evaluateChats.js';
 import { download, extractChatExamples, simulationStatus } from '../utils/appUtils.js';
+
+const primaryToolWarningMessages = {
+  PRIMARY_TOOL_NOT_CONFIGURED: 'Nessun tool AI principale è configurato: il simulatore non può scegliere l’orchestratore.',
+  MULTIPLE_PRIMARY_TOOLS_CONFIGURED: 'Sono stati rilevati più tool AI principali: selezionane uno esplicitamente prima di interpretare il routing.',
+  PRIMARY_TOOL_COMPONENT_NOT_FOUND: 'ID e chiave del tool AI principale non corrispondono a un componente reference_ai_coding_tool valido.'
+};
 
 function RoutingTimelineItem({ item, result, report }) {
   if (item.type === 'gap') return <li className="route-gap"><span className="flow-index">{item.order}</span><div><span className="route-stage">{item.label}</span><strong>Capacità non coperta</strong><p>Gap di routing · termine “{item.matched_term}”</p><small>{item.reason}</small></div></li>;
@@ -13,7 +19,8 @@ function RoutingTimelineItem({ item, result, report }) {
 
 function SimulationFlow({ result, report }) {
   const timeline = result.timeline || result.steps.map(step => ({ type: 'route', step_id: step.id, order: step.order }));
-  return <section className="simulation-flow"><div className="flow-heading"><div><p className="eyebrow">FLUSSO PREVISTO</p><h3>Routing nel workspace</h3></div><button className="ghost" onClick={() => download(result, 'simulation-result.json')}>↓ Esporta risultato</button></div><p className="flow-disclaimer">Le fasi seguono l’ordine delle richieste nel prompt; a parità di fase, i candidati sono ordinati per confidenza. È una previsione statica: nessun componente viene eseguito.</p>{timeline.length ? <ol>{timeline.map(item => <RoutingTimelineItem item={item} result={result} report={report} key={item.step_id || item.gap_id} />)}</ol> : <p className="flow-empty">Nessuna corrispondenza semantica: il simulatore non prevede l’attivazione di componenti per questo prompt.</p>}</section>;
+  const primaryToolWarnings = (result.warnings || []).filter(warning => primaryToolWarningMessages[warning]);
+  return <section className="simulation-flow"><div className="flow-heading"><div><p className="eyebrow">FLUSSO PREVISTO</p><h3>Routing nel workspace</h3></div><button className="ghost" onClick={() => download(result, 'simulation-result.json')}>↓ Esporta risultato</button></div><p className="flow-disclaimer">Le fasi seguono l’ordine delle richieste nel prompt; a parità di fase, i candidati sono ordinati per confidenza. È una previsione statica: nessun componente viene eseguito.</p>{primaryToolWarnings.length > 0 && <div className="primary-tool-warnings" role="alert" aria-live="polite">{primaryToolWarnings.map(warning => <div className="primary-tool-warning" key={warning}><strong>{warning}</strong><p>{primaryToolWarningMessages[warning]}</p></div>)}</div>}{timeline.length ? <ol>{timeline.map(item => <RoutingTimelineItem item={item} result={result} report={report} key={item.step_id || item.gap_id} />)}</ol> : <p className="flow-empty">Nessuna corrispondenza semantica: il simulatore non prevede l’attivazione di componenti per questo prompt.</p>}</section>;
 }
 
 export function PromptLabPage({ prompt, setPrompt, run, result, report, setNotice, setRuntimeEvaluation }) {
@@ -29,8 +36,8 @@ export function PromptLabPage({ prompt, setPrompt, run, result, report, setNotic
     const top = routedSteps[0]?.confidence || 0;
     const second = routedSteps[1]?.confidence || 0;
     const observedTools = example.observed_tools || [];
-    const routedNames = routedSteps.slice(0, 4).map(step => report.components.find(component => component.id === step.component_id)?.name?.toLowerCase() || '');
-    const observedMismatch = observedTools.length > 0 && !observedTools.some(tool => routedNames.some(name => name.includes(tool.toLowerCase()) || tool.toLowerCase().includes(name)));
+    const toolComparison = comparePredictedAndObservedTools(report, routedSteps.map(step => step.component_id), observedTools);
+    const observedMismatch = toolComparison.hasEvidence && toolComparison.agreement < 1;
     const flags = [top < .75 ? 'routing debole' : null, top && top - second < .15 ? 'routing ambiguo' : null, observedMismatch ? 'tool osservati diversi' : null, routedSteps.length === 0 ? 'nessun componente specifico' : null, simulation.routing_gaps?.length ? `${simulation.routing_gaps.length} gap di copertura` : null].filter(Boolean);
     return { ...example, id: example.id || `history_${index + 1}`, source: example.source || 'Cronologia del tool principale', simulation, flags, routingConfidence: top, reviewPriority: flags.length * 2 + (1 - top) };
   }).sort((a, b) => b.reviewPriority - a.reviewPriority), [chatExamples, report]);

@@ -6,12 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { createServer as createViteServer } from 'vite';
+import { DEFAULT_SETTINGS } from './src/defaultSettings.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const host = process.env.AWDF_HOST || '127.0.0.1';
 const port = Number(process.env.AWDF_PORT || 3000);
 const settingsPath = path.join(root, 'ai-setup-settings.json');
 const reportPath = path.join(root, 'ai-setup.json');
+const exampleReportPath = path.join(root, 'examples', 'codex-workspace.ai-setup.json');
 const schema = JSON.parse(fs.readFileSync(path.join(root, 'schemas', 'setup-settings.schema.json'), 'utf8'));
 const validateSettings = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
 const execFileAsync = promisify(execFile);
@@ -40,14 +42,8 @@ async function readBody(request) {
 
 async function selectFolder() {
   if (process.platform === 'win32') {
-    const script = [
-      'Add-Type -AssemblyName System.Windows.Forms',
-      '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
-      "$dialog.Description = 'Scegli una cartella del workspace AI'",
-      '$dialog.ShowNewFolderButton = $false',
-      'if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Write-Output $dialog.SelectedPath }'
-    ].join('; ');
-    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-Command', script], { windowsHide: true });
+    const script = path.join(root, 'scripts', 'select-folder.ps1');
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', script], { windowsHide: true });
     return stdout.trim();
   }
   if (process.platform === 'darwin') {
@@ -61,7 +57,8 @@ async function selectFolder() {
 async function api(request, response) {
   const url = new URL(request.url, `http://${host}:${port}`);
   if (url.pathname === '/api/settings' && request.method === 'GET') {
-    return sendJson(response, 200, JSON.parse(fs.readFileSync(settingsPath, 'utf8')));
+    const value = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf8')) : DEFAULT_SETTINGS;
+    return sendJson(response, 200, value);
   }
   if (url.pathname === '/api/settings' && request.method === 'PUT') {
     const value = JSON.parse(await readBody(request));
@@ -74,7 +71,8 @@ async function api(request, response) {
     return sendJson(response, 200, value);
   }
   if (url.pathname === '/api/report' && request.method === 'GET') {
-    return sendJson(response, 200, JSON.parse(fs.readFileSync(reportPath, 'utf8')));
+    const source = fs.existsSync(reportPath) ? reportPath : exampleReportPath;
+    return sendJson(response, 200, JSON.parse(fs.readFileSync(source, 'utf8')));
   }
   if (url.pathname === '/api/select-folder' && request.method === 'POST') {
     const selectedPath = await selectFolder();

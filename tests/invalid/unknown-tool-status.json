@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/awdf.schema.json",
+  "format": "awdf",
+  "format_name": "AI Workspace Description Format",
+  "format_version": "1.0.0",
+  "metadata": { "report_id": "awdf_invalid_status", "title": "Invalid status", "created_at": "2026-08-17T00:00:00Z", "updated_at": null, "language": "it", "generator": { "name": "test", "version": "1.0.0" }, "analysis_level": "inventory" },
+  "workspace": { "id": "workspace", "name": "Invalid", "type": "project", "purpose": "Test", "maturity": "initial" },
+  "scope": {},
+  "methodology": {},
+  "inventory": {},
+  "components": [{ "id": "cmp_tool", "kind": "tool", "subtype": "reference_ai_coding_tool", "name": "Tool", "description": "Invalid status fixture.", "path": null, "parent_id": null, "properties": { "usage_status": "declared", "usage_standard": "tool_usage_evidence_v1" }, "tags": [], "confidence": 0.5, "verification_status": "declared_only", "evidence_ids": ["ev_manual"] }],
+  "relationships": [],
+  "workflows": [],
+  "assessments": [],
+  "findings": [],
+  "recommendations": [],
+  "evidence": [{ "id": "ev_manual", "type": "manual_declaration", "source_id": null, "path": null, "location": null, "summary": "Manual declaration.", "content_hash": null, "observed_at": "2026-08-17T00:00:00Z", "confidence": 0.5, "sensitive": false }],
+  "limitations": [],
+  "unverified_items": [],
+  "executive_summary": { "overall_score": 0, "design_score": 0, "verified_runtime_score": null, "runtime_status": "unverified", "scale": "0-5", "purpose": "Test", "score_policy": "Test", "strengths": [], "criticalities": [], "priority_actions": [] },
+  "extensions": {}
+}
