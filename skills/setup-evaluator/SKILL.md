@@ -1,9 +1,11 @@
 ---
 name: awdf-evaluator
-description: Produces validated AI Workspace Description Format (AWDF) documents from explicitly authorized AI-development workspace folders, persists user-editable workspace settings for the web viewer, and detects known or inferred AI tools from configuration files and supplied chats.
+description: Produces validated AI Workspace Description Format (AWDF) documents from explicitly authorized AI-development workspace folders. Use it from the AWDF reference implementation to inventory an AI setup, classify tools, assess maturity, and prepare the local viewer report; do not use it for unrestricted filesystem scans.
 ---
 
 # AWDF Evaluator
+
+This skill follows the portable Agent Skills `SKILL.md` format and avoids vendor-specific frontmatter so it can be loaded by Codex, Claude Code, and GitHub Copilot. Run it with the AWDF reference implementation as the current repository; it depends on the repository's `schemas/`, `scripts/`, and `specification/` directories.
 
 Produce a valid AWDF 1.0.0 JSON document named `ai-setup.json`, conforming to `schemas/awdf.schema.json`. Store workspace and viewer preferences separately in `ai-setup-settings.json`, conforming to `schemas/setup-settings.schema.json`, so the web app can display and edit them.
 

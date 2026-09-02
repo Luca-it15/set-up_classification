@@ -15,6 +15,7 @@
     "test:simulator": "node scripts/test-simulator.mjs",
     "test:scanner": "node scripts/test-scanner.mjs",
     "test:rules": "node scripts/test-ai-tool-rules.mjs",
+    "skill:install": "node scripts/install-skill.mjs",
     "validate:simulation": "node scripts/validate-awdf-simulation.mjs simulation-result.json ai-setup.json",
     "scan:setup": "node scripts/scan-setup.mjs . ai-setup.json ai-setup-settings.json"
   },
