@@ -1,18 +1,18 @@
 # AI Setup Classifier · AWDF
 
-AI Setup Classifier analizza in sola lettura uno o più workspace di sviluppo assistito da AI, produce un report standard **AWDF 1.0.0** e lo rende esplorabile in un’interfaccia locale. Il report descrive componenti, relazioni, workflow, evidenze, livello di maturità, criticità e azioni consigliate.
+AI Setup Classifier performs a read-only analysis of one or more AI-assisted development workspaces, produces a standard **AWDF 1.0.0** report, and makes it explorable through a local interface. The report describes components, relationships, workflows, evidence, maturity, findings, and recommended actions.
 
-![Mappa visuale del setup AI](docs/screenshots/setup-map.png)
+![Visual map of the AI setup](docs/screenshots/setup-map.png)
 
 ```text
-Workspace autorizzati → Scanner → ai-setup.json → Validatore → Viewer locale
-                                      ↓
-                            Valutazione · Roadmap · Prompt Lab
+Authorized workspaces → Scanner → ai-setup.json → Validator → Local viewer
+                                          ↓
+                              Assessment · Roadmap · Prompt Lab
 ```
 
-## Avvio rapido
+## Quick start
 
-Servono Node.js e npm. Da una nuova installazione:
+Node.js and npm are required. For a fresh installation:
 
 ```bash
 git clone https://github.com/Luca-it15/set-up_classification.git
@@ -20,13 +20,13 @@ cd set-up_classification
 npm install && npm start
 ```
 
-Apri [http://127.0.0.1:3000](http://127.0.0.1:3000). `npm start` è l’unico comando di avvio: un solo processo Node serve sia l’interfaccia React sia le API locali per settings e report. Ai lanci successivi basta:
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). `npm start` is the only startup command: a single Node process serves both the React interface and the local settings/report APIs. On subsequent runs, use:
 
 ```bash
 npm start
 ```
 
-Per cambiare indirizzo o porta:
+To change the address or port:
 
 ```bash
 AWDF_HOST=0.0.0.0 AWDF_PORT=3100 npm start
@@ -38,84 +38,84 @@ In PowerShell:
 $env:AWDF_HOST='0.0.0.0'; $env:AWDF_PORT='3100'; npm start
 ```
 
-## Prima configurazione e scansione
+## Initial configuration and scanning
 
-1. Apri **Settings → Workspace** e aggiungi almeno una cartella tramite il selettore di sistema o un path assoluto.
-2. Imposta nome, scopo, tipo di workspace, policy dei path e profondità dell’analisi.
-3. Mantieni **Cronologia chat** disattivata, oppure abilitala consapevolmente: la redazione è best-effort e non garantisce la rimozione di ogni segreto.
-4. Premi **Salva**. Le preferenze vengono scritte localmente in `ai-setup-settings.json`.
-5. In un secondo terminale esegui la scansione e aggiorna la pagina:
+1. Open **Settings → Workspace** and add at least one folder using the system folder picker or an absolute path.
+2. Set the workspace name, purpose, type, path policy, and analysis depth.
+3. Keep **Chat history** disabled unless you intentionally opt in. Redaction is best-effort and cannot guarantee that every secret is removed.
+4. Select **Save**. Preferences are stored locally in `ai-setup-settings.json`.
+5. Run the scan in a second terminal, then refresh the page:
 
 ```bash
 npm run scan:setup
 ```
 
-Lo scanner accetta esclusivamente le cartelle autorizzate nei settings, non esegue il codice trovato, ignora dipendenze/build/cache e non legge file sensibili. Produce `ai-setup.json`, già validato prima della sostituzione del report precedente.
+The scanner only accepts folders explicitly authorized in the settings. It does not execute discovered code, skips dependencies/build artifacts/caches, and does not read sensitive files. It generates `ai-setup.json` and validates the new report before replacing the previous one.
 
-![Configurazione delle cartelle autorizzate](docs/screenshots/settings-workspace.png)
+![Authorized workspace folder configuration](docs/screenshots/settings-workspace.png)
 
-## Guida all’interfaccia
+## Interface guide
 
-### Mappa setup
+### Setup map
 
-La vista iniziale organizza il workspace intorno al tool AI di riferimento e raggruppa i componenti per categoria. Puoi:
+The initial view places the reference AI tool at the center and groups workspace components by category. You can:
 
-- espandere o comprimere singole categorie e l’intera mappa;
-- trascinare il canvas, regolare lo zoom, ricentrare e passare a schermo intero;
-- selezionare un nodo per vedere descrizione, capacità, trigger e relazioni;
-- usare **Esamina componente** per aprire la gerarchia completa degli elementi contenuti;
-- distinguere i raggi di impaginazione dalle relazioni AWDF effettivamente documentate.
+- expand or collapse individual categories or the entire map;
+- drag the canvas, adjust zoom, recenter it, and enter full-screen mode;
+- select a node to inspect its description, capabilities, triggers, and relationships;
+- use **Examine component** to open the complete hierarchy of contained elements;
+- distinguish layout spokes from relationships actually documented in AWDF.
 
-### Valutazione e roadmap
+### Assessment and roadmap
 
-La pagina separa la qualità osservata del design dal runtime non verificato. Le dimensioni sono raggruppate per copertura, sicurezza, ergonomia e maturità operativa; ogni scheda mostra punteggio, motivazione, punti di forza e debolezze. La roadmap ordina gli interventi proposti con priorità e impegno stimato.
+This page keeps observed design quality separate from unverified runtime behavior. Dimensions are grouped by coverage, safety, ergonomics, and operational maturity. Each card shows its score, rationale, strengths, and weaknesses. The roadmap orders proposed improvements by priority and estimated effort.
 
-![Valutazione delle dimensioni e roadmap](docs/screenshots/evaluation-roadmap.png)
+![Dimension assessment and roadmap](docs/screenshots/evaluation-roadmap.png)
 
 ### Prompt Lab
 
-Prompt Lab simula staticamente il routing di una richiesta senza eseguire agenti o tool. Inserisci un prompt, scegli un esempio oppure importa una chat; il risultato mostra la sequenza prevista, la confidenza, i componenti candidati, eventuali gap e avvisi sulla risoluzione del tool principale. Il risultato può essere esportato in `simulation-result.json`.
+Prompt Lab statically simulates how a request would be routed without executing agents or tools. Enter a prompt, select an example, or import a chat. The result shows the predicted sequence, confidence, candidate components, routing gaps, and warnings about primary-tool resolution. Results can be exported to `simulation-result.json`.
 
-![Simulazione del routing nel Prompt Lab](docs/screenshots/prompt-lab.png)
+![Routing simulation in Prompt Lab](docs/screenshots/prompt-lab.png)
 
-### Settings, componenti manuali e palette
+### Settings, manual components, and palettes
 
-I settings consentono di:
+Settings let you:
 
-- autorizzare più cartelle e definire esclusioni;
-- scegliere analisi `inventory`, `standard` o `deep`;
-- lasciare automatico il tool di riferimento o dichiarare Codex, Claude Code o GitHub Copilot;
-- aggiungere componenti ed elementi annidati non rilevabili automaticamente;
-- personalizzare palette dark/light, canvas, nodo centrale e colori delle categorie;
-- importare ed esportare backup di `ai-setup-settings.json`.
+- authorize multiple folders and define exclusions;
+- select `inventory`, `standard`, or `deep` analysis;
+- keep reference-tool detection automatic or explicitly declare Codex, Claude Code, or GitHub Copilot;
+- add components and nested elements that cannot be detected automatically;
+- customize dark/light palettes, the canvas, central node, and category colors;
+- import and export `ai-setup-settings.json` backups.
 
-La barra superiore importa/esporta documenti AWDF. I file importati vengono elaborati nel browser; **Esporta AWDF** scarica il report attualmente visualizzato.
+The top bar imports and exports AWDF documents. Imported files are processed in the browser; **Export AWDF** downloads the report currently displayed.
 
-## Cosa rileva e come lo valuta
+## What it detects and how it is assessed
 
-Il classificatore costruisce:
+The classifier builds:
 
-- inventario di behavior contract, documenti, skill, agenti, plugin, MCP server, tool, modelli, workflow, repository, servizi e configurazioni;
-- relazioni e gerarchie con riferimenti incrociati verificabili;
-- evidenze con path relativi, anonimizzati o assoluti;
-- assessment su behavior contract, knowledge, skill, custom agent, integrazioni, validazione, manutenibilità, ergonomia, sicurezza dei permessi, efficienza del contesto, gerarchia delle istruzioni, proporzionalità architetturale, osservabilità ed eval;
-- finding e raccomandazioni collegate alle rispettive evidenze.
+- an inventory of behavior contracts, documents, skills, agents, plugins, MCP servers, tools, models, workflows, repositories, services, and configurations;
+- relationships and hierarchies with verifiable cross-references;
+- evidence using relative, anonymized, or absolute paths;
+- assessments of behavior contracts, knowledge, skills, custom agents, integrations, validation, maintainability, tool ergonomics, permission safety, context efficiency, instruction hierarchy, architectural proportionality, observability, and evaluations;
+- findings and recommendations linked to their supporting evidence.
 
-La presenza di un tool non equivale al suo utilizzo: `configured` indica una configurazione osservata, `mentioned` una sola menzione testuale e `used` richiede un evento strutturato di invocazione. Codex, Claude Code e GitHub Copilot sono risolti tramite regole deterministiche e possono coesistere senza forzare arbitrariamente un tool principale.
+Tool presence does not prove tool usage: `configured` means a configuration was observed, `mentioned` means the name only appeared in text, and `used` requires a structured invocation event. Codex, Claude Code, and GitHub Copilot are resolved through deterministic rules and may coexist without arbitrarily forcing a primary tool.
 
-## Skill AWDF Evaluator
+## AWDF Evaluator skill
 
-La skill in `skills/setup-evaluator/` usa il formato portabile `SKILL.md` e non contiene frontmatter proprietario. L’installer Node la copia nella posizione corretta per Codex, Claude Code e GitHub Copilot.
+The skill in `skills/setup-evaluator/` uses the portable `SKILL.md` format and contains no vendor-specific frontmatter. The Node installer copies it to the correct location for Codex, Claude Code, and GitHub Copilot.
 
-Installazione personale per tutti e tre i client:
+Install it for all three clients at user scope:
 
 ```bash
 npm run skill:install -- all
 ```
 
-Con `all`, Codex e Copilot condividono la copia standard in `~/.agents/skills`, mentre Claude usa `~/.claude/skills`: si evitano così skill duplicate nei client che riconoscono più directory.
+With `all`, Codex and Copilot share the standard copy in `~/.agents/skills`, while Claude uses `~/.claude/skills`. This avoids duplicate skills in clients that recognize multiple directories.
 
-Installazione per un solo client:
+Install it for one client only:
 
 ```bash
 npm run skill:install -- codex
@@ -123,62 +123,62 @@ npm run skill:install -- claude
 npm run skill:install -- copilot
 ```
 
-Installazione limitata a questa repository:
+Install it only for this repository:
 
 ```bash
 npm run skill:install -- all --scope=project
 ```
 
-| Client | Scope personale | Scope repository | Invocazione |
+| Client | User scope | Repository scope | Invocation |
 | --- | --- | --- | --- |
 | Codex | `~/.agents/skills/awdf-evaluator` | `.agents/skills/awdf-evaluator` | `$awdf-evaluator` |
 | Claude Code | `~/.claude/skills/awdf-evaluator` | `.claude/skills/awdf-evaluator` | `/awdf-evaluator` |
-| GitHub Copilot | `~/.copilot/skills/awdf-evaluator` | `.github/skills/awdf-evaluator` | `/awdf-evaluator` o selezione automatica |
+| GitHub Copilot | `~/.copilot/skills/awdf-evaluator` | `.github/skills/awdf-evaluator` | `/awdf-evaluator` or automatic selection |
 
-La skill dipende dagli schema e dagli script di questa repository: avvia il client dalla root del clone. Dopo l’installazione chiedi, per esempio:
+The skill depends on this repository's schemas and scripts, so start the client from the clone root. After installation, ask for example:
 
 ```text
-Usa awdf-evaluator per analizzare le cartelle autorizzate e genera un nuovo ai-setup.json validato.
+Use awdf-evaluator to analyze the authorized folders and generate a new validated ai-setup.json report.
 ```
 
-## Comandi disponibili
+## Available commands
 
-| Comando | Funzione |
+| Command | Purpose |
 | --- | --- |
-| `npm start` | Avvia API locale e interfaccia su `127.0.0.1:3000` |
-| `npm run scan:setup` | Scansiona le cartelle autorizzate e genera `ai-setup.json` |
-| `npm run validate:awdf` | Valida schema, versioni, riferimenti e regole di evidence |
-| `npm run validate:settings` | Valida `ai-setup-settings.json` |
-| `npm run validate:simulation` | Valida `simulation-result.json` rispetto al report AWDF |
-| `npm run build` | Genera la build Vite in `dist/` |
-| `npm test` | Esegue test AWDF, regole tool, scanner, simulatore e build |
-| `npm run skill:install -- <target>` | Installa la skill per `all`, `codex`, `claude` o `copilot` |
+| `npm start` | Start the local API and interface on `127.0.0.1:3000` |
+| `npm run scan:setup` | Scan authorized folders and generate `ai-setup.json` |
+| `npm run validate:awdf` | Validate schemas, versions, references, and evidence rules |
+| `npm run validate:settings` | Validate `ai-setup-settings.json` |
+| `npm run validate:simulation` | Validate `simulation-result.json` against the AWDF report |
+| `npm run build` | Generate the Vite build in `dist/` |
+| `npm test` | Run AWDF, tool-rule, scanner, simulator, and build tests |
+| `npm run skill:install -- <target>` | Install the skill for `all`, `codex`, `claude`, or `copilot` |
 
-## File generati e privacy
+## Generated files and privacy
 
-`ai-setup.json`, `ai-setup-settings.json`, `simulation-result.json` e i report locali possono contenere path o risultati di scansione e non devono includere credenziali, token, cookie, password o chiavi private. I principali artefatti locali sono ignorati da Git. Usa `relative` o `anonymized` come policy dei path prima di condividere un report.
+`ai-setup.json`, `ai-setup-settings.json`, `simulation-result.json`, and local reports may contain paths or scan results and must never contain credentials, tokens, cookies, passwords, or private keys. The main local artifacts are ignored by Git. Select the `relative` or `anonymized` path policy before sharing a report.
 
-## Struttura della repository
+## Repository structure
 
 ```text
-schemas/         JSON Schema Draft 2020-12 per AWDF, settings e simulazioni
-scripts/         scanner, validatori, test e installer multipiattaforma della skill
-skills/          skill AWDF Evaluator e glossario dei tool
-specification/   formato AWDF, classificazione, regole vendor e versioning
-src/             viewer React, editor settings e simulatore di routing
-examples/        report e configurazioni di esempio
-tests/           fixture valide, invalide e test di conformità
-server.mjs       server HTTP locale, API e middleware Vite
+schemas/         Draft 2020-12 JSON Schemas for AWDF, settings, and simulations
+scripts/         Scanner, validators, tests, and the cross-platform skill installer
+skills/          AWDF Evaluator skill and tool glossary
+specification/   AWDF format, classification rules, vendor rules, and versioning
+src/             React viewer, settings editor, and routing simulator
+examples/        Sample reports and configurations
+tests/           Valid/invalid fixtures and conformance tests
+server.mjs       Local HTTP server, API, and Vite middleware
 ```
 
-Endpoint locali usati dall’interfaccia:
+Local endpoints used by the interface:
 
-- `GET /api/settings` e `PUT /api/settings` leggono e salvano settings validati;
-- `GET /api/report` carica il report locale o l’esempio tracciato;
-- `POST /api/select-folder` apre il selettore cartelle nativo.
+- `GET /api/settings` and `PUT /api/settings` read and save validated settings;
+- `GET /api/report` loads the local report or the tracked example;
+- `POST /api/select-folder` opens the native folder picker.
 
-Per dettagli normativi consulta [specifica AWDF](specification/AWDF-SPECIFICATION.md), [standard di classificazione](specification/CLASSIFICATION-STANDARD.md), [regole Codex/Claude/Copilot](specification/AI-TOOL-RULES.md) e [versioning](specification/VERSIONING.md).
+For normative details, see the [AWDF specification](specification/AWDF-SPECIFICATION.md), [classification standard](specification/CLASSIFICATION-STANDARD.md), [Codex/Claude/Copilot rules](specification/AI-TOOL-RULES.md), and [versioning policy](specification/VERSIONING.md).
 
-## Licenza
+## License
 
 [MIT](LICENSE)
