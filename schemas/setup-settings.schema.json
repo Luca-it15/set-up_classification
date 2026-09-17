@@ -3,57 +3,260 @@
   "$id": "setup-settings.schema.json",
   "title": "AI Setup Classifier settings",
   "type": "object",
-  "required": ["version", "initialized", "workspace", "viewer"],
+  "required": [
+    "version",
+    "initialized",
+    "workspace",
+    "viewer"
+  ],
   "$defs": {
     "manualComponent": {
       "type": "object",
-      "required": ["id", "type", "name", "description", "path", "elements"],
+      "required": [
+        "id",
+        "type",
+        "name",
+        "description",
+        "path",
+        "elements"
+      ],
       "properties": {
-        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,127}$" },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{1,127}$"
+        },
         "type": {
           "enum": [
-            "behavior_contract", "knowledge_base", "document", "skill", "agent",
-            "plugin", "mcp_server", "tool", "model", "prompt", "workflow",
-            "repository", "service", "configuration", "validation", "other"
+            "behavior_contract",
+            "knowledge_base",
+            "document",
+            "skill",
+            "agent",
+            "plugin",
+            "mcp_server",
+            "tool",
+            "model",
+            "prompt",
+            "workflow",
+            "repository",
+            "service",
+            "configuration",
+            "validation",
+            "other"
           ]
         },
-        "name": { "type": "string", "minLength": 1 },
-        "description": { "type": "string" },
-        "path": { "type": ["string", "null"] },
-        "elements": { "type": "array", "items": { "$ref": "#/$defs/manualComponent" } }
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/manualComponent"
+          }
+        }
       },
       "additionalProperties": false
     }
   },
   "properties": {
-    "version": { "const": "1.0" },
-    "initialized": { "type": "boolean" },
+    "version": {
+      "const": "1.0"
+    },
+    "initialized": {
+      "type": "boolean"
+    },
     "workspace": {
       "type": "object",
-      "required": ["name", "folders", "excluded", "type", "purpose", "path_policy", "analysis_level"],
+      "required": [
+        "name",
+        "folders",
+        "excluded",
+        "type",
+        "purpose",
+        "path_policy",
+        "analysis_level"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "folders": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
-        "excluded": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
-        "type": { "enum": ["personal", "team", "organization", "project", "unknown"] },
-        "purpose": { "type": "string" },
-        "path_policy": { "enum": ["relative", "absolute", "anonymized"] },
-        "analysis_level": { "enum": ["inventory", "standard", "deep"] },
-        "reference_tool": { "enum": ["auto", "codex", "claude_code", "github_copilot"] },
-        "include_chat_history": { "type": "boolean", "default": false }
+        "name": {
+          "type": "string"
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "type": {
+          "enum": [
+            "personal",
+            "team",
+            "organization",
+            "project",
+            "unknown"
+          ]
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "path_policy": {
+          "enum": [
+            "relative",
+            "absolute",
+            "anonymized"
+          ]
+        },
+        "analysis_level": {
+          "enum": [
+            "inventory",
+            "standard",
+            "deep"
+          ]
+        },
+        "reference_tool": {
+          "enum": [
+            "auto",
+            "codex",
+            "claude_code",
+            "github_copilot"
+          ]
+        },
+        "include_chat_history": {
+          "type": "boolean",
+          "default": false
+        },
+        "task_path": {
+          "type": "string"
+        },
+        "tool_modes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "role",
+              "mode",
+              "version"
+            ],
+            "properties": {
+              "id": {
+                "enum": [
+                  "codex",
+                  "claude_code",
+                  "github_copilot"
+                ]
+              },
+              "role": {
+                "enum": [
+                  "primary",
+                  "secondary"
+                ]
+              },
+              "mode": {
+                "type": "string"
+              },
+              "version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "workflow_components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "tool_id",
+              "path",
+              "required"
+            ],
+            "properties": {
+              "tool_id": {
+                "enum": [
+                  "codex",
+                  "claude_code",
+                  "github_copilot"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
       },
       "additionalProperties": false
     },
     "manual_components": {
       "type": "array",
-      "items": { "$ref": "#/$defs/manualComponent" }
+      "items": {
+        "$ref": "#/$defs/manualComponent"
+      }
     },
     "viewer": {
       "type": "object",
-      "required": ["palette"],
+      "required": [
+        "palette"
+      ],
       "properties": {
-        "palette": { "enum": ["dark", "light"] },
-        "palettes": { "type": "object" }
+        "palette": {
+          "enum": [
+            "dark",
+            "light"
+          ]
+        },
+        "palettes": {
+          "type": "object"
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "it",
+            "en",
+            "es",
+            "fr",
+            "de",
+            "pt"
+          ],
+          "default": "it",
+          "description": "Interface language; source report contents retain their original language."
+        }
       },
       "additionalProperties": true
     }

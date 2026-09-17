@@ -8,6 +8,11 @@ export const AI_TOOL_PROFILES = Object.freeze({
     id: 'codex',
     name: 'Codex',
     vendor: 'OpenAI',
+    profile_version: '2.1.0',
+    verification_date: '2026-09-08',
+    verification_scope: 'instruction loading documentation; remaining registry retained from 2026-08-17',
+    supported_version_range: null,
+    version_policy: 'Unspecified versions remain unverified; no runtime effectiveness claim.',
     documentation: [
       'https://learn.chatgpt.com/docs/agent-configuration/agents-md',
       'https://learn.chatgpt.com/docs/agent-configuration/rules',
@@ -19,6 +24,11 @@ export const AI_TOOL_PROFILES = Object.freeze({
     id: 'claude_code',
     name: 'Claude Code',
     vendor: 'Anthropic',
+    profile_version: '2.1.0',
+    verification_date: '2026-09-08',
+    verification_scope: 'memory documentation; remaining registry retained from 2026-08-17',
+    supported_version_range: null,
+    version_policy: 'Unspecified versions remain unverified; no runtime effectiveness claim.',
     documentation: [
       'https://code.claude.com/docs/en/claude-directory',
       'https://code.claude.com/docs/en/memory',
@@ -31,6 +41,11 @@ export const AI_TOOL_PROFILES = Object.freeze({
     id: 'github_copilot',
     name: 'GitHub Copilot',
     vendor: 'GitHub',
+    profile_version: '2.1.0',
+    verification_date: '2026-09-08',
+    verification_scope: 'custom instruction support matrix; remaining registry retained from 2026-08-17',
+    supported_version_range: null,
+    version_policy: 'Surface must be declared; support is not inferred across hosts.',
     documentation: [
       'https://docs.github.com/en/copilot/concepts/prompting/response-customization',
       'https://docs.github.com/en/copilot/reference/custom-instructions-support',
@@ -985,7 +1000,7 @@ export function analyzeAiToolSetup(files, { readText, explicitTool = 'auto' } = 
   }
 
   return {
-    profiles: AI_TOOL_PROFILES,
+    profiles: Object.fromEntries(Object.entries(AI_TOOL_PROFILES).map(([id,profile])=>[id,{...profile,supported_modes:[...new Set(artifactDefinitions.filter(item=>item.recognizedBy?.includes(id)).flatMap(item=>item.surfaces||[]))], recognition_registry:'scripts/lib/ai-tool-rules.mjs:artifactDefinitions', configuration_formats:['json','toml','markdown'], capabilities:['instructions','skills','integration_configuration'], loading_policy:id==='codex'?'One non-empty instruction per directory, override first, root to task; default 32 KiB. Custom fallback/size configuration not resolved by contract extraction.':id==='claude_code'?'CLAUDE.md hierarchy and explicit local @ Markdown imports, up to four hops; external imports excluded from this evaluator.':'Repository and path-specific instructions filtered by declared surface; unsupported surfaces remain uncertain.', instruction_files:id==='codex'?['AGENTS.override.md','AGENTS.md']:id==='claude_code'?['CLAUDE.md','.claude/CLAUDE.md','CLAUDE.local.md']:['.github/copilot-instructions.md','.github/instructions/**/*.instructions.md','AGENTS.md'], profile_limits:['Runtime version compatibility is not verified.','Managed settings and external homes require explicit authorized scope.']} ])),
     artifacts,
     detected,
     diagnostics,

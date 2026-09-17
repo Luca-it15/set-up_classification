@@ -1,3 +1,9 @@
+import { DESCRIPTION_KEY, validateDescription } from '../evaluator/description.js';
+import { classifyDescription, withStaticClassification } from '../evaluator/static-classifier.js';
+import { validateRuntimeProofs } from '../evaluator/runtime.js';
+import { validateEvaluation, validateCitation } from '../evaluator/index.js';
+import { CONTRACT_KEY, validateContracts } from '../evaluator/contracts.js';
+import { verifySnapshotWeb } from '../evaluator/snapshot.js';
 import { PALETTES, TYPE_TO_CATEGORY } from '../data.js';
 import { validateReferenceToolsExtension } from './referenceToolsValidation.js';
 
@@ -44,12 +50,24 @@ export function validateAwdf(value) {
   for (const relationship of value.relationships) {
     if (!relationship?.id || !componentIds.has(relationship.source_id) || !componentIds.has(relationship.target_id)) throw Error(`Relazione AWDF non valida: ${relationship?.id || 'senza id'}.`);
   }
+  const description = value.extensions?.[DESCRIPTION_KEY];
+  if (description) { const errors = validateDescription(description); if(errors.length) throw Error(errors[0]); }
+  const evaluation=description ? classifyDescription(value) : value.extensions?.['org.awdf.evaluation'];
+  if(evaluation && !description){const errors=validateEvaluation(evaluation);if(errors.length)throw Error(errors[0]);}
+  const contracts=value.extensions?.[CONTRACT_KEY];
+  if(contracts){if(!evaluation)throw Error('I contratti richiedono uno snapshot');const errors=validateContracts(contracts,evaluation,validateCitation);if(errors.length)throw Error(errors[0]);if(JSON.stringify(contracts)!==JSON.stringify(evaluation.contracts))throw Error('Proiezioni contrattuali discordanti');}
+  if(value.extensions?.['org.awdf.runtime-proofs']){if(!evaluation)throw Error('Le prove richiedono uno snapshot');const errors=validateRuntimeProofs(value.extensions['org.awdf.runtime-proofs'],evaluation.snapshot.id);if(errors.length)throw Error(errors[0]);}
   const referenceToolErrors = validateReferenceToolsExtension(value);
   if (referenceToolErrors.length) throw Error(referenceToolErrors[0]);
-  return { ...value, findings: value.findings || [], assessments: value.assessments || [], limitations: value.limitations || [] };
+  return withStaticClassification({ ...value, findings: value.findings || [], assessments: value.assessments || [], limitations: value.limitations || [] });
 }
 
 export function download(value, name) {
+  if (value.extensions?.[DESCRIPTION_KEY]) {
+    value = structuredClone(value);
+    delete value.extensions['org.awdf.evaluation'];
+    delete value.extensions[CONTRACT_KEY];
+  }
   const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -111,4 +129,11 @@ export function loadPaletteConfigs(settings) {
     if (legacy?.dark?.categories && legacy?.light?.categories) return legacy;
   } catch { /* Use defaults. */ }
   return defaultPaletteConfigs();
+}
+
+export async function validateAwdfAsync(value) {
+ const report=validateAwdf(value);
+ const snapshot=report.extensions?.['org.awdf.evaluation']?.snapshot;
+ if(snapshot){const errors=await verifySnapshotWeb(snapshot);if(errors.length)throw Error(errors[0]);}
+ return report;
 }

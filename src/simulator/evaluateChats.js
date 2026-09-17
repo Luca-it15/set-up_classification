@@ -125,12 +125,9 @@ export function evaluateChatExamples(report, examples = [], source = 'default_to
   const toolPrecision = observedAverage('toolPrecision');
   const toolRecall = observedAverage('toolRecall');
   const ambiguity = average('ambiguous');
-  const baseScore = .32 * coverage + .25 * routingConfidence + .23 * completion + .08 * (1 - ambiguity);
-  const scoreWeight = toolAgreement == null ? .88 : 1;
-  const score = 5 * (baseScore + (toolAgreement == null ? 0 : .12 * toolAgreement)) / scoreWeight;
 
   return {
-    score: +score.toFixed(1), sampleCount: samples.length, source,
+    score: null, runtimeSuccess: null, sampleCount: samples.length, source,
     status: 'observed_without_ground_truth',
     coverage: +coverage.toFixed(2), routingConfidence: +routingConfidence.toFixed(2),
     completion: +completion.toFixed(2), toolEvidence: +toolEvidence.toFixed(2),

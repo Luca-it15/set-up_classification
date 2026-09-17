@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "records"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "tool_id",
+          "target_id",
+          "scope",
+          "status",
+          "conditions",
+          "exceptions",
+          "evidence",
+          "reference_chain",
+          "limitations"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "contract_present",
+              "contract_missing",
+              "contract_uncertain",
+              "contract_invalid",
+              "contract_not_required"
+            ]
+          },
+          "conditions": {
+            "type": "array"
+          },
+          "exceptions": {
+            "type": "array"
+          },
+          "evidence": {
+            "type": "array"
+          },
+          "reference_chain": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

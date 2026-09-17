@@ -1,3 +1,10 @@
+import { validateRuntimeProofs } from '../src/evaluator/runtime.js';
+import { verifySnapshot } from './lib/snapshot.mjs';
+import { CONTRACT_KEY, validateContracts } from '../src/evaluator/contracts.js';
+import { validateCitation } from '../src/evaluator/index.js';
+import crypto from 'node:crypto';
+import { EVALUATION_KEY, validateEvaluation } from '../src/evaluator/index.js';
+import { DESCRIPTION_KEY, validateDescription } from '../src/evaluator/description.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +14,7 @@ import { validateReferenceToolsExtension } from '../src/utils/referenceToolsVali
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const schemaDir=path.join(root,'schemas');
-const schemaNames=['component.schema.json','relationship.schema.json','workflow.schema.json','assessment.schema.json','finding.schema.json','recommendation.schema.json','evidence.schema.json','awdf.schema.json'];
+const schemaNames=['contracts.schema.json','evaluation.schema.json','component.schema.json','relationship.schema.json','workflow.schema.json','assessment.schema.json','finding.schema.json','recommendation.schema.json','evidence.schema.json','awdf.schema.json'];
 const ajv=new Ajv2020({allErrors:true,strict:false}); addFormats(ajv);
 for(const name of schemaNames) ajv.addSchema(JSON.parse(fs.readFileSync(path.join(schemaDir,name),'utf8')));
 const validate=ajv.getSchema('awdf.schema.json');
@@ -44,7 +51,25 @@ export function validateAwdfDocument(doc){
   const errors=[]; if(!validate(doc)) errors.push(...validate.errors.map(error=>`${error.instancePath||'/'} ${error.message}`));
   if(doc?.format!=='awdf') errors.push("format must be 'awdf'");
   const major=Number(String(doc?.format_version||'').split('.')[0]); if(major!==1) errors.push(`Unsupported AWDF major version: ${doc?.format_version}`);
-  return [...errors,...checkRefs(doc)];
+  const description = doc.extensions?.[DESCRIPTION_KEY];
+  if (description) { errors.push(...validateDescription(description)); if (description.snapshot) errors.push(...verifySnapshot(description.snapshot)); if (doc.assessments?.length || doc.findings?.length || doc.recommendations?.length || doc.extensions?.[EVALUATION_KEY] || doc.extensions?.[CONTRACT_KEY]) errors.push('Description artifact must not contain evaluation outputs'); }
+  const evaluation = doc.extensions?.[EVALUATION_KEY];
+  if (evaluation) {
+    const validateEvaluationSchema = ajv.getSchema('evaluation.schema.json');
+    if (!validateEvaluationSchema(evaluation)) errors.push(...validateEvaluationSchema.errors.map(error => `evaluation ${error.instancePath} ${error.message}`));
+    else {
+      errors.push(...validateEvaluation(evaluation));
+      errors.push(...verifySnapshot(evaluation.snapshot));
+    }
+  }
+  if(doc.extensions?.[CONTRACT_KEY]) {
+ const bundle=doc.extensions[CONTRACT_KEY], schema=ajv.getSchema('contracts.schema.json');
+ if(!schema(bundle)) errors.push(...schema.errors.map(e=>'contracts '+e.instancePath+' '+e.message));
+ else if(evaluation) errors.push(...validateContracts(bundle,evaluation,validateCitation));
+ else errors.push('Contracts require an evaluation snapshot');
+ if(JSON.stringify(bundle)!==JSON.stringify(evaluation?.contracts))errors.push('Contract projections disagree');
+ }
+ return [...errors,...checkRefs(doc)];
 }
 export function validateAwdfFile(file){
   let doc; try{doc=JSON.parse(fs.readFileSync(file,'utf8'));}catch(error){return [`Invalid JSON: ${error.message}`]}

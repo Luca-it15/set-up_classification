@@ -1,5 +1,5 @@
 const SUPPORTED_TOOL_KEYS = new Set(['codex', 'claude_code', 'github_copilot']);
-const SUPPORTED_STATUSES = new Set(['none', 'undetermined', 'single', 'multiple', 'explicit']);
+const SUPPORTED_STATUSES = new Set(['none', 'undetermined', 'single', 'multiple', 'explicit', 'declared']);
 const ARRAY_FIELDS = [
   'primary_tool_ids',
   'primary_tool_keys',
@@ -114,6 +114,13 @@ export function validateReferenceToolsExtension(document) {
   }
 
   switch (data.status) {
+    case 'declared': {
+      const declarations=data.declared_tools || [];
+      if(!declarations.length)errors.push('Declared tool state requires declarations');
+      if(!setEquals(primaryKeySet,new Set(declarations.filter(item=>item.role==='primary').map(item=>item.id))))errors.push('Declared primary roles disagree');
+      if(!setEquals(applicableKeySet,new Set([...detectedKeys,...declarations.map(item=>item.id)])))errors.push('Declared applicable tools disagree');
+      break;
+    }
     case 'none':
       if (primaryIds.length || applicableIds.length || detectedKeys.length) {
         errors.push("reference-tools status 'none' requires empty primary, applicable and detected tool sets");

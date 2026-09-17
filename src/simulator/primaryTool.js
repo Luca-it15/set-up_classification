@@ -43,7 +43,7 @@ export function resolvePrimaryTool(report) {
 
   const component = components.find(candidate => candidate.id === primaryToolIds[0]);
   const toolKey = primaryToolKeys[0];
-  const hasResolvableStatus = data?.status == null || data.status === 'single' || data.status === 'explicit';
+  const hasResolvableStatus = data?.status == null || data.status === 'single' || data.status === 'explicit' || data.status === 'declared';
   const isCoherentReferenceTool = hasResolvableStatus
     && supportedReferenceToolKeys.has(toolKey)
     && component?.kind === 'tool'

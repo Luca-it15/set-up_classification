@@ -11,3 +11,6 @@ ai-setup.json
 ai-setup-settings.json
 *-setup-report.json
 setup-scan-report.json
+
+# Local evaluator QA artifacts
+.tmp-evidence-checks/

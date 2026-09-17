@@ -1,3 +1,15 @@
+> Current workflow: the skill describes the setup without AI assessment. Run `npm run describe:setup` and import the AWDF into the site for static checks. See [description format and rule sources](docs/SETUP-DESCRIPTION.md). The native-review workflow below is historical.
+
+## Componenti, elementi e collegamenti
+
+La mappa generale mantiene il tool AI principale al centro e le **componenti** intorno. Una componente è un insieme di elementi dello stesso tipo (Skill, Plugin, MCP server e le altre categorie). Un **elemento** è una singola unità collegabile e utilizzabile dal tool, con nome, descrizione e metadati: per esempio “Skill evaluator”. Aprendo una componente si esplorano i suoi elementi senza sostituire la vista generale.
+
+Un collegamento può provenire da istruzioni, file di configurazione riconosciuti o cataloghi del tool. Lo scanner collega le voci MCP e plugin abilitate nei formati supportati (configurazione Codex TOML, MCP JSON e plugin nelle impostazioni Claude), oltre alle skill nei cataloghi riconosciuti. Voci disabilitate o prive della configurazione minima restano nell’inventario senza essere presentate come disponibili. Configurazione e disponibilità non attestano che l’elemento sia già stato eseguito con successo.
+
+# Valutatore di setup basato su evidenze
+
+La pipeline corrente separa inventario, contratti, revisione tramite subagent e scoring deterministico. I controlli semantici non eseguiti restano non valutati. [Guida, comandi, formato e limiti](docs/EVIDENCE-EVALUATION.md). Le sezioni storiche seguenti descrivono anche i report legacy; non implicano nuove garanzie di verifica.
+
 # AI Setup Classifier · AWDF
 
 AI Setup Classifier performs a read-only analysis of one or more AI-assisted development workspaces, produces a standard **AWDF 1.0.0** report, and makes it explorable through a local interface. The report describes components, relationships, workflows, evidence, maturity, findings, and recommended actions.

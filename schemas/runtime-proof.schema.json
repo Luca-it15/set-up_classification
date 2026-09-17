@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "runtime-proof.schema.json",
+  "type": "object", "required": ["version", "proofs"],
+  "properties": {"version": {"const": "1.0.0"}, "proofs": {"type": "array", "items": {
+    "type": "object", "required": ["id", "task", "context", "setup_version", "verification_method", "verified_at", "criteria"],
+    "properties": {"verification_method": {"enum": ["exact_match", "human_review"]}, "verified_at": {"type": "string", "format": "date-time"}, "criteria": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "expected", "observed"]}}}
+  }}}
+}

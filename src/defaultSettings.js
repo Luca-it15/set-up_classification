@@ -13,5 +13,5 @@ export const DEFAULT_SETTINGS = {
     include_chat_history: false
   },
   manual_components: [],
-  viewer: { palette: 'dark' }
+  viewer: { palette: 'dark', language: 'it' }
 };

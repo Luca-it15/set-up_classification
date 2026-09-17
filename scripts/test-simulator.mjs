@@ -58,7 +58,8 @@ const mismatchingEvaluation = evaluateChatExamples(report, [{
 }], 'mismatch_fixture');
 assert.equal(mismatchingEvaluation.toolAgreement, 0, 'Un tool osservato diverso da quello previsto deve produrre accordo zero.');
 assert.equal(mismatchingEvaluation.toolMismatchCount, 1, 'Il mismatch predicted↔observed deve essere contato.');
-assert.ok(mismatchingEvaluation.score < matchingBrowserEvaluation.score, 'A parità di prompt il mismatch tool deve ridurre il punteggio osservativo.');
+assert.equal(mismatchingEvaluation.score, null);
+assert.equal(matchingBrowserEvaluation.score, null);
 
 const noToolEvidenceEvaluation = evaluateChatExamples(report, [{
   prompt: 'Apri localhost nel browser e fai uno screenshot.',

@@ -1,13 +1,21 @@
+import { configurationEntries, configuredSkills } from './lib/configuration-links.mjs';
+import { providerEntries } from './lib/provider-links.mjs';
+import { DESCRIPTION_KEY, describeInstructions } from '../src/evaluator/description.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
+import { createStaticEvaluation, EVALUATION_KEY } from '../src/evaluator/index.js';
+import { snapshotId } from './lib/snapshot.mjs';
+import { CONTRACT_KEY } from '../src/evaluator/contracts.js';
+import { analyzeInstructionLinks, inspectInstructionReferences, applicableInstructions, instructionScope } from './lib/instruction-links.mjs';
 import { analyzeAiToolSetup } from './lib/ai-tool-rules.mjs';
 import { validateAwdfFile } from './validate-awdf.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+const descriptionOnly = process.argv.includes('--describe');
 const requestedRoot = path.resolve(process.argv[2] || '.');
 const output = path.resolve(process.argv[3] || 'ai-setup.json');
 const settingsPath = path.resolve(process.argv[4] || 'ai-setup-settings.json');
@@ -229,6 +237,7 @@ function extractChatSamples() {
 }
 const chatSamples = extractChatSamples();
 const now = new Date().toISOString();
+const rawComponentPaths = new Map();
 const components = [], relationships = [], workflows = [], evidence = [], findings = [], recommendations = [];
 const eid = value => `ev_${crypto.createHash('sha1').update(value).digest('hex').slice(0, 10)}`;
 function addEvidence(type, file, summary) {
@@ -247,22 +256,46 @@ function addEvidence(type, file, summary) {
       if (absolute && fs.statSync(absolute).isFile()) contentHash = hashFile(absolute);
     } catch { /* Evidence path can represent a logical or generated source. */ }
   }
-  if (!evidence.some(item => item.id === id)) evidence.push({ id, type, source_id: null, path: safePath, location: null, summary, content_hash: contentHash, observed_at: now, confidence: .98, sensitive: sensitiveSource });
+  if (!evidence.some(item => item.id === id)) evidence.push({ id, type, source_id: null, path: safePath, location: null, summary, content_hash: contentHash, observed_at: now, confidence: .5, confidence_kind: 'legacy_weight_not_probability', sensitive: sensitiveSource });
   return id;
 }
 function addComponent(kind, subtype, name, file, category, description, details = {}) {
   const { properties: extraProperties = {}, evidenceType = 'repository_scan', evidencePath = file, evidenceSummary = `Elemento ${subtype.replaceAll('_', ' ')} rilevato automaticamente.`, idSeed = file || '', ...componentDetails } = details;
   const id = `cmp_${crypto.createHash('sha1').update(`${kind}:${subtype}:${idSeed}:${name}`).digest('hex').slice(0, 10)}`;
   const ev = addEvidence(evidenceType, evidencePath, evidenceSummary);
-  components.push({ id, kind, subtype, name, description, path: reportPath(file), parent_id: null, properties: { setup_category: category, ...extraProperties }, tags: [category], confidence: .98, verification_status: 'verified', evidence_ids: [ev], ...componentDetails });
+  rawComponentPaths.set(id, file);
+  components.push({ id, kind, subtype, name, description, path: reportPath(file), parent_id: null, properties: { setup_category: category, lifecycle: { declared: true, configured: true, availability_verified: false, invocation_observed: false, outcome_verified: false }, ...extraProperties }, tags: [category], confidence: .5, verification_status: 'declared_only', evidence_ids: [ev], ...componentDetails });
   return id;
 }
+const materialCache = new Map();
 const safeText = file => {
-  if (isSensitiveFile(file)) return '';
-  const structured = /(?:^|\/)(?:package\.json|[^/]+\.(?:json|jsonc|toml|ya?ml))$/i.test(file.localRelative);
-  return readUtf8Window(file.absolute, structured ? 2 * 1024 * 1024 : 256000);
+  if (materialCache.has(file.relative)) return materialCache.get(file.relative).content;
+  if (isSensitiveFile(file)) { inaccessiblePaths.push({ path: file.relative, code: 'SENSITIVE_SOURCE_NOT_READ' }); return ''; }
+  const maxBytes = /\.(?:json|jsonc|toml|ya?ml)$/i.test(file.localRelative) ? 2 * 1024 * 1024 : 256000;
+  try {
+    const before = fs.statSync(file.absolute), content = readUtf8Window(file.absolute, maxBytes), after = fs.statSync(file.absolute);
+    const truncated = before.size > maxBytes;
+    if (truncated) inaccessiblePaths.push({ path: file.relative, code: 'TRUNCATED_MATERIAL' });
+    if (before.mtimeMs !== after.mtimeMs || before.size !== after.size) inaccessiblePaths.push({ path: file.relative, code: 'MATERIAL_CHANGED_DURING_CAPTURE' });
+    materialCache.set(file.relative, { file, content, truncated }); return content;
+  } catch (error) {
+    inaccessiblePaths.push({ path: file.relative, code: error.code || 'READ_ERROR' });
+    materialCache.set(file.relative, { file, content: '', truncated: true }); return '';
+  }
 };
-const toolAnalysis = analyzeAiToolSetup(files, { readText: safeText, explicitTool: configuredWorkspace.reference_tool || 'auto' });
+const declarations = configuredWorkspace.tools || [];
+if (new Set(declarations.map(item => item.id)).size !== declarations.length) throw new Error('Duplicate declared tools');
+const primaryDeclarations = declarations.filter(item => item.role === 'primary');
+const explicitTool = primaryDeclarations.length === 1 ? primaryDeclarations[0].id : configuredWorkspace.reference_tool || 'auto';
+const toolAnalysis = analyzeAiToolSetup(files, { readText: safeText, explicitTool });
+if (declarations.length) {
+  toolAnalysis.resolution.applicable_tool_ids = [...new Set([...toolAnalysis.resolution.applicable_tool_ids, ...declarations.map(item => item.id)])];
+  toolAnalysis.resolution.primary_tool_ids = primaryDeclarations.map(item => item.id);
+  toolAnalysis.resolution.status = 'declared';
+  toolAnalysis.resolution.requested = 'auto';
+  toolAnalysis.resolution.rule = 'Explicit tool roles; signatures corroborate configuration only. Declared runtime versions remain unverified.';
+}
+const toolModes = { ...Object.fromEntries(declarations.map(item => [item.id, item.mode])), ...configuredWorkspace.tool_modes };
 const artifactPathValues = new Set(toolAnalysis.artifacts.flatMap(artifact => [
   artifact.path,
   artifact.artifactPath,
@@ -344,7 +377,7 @@ for (const artifact of toolAnalysis.artifacts) {
     evidencePath: artifact.path,
     evidenceSummary: `${artifact.format} riconosciuto tramite path esatto e validato secondo il profilo ${owner}.`,
     confidence: artifact.confidence,
-    verification_status: artifact.syntaxStatus === 'valid' ? 'verified' : artifact.syntaxStatus === 'invalid' ? 'not_verified' : 'partially_verified'
+    verification_status: artifact.syntaxStatus === 'invalid' ? 'not_verified' : 'declared_only'
   });
   instructionComponentIds.set(artifact, componentId);
   if (analysisLevel !== 'inventory' && artifact.category === 'behavior_contract' && artifact.syntaxStatus !== 'invalid' && artifact.activation !== 'shadowed_by_override') instructionTexts.push(safeText(artifact.file));
@@ -434,13 +467,13 @@ function skillDetails(file) {
   if (/(creat|update|install)[^.!?]{0,40}\bskills?\b|\bskills?\b[^.!?]{0,40}(creat|update|install)/i.test(`${description} ${useWhen}`)) details.capabilities.push('skill_management');
   if (details.capabilities.includes('skill_management')) details.capabilities = details.capabilities.filter(value => !['github_management', 'repository_analysis'].includes(value));
   if (details.capabilities.includes('plugin_management')) details.capabilities = details.capabilities.filter(value => value !== 'repository_analysis');
-  return { description: description || null, ...details, properties: { extracted_from: 'SKILL.md', trigger_source: useWhen.slice(0, 500) } };
+  return { name: header.match(/^name:\s*["']?(.+?)["']?\s*$/mi)?.[1]?.trim() || undefined, description: description || null, ...details, properties: { extracted_from: 'SKILL.md', trigger_source: useWhen.slice(0, 500) } };
 }
 for (const file of files.filter(file => /(^|\/)SKILL\.md$/i.test(file.relative))) {
   const folder = path.basename(path.dirname(file.relative));
   const isSystem = file.relative.includes('/.system/');
-  const details = skillDetails(file);
-  addComponent('skill', isSystem ? 'system_skill' : 'custom_skill', folder, file.relative, 'skills', details.description || (isSystem ? 'Skill di sistema rilevata dalla definizione SKILL.md.' : 'Skill locale personalizzata rilevata dalla definizione SKILL.md.'), details);
+  const {name: declaredName, ...details} = skillDetails(file);
+  addComponent('skill', isSystem ? 'system_skill' : 'custom_skill', declaredName || folder, file.relative, 'skills', details.description || (isSystem ? 'Skill di sistema rilevata dalla definizione SKILL.md.' : 'Skill locale personalizzata rilevata dalla definizione SKILL.md.'), details);
 }
 function findPluginManifests(dir, workspaceRoot, found = []) {
   if (!fs.existsSync(dir)) return found;
@@ -471,21 +504,48 @@ function pluginDetails(configuredName) {
   details.properties = { extracted_from: reportPath(candidate.absolute), version: manifest.version || null, author: manifest.author?.name || null, category: manifest.interface?.category || null, interface_capabilities: manifest.interface?.capabilities || [], default_prompts: manifest.interface?.defaultPrompt || [] };
   return { description, details };
 }
-const codexConfigFiles = toolAnalysis.artifacts.filter(artifact => artifact.format === 'codex_project_config').map(artifact => artifact.file);
-for (const file of codexConfigFiles) {
-  const text = safeText(file);
-  const sections = [...text.matchAll(/^\s*\[(mcp_servers|plugins)\.(?:"([^"]+)"|([^\]\s]+))\]\s*$/gmi)].map(match => ({ type: match[1].toLowerCase(), name: match[2] || match[3], start: match.index }));
-  for (const [index, section] of sections.entries()) {
-    const block = text.slice(section.start, sections[index + 1]?.start);
-    const name = section.name;
-    if (section.type === 'plugins') {
-      const plugin = pluginDetails(name);
-      addComponent('integration', 'installed_plugin', name, file.relative, 'tool_integrations', plugin.description, plugin.details);
-      continue;
+for (const artifact of toolAnalysis.artifacts.filter(item => item.syntaxStatus !== 'invalid')) {
+  for (const entry of configurationEntries(artifact.format, safeText(artifact.file))) {
+    const plugin = entry.kind === 'plugin' ? pluginDetails(entry.name) : null;
+    const targetId = addComponent(entry.kind === 'plugin' ? 'integration' : 'mcp_server', entry.kind === 'plugin' ? 'installed_plugin' : 'configured_mcp_server', entry.name, artifact.file.relative, entry.kind === 'plugin' ? 'plugins' : 'mcp_servers',
+      (entry.disabled && entry.kind === 'plugin' ? 'Plugin disabilitato nella configurazione.' : plugin?.description) || `Server MCP ${entry.name} dichiarato nella configurazione con trasporto ${entry.transport}.`, {
+        ...(plugin?.details || semanticDetails(entry.name, [entry.name])),
+        properties: {...plugin?.details?.properties, transport:entry.transport || null, disabled:entry.disabled, connection_ready:entry.connectable, configuration_path:reportPath(artifact.path), sensitive_values_redacted:true},
+        evidenceType:'configuration', evidenceSummary:`${entry.name}: ${entry.disabled ? 'disabilitato' : entry.connectable ? 'abilitato nella configurazione' : 'configurazione incompleta'}.`
+      });
+    if (descriptionOnly) {
+      const configId = instructionComponentIds.get(artifact);
+      if (configId) relationships.push({ id: 'rel_config_file_' + targetId, source_id: configId, target_id: targetId, type: 'references', description: 'Elemento dichiarato nel file di configurazione; attivazione riportata nelle proprietà.', confidence: .5, verification_status: 'declared_only', evidence_ids: components.find(item => item.id === targetId).evidence_ids, properties: { relation_kind: 'configured', mechanism: 'configuration_file', disabled: entry.disabled } });
     }
-    const transport = /^\s*url\s*=/mi.test(block) ? 'remote' : /^\s*command\s*=/mi.test(block) ? 'local_process' : 'unknown';
-    addComponent('mcp_server', 'configured_mcp_server', name, file.relative, 'tool_integrations', `Server MCP ${name} dichiarato nella configurazione con trasporto ${transport}.`, { ...semanticDetails(name, [name]), properties: { transport, sensitive_values_redacted: true } });
+    if (!entry.connectable) continue;
+    for (const toolId of artifact.recognizedToolIds) {
+      const sourceId = referenceToolComponentIds.get(toolId);
+      if (!sourceId || !(artifact.recognizedBy || []).some(binding => binding.tool === toolId && binding.validity?.applicability !== 'not_applicable' && (!toolModes[toolId] || binding.surface.replaceAll('-', '_') === toolModes[toolId].replaceAll('-', '_')))) continue;
+      relationships.push({id:`rel_config_${sourceId}_${targetId}`,source_id:sourceId,target_id:targetId,type:'uses',
+        description:`Elemento abilitato nella configurazione di ${toolAnalysis.profiles[toolId].name}; disponibilità dichiarata, esecuzione non verificata.`,
+        confidence:.5,verification_status:'declared_only',evidence_ids:components.find(item => item.id === targetId).evidence_ids,
+        properties:{relation_kind:'configured',configuration_path:reportPath(artifact.path)}});
+    }
   }
+}
+const skillRegistrations = toolAnalysis.artifacts.filter(item => item.format === 'codex_project_config' && item.syntaxStatus !== 'invalid').flatMap(artifact => configuredSkills(safeText(artifact.file)).map(entry => ({...entry, artifact, absolute:path.resolve(path.dirname(artifact.file.absolute),entry.path)})));
+// Canonical skill catalogs connect their individual skills without requiring an imperative.
+for (const skill of components.filter(item => item.kind === 'skill' && item.subtype !== 'skill_collection')) {
+  const file = fileRecordIndex.get(rawComponentPaths.get(skill.id));
+  if (!file) continue;
+  const local = file.localRelative.replaceAll('\\', '/');
+  const home = path.basename(file.workspaceRoot).toLowerCase();
+  const owner = /^\.claude\/skills\//.test(local) || (home === '.claude' && /^skills\//.test(local)) ? 'claude_code'
+    : /^\.(?:codex|agents)\/skills\//.test(local) || (['.codex','.agents'].includes(home) && /^skills\//.test(local)) ? 'codex' : null;
+  const registrations = skillRegistrations.filter(entry => entry.absolute === file.absolute || entry.absolute === path.dirname(file.absolute));
+  const disabled = registrations.some(entry => entry.disabled);
+  const sourceId = referenceToolComponentIds.get(registrations.length ? 'codex' : owner);
+  if (disabled) { skill.properties.disabled = true; skill.properties.connection_ready = false; }
+  if (!sourceId || disabled || skill.properties?.sensitive_content_excluded) continue;
+  skill.properties.owner_tool_id = registrations.length ? 'codex' : owner;
+  relationships.push({id:`rel_available_${sourceId}_${skill.id}`,source_id:sourceId,target_id:skill.id,type:'uses',
+    description:'Skill presente nel catalogo del tool e disponibile in base al task; esecuzione non verificata.',
+    confidence:.5,verification_status:'declared_only',evidence_ids:[...skill.evidence_ids,...registrations.map(entry => addEvidence('configuration',entry.artifact.path,'Registrazione esplicita della skill nel tool.'))],properties:{relation_kind:registrations.length ? 'configured' : 'available'}});
 }
 for (const folder of ['plugins', 'node_repl']) {
   const matches = files.filter(file => file.localRelative.startsWith(`${folder}/`));
@@ -511,6 +571,35 @@ const repositoryDocuments = files.filter(file => !/(^|\/)tests\/fixtures\//i.tes
 for (const file of repositoryDocuments) {
   const meta = textDetails(file);
   addComponent('document', 'repository_documentation', path.basename(file.relative), file.relative, 'documentation', meta.description, meta.details);
+}
+// Describe additional Markdown collections regardless of folder naming.
+if (descriptionOnly) {
+  const represented = new Set([...rawComponentPaths.values()]);
+  const groups = new Map();
+  for (const file of files.filter(file => /\.mdx?$/i.test(file.localRelative) && !isSensitiveFile(file) && !/(^|\/)tests?\/fixtures\//i.test(file.localRelative))) {
+    if (represented.has(file.relative)) continue;
+    const dir = path.posix.dirname(file.relative);
+    if (!groups.has(dir)) groups.set(dir, []);
+    groups.get(dir).push(file);
+  }
+  for (const [dir, members] of groups) {
+    const parent = members.length > 1 ? addComponent('knowledge_base', 'markdown_corpus_candidate', path.posix.basename(dir) || 'Markdown', dir, 'knowledge_bases', 'Raccolta Markdown rilevata; funzione e consultazione da verificare.', { properties: { discovery_status: 'candidate', source_paths: members.map(file => reportPath(file.relative)) } }) : null;
+    for (const file of members) {
+      const details = textDetails(file);
+      addComponent('document', 'markdown_source', path.basename(file.relative), file.relative, 'documentation', details.description, { ...details.details, parent_id: parent });
+    }
+  }
+  const peers = files.filter(file => /\.(toml|ini|json|jsonc|ya?ml|cfg)$/i.test(file.localRelative) && !isSensitiveFile(file)).map(file => ({path: file.relative, content: safeText(file)}));
+  for (const artifact of toolAnalysis.artifacts.filter(item => item.format === 'codex_project_config')) {
+    const configId = instructionComponentIds.get(artifact);
+    for (const entry of providerEntries(safeText(artifact.file), peers)) {
+      const targetId = addComponent('service', 'configured_model_provider', entry.name, artifact.path, 'tool_integrations', 'Provider/proxy dichiarato tramite configurazione; disponibilità runtime non verificata.', { properties: { ...entry, declarations: entry.declarations.map(item => ({...item,path:reportPath(item.path)})), configuration_path: reportPath(artifact.path) } });
+      const ev = addEvidence('configuration', artifact.path, 'Selezione provider alla riga ' + entry.selection_line + '; endpoint alla riga ' + entry.endpoint_line);
+      evidence.find(item => item.id === ev).location = 'line:' + entry.selection_line;
+      const proofIds = [ev, ...entry.declarations.map(item => addEvidence('configuration', item.path, 'Modulo headroom.proxy e stesso endpoint nella medesima sezione; righe ' + item.module_line + ', ' + item.endpoint_line))];
+      relationships.push({ id: 'rel_provider_' + targetId, source_id: configId, target_id: targetId, type: 'connects_to', description: 'Collegamento dichiarato tramite file di configurazione.', confidence: .5, verification_status: 'declared_only', evidence_ids: proofIds, properties: { relation_kind: 'configured', mechanism: 'configuration_file', configuration_path: reportPath(artifact.path) } });
+    }
+  }
 }
 const validationFiles = files.filter(file => /(^|\/)(tests?|__tests__|\.github\/workflows)(\/|$)|(^|\/)(eslint|jest|vitest|playwright|pytest)/i.test(file.relative));
 if (validationFiles.length) addComponent('workflow', 'automated_validation', 'Validazione automatica', null, 'validation', `${validationFiles.length} artefatti di test, lint o CI rilevati.`, { ...semanticDetails('Automated tests, lint, build and continuous integration validation.', ['test','lint','build','validate']), properties: { artifact_count: validationFiles.length, sample_paths: validationFiles.slice(0, 20).map(file => reportPath(file.relative)) } });
@@ -547,14 +636,16 @@ function addManualComponent(component, parentId = null) {
 for (const component of settings?.manual_components || []) addManualComponent(component);
 
 function loadToolGlossary() {
-  const glossaryPath = path.join(projectRoot, 'skills', 'setup-evaluator', 'references', 'tool-glossary.md');
-  if (!fs.existsSync(glossaryPath)) return [];
-  return fs.readFileSync(glossaryPath, 'utf8').split(/\r?\n/).flatMap(line => {
-    if (!line.startsWith('|') || /^\|\s*(?:---|Nome canonico)/i.test(line)) return [];
-    const columns = line.split('|').slice(1, -1).map(value => value.trim());
-    if (columns.length < 9) return [];
-    return [{ name: columns[0], label: columns[1], category: columns[2], aliases: columns[3].split(',').map(value => value.trim()).filter(Boolean), repository: columns[4], summary: columns[8] }];
-  });
+ const glossaryPath=path.join(projectRoot,'skills','setup-evaluator','references','tool-glossary.md');
+ if(!fs.existsSync(glossaryPath))return [];
+ const rows=fs.readFileSync(glossaryPath,'utf8').split(/\r?\n/).filter(line=>line.startsWith('|')).map(line=>line.split('|').slice(1,-1).map(value=>value.trim()));
+ const headers=rows.shift() || [];
+ const cell=(row,name)=>row[headers.indexOf(name)] || '';
+ return rows.filter(row=>row[0]&&!/^[-:]+$/.test(row[0])).map(row=>({
+  name:cell(row,'Nome canonico'), label:cell(row,'Label'), category:cell(row,'Categoria'),
+  aliases:cell(row,'Alias rilevabili').split(',').map(value=>value.trim()).filter(Boolean),
+  repository:cell(row,'Repository'), summary:cell(row,'Funzione essenziale')
+ })).filter(item=>item.name&&item.aliases.length);
 }
 const glossary = loadToolGlossary();
 const configCandidates = files.filter(file => !/^tests?\//i.test(file.localRelative) && !sensitive.test(file.relative) && /(^|\/)(package\.json|pyproject\.toml|requirements[^/]*\.txt|cargo\.toml|config\.toml|settings\.(?:json|ya?ml)|.*\.mcp\.json|\.tool-versions)$/i.test(file.localRelative));
@@ -613,19 +704,11 @@ for (const artifact of toolAnalysis.artifacts) {
       type: 'configured_by',
       description: `${toolAnalysis.profiles[toolId].name} riconosce questo artefatto sulla superficie dichiarata; l'efficacia runtime resta dipendente da target, trust e configurazioni esterne.`,
       confidence: artifact.confidence,
-      verification_status: artifact.syntaxStatus === 'valid' ? 'verified' : 'partially_verified',
+      verification_status: 'declared_only',
       evidence_ids: components.find(component => component.id === targetId)?.evidence_ids || []
     });
   }
 }
-
-const rules = {
-  anti_hallucination: /non inventare|hallucin|evidenz|assumption|supposizion/i.test(instructionText),
-  ambiguity: /ambigu|chied.{0,40}chiariment/i.test(instructionText),
-  stop_conditions: /interromp|ferm|stop condition/i.test(instructionText),
-  source_priority: /fonti|source|documentazione.*codice/i.test(instructionText),
-  code_quality: /test|qualit|refactor|duplicaz/i.test(instructionText)
-};
 
 if (toolAnalysis.resolution.status === 'multiple') toolAnalysis.diagnostics.push({ code: 'multiple_reference_tools', severity: 'informational', toolId: null, paths: toolAnalysis.resolution.candidates.flatMap(candidate => candidate.evidence_paths), message: 'Più tool AI hanno firme esclusive indipendenti: tutti i profili vengono applicati e nessun primary viene scelto automaticamente.' });
 if (toolAnalysis.resolution.status === 'undetermined') toolAnalysis.diagnostics.push({ code: 'reference_tool_undetermined', severity: 'medium', toolId: null, paths: toolAnalysis.resolution.candidates.flatMap(candidate => candidate.evidence_paths), message: 'Sono presenti soltanto artefatti condivisi: non è possibile attribuire con rigore il setup a Codex, Claude Code o GitHub Copilot.' });
@@ -640,60 +723,96 @@ for (const diagnostic of toolAnalysis.diagnostics) {
   findings.push({ id: findingId, title: diagnostic.code.replaceAll('_', ' '), category: 'instruction_rules', severity: diagnostic.severity, description: safeDiagnosticMessage, impact: 'Può rendere non deterministica o inefficace l’applicazione delle regole del tool AI.', affected_component_ids: [...new Set(affected)], evidence_ids: [...new Set(evidenceIds)], recommendation_ids: [recommendationId], effort: 'small', confidence: .98, verification_status: diagnostic.severity === 'informational' ? 'verified' : 'partially_verified' });
   recommendations.push({ id: recommendationId, priority: diagnostic.severity === 'high' ? 'quick_win' : 'short_term', title: `Correggere ${diagnostic.code.replaceAll('_', ' ')}`, description: safeDiagnosticMessage, finding_ids: [findingId], expected_result: 'Regole vendor applicabili senza attribuzioni o precedenze implicite.', completion_criteria: ['Il path, lo schema e lo scope risultano validi secondo la documentazione ufficiale del vendor.'], effort: 'small', status: 'proposed' });
 }
-const count = category => components.filter(component => component.properties.setup_category === category && !component.parent_id).length;
 const assessments = [];
-function assess(dimension, score, rationale, strengths, weaknesses) {
-  const categories = dimension === 'knowledge' ? ['knowledge_bases', 'documentation'] : [dimension];
-  const source = components.filter(component => categories.includes(component.properties.setup_category)).flatMap(component => component.evidence_ids);
-  assessments.push({ id: `asm_${dimension}`, dimension, score: +Math.min(5, Math.max(0, score)).toFixed(1), scale: '0-5', rationale, strengths, weaknesses, evidence_ids: source, limitations: [], recommendation_ids: [], confidence: .9, verification_status: 'partially_verified' });
+const linkAnalysis = analyzeInstructionLinks({
+  artifacts: toolAnalysis.artifacts,
+  targets: components.filter(component => !component.parent_id && component.subtype !== 'reference_ai_coding_tool').map(component => ({ id: component.id, path: rawComponentPaths.get(component.id) })),
+  toolIds: toolAnalysis.resolution.applicable_tool_ids,
+  readText: safeText,
+  taskPath: configuredWorkspace.task_path || '.',
+  toolModes,
+  files,
+  intended: configuredWorkspace.workflow_components || [],
+  incomplete: inaccessiblePaths.length > 0 || toolAnalysis.artifacts.filter(item=>item.recognizedToolIds.includes('codex') && item.category==='behavior_contract').reduce((sum,item)=>sum+Buffer.byteLength(safeText(item.file)),0)>32768
+});
+for (const binding of linkAnalysis.bindings) {
+  const sourceId = referenceToolComponentIds.get(binding.tool_id);
+  const targetComponent = components.find(item => item.id === binding.target_id);
+  if (targetComponent) targetComponent.properties.connection_status = 'binding_declared';
+  if (descriptionOnly) {
+    const sourceArtifact = toolAnalysis.artifacts.find(item => item.path === binding.source_path);
+    const instructionId = instructionComponentIds.get(sourceArtifact);
+    if (instructionId) relationships.push({ id: 'rel_instruction_' + instructionId + '_' + binding.target_id + '_' + binding.line, source_id: instructionId, target_id: binding.target_id, type: 'references', description: 'Risorsa la cui consultazione è prescritta dal testo delle istruzioni.', confidence: .5, verification_status: 'declared_only', evidence_ids: [addEvidence('instruction_file', binding.source_path, redactPrompt(binding.excerpt))], properties: { relation_kind: 'structural', mechanism: 'instruction_file', line: binding.line, tool_id: binding.tool_id } });
+  }
+  if (!sourceId) continue;
+  const evidenceId = addEvidence('repository_scan', binding.source_path, redactPrompt(binding.excerpt));
+  const item = evidence.find(item => item.id === evidenceId);
+  item.location = `line:${binding.line}`;
+  relationships.push({ id: `rel_${crypto.createHash('sha1').update(`${sourceId}:${binding.target_id}:${binding.source_path}:${binding.line}`).digest('hex').slice(0,10)}`, source_id: sourceId, target_id: binding.target_id, type: 'reads_from', description: 'Consultazione prescritta da una regola esplicita applicabile; rispetto runtime non osservato.', confidence: 1, verification_status: 'declared_only', evidence_ids: [evidenceId], properties: { relation_kind: 'contractual', contract_id: linkAnalysis.records.find(record => record.tool_id === binding.tool_id && record.target_id === binding.target_id && record.line === binding.line)?.id, binding_method: binding.method, instruction_path: reportPath(binding.source_path), line: binding.line, declared_obligation: true } });
 }
-const behaviorArtifacts = toolAnalysis.artifacts.filter(artifact => artifact.category === 'behavior_contract' && artifact.syntaxStatus !== 'invalid' && artifact.activation !== 'shadowed_by_override');
-const behavior = behaviorArtifacts.length ? 1 + Object.values(rules).filter(Boolean).length * .8 : 0;
-assess('behavior_contract', behavior, behaviorArtifacts.length ? 'Le regole verificabili di tutti i profili applicabili sono pesate per contenuto e validità, mai per lunghezza o ordine del filesystem.' : 'Nessun contratto comportamentale valido è presente.', Object.entries(rules).filter(([, value]) => value).map(([key]) => `Regole su ${key.replaceAll('_', ' ')} rilevate.`), Object.entries(rules).filter(([, value]) => !value).map(([key]) => `Manca una regola esplicita su ${key.replaceAll('_', ' ')}.`));
-const knowledgeBaseCount = components.filter(component => component.kind === 'knowledge_base' && !component.parent_id).length;
-assess('knowledge', knowledgeBaseCount ? 2.2 + Math.min(2.8, knowledgeBaseCount * .7) : 0, 'Una knowledge base richiede un corpus gestito e recuperabile; README e documenti singoli restano documentazione.', knowledgeBaseCount ? [`${knowledgeBaseCount} knowledge base coerenti con lo standard managed_retrievable_corpus_v1.`] : [], knowledgeBaseCount ? [] : ['Nessun corpus multi-fonte o archivio strutturato recuperabile è stato rilevato o dichiarato.']);
-assess('skills', count('skills') ? 2.5 + Math.min(2.5, count('skills') * .5) : 0, 'Il punteggio non cresce linearmente con il numero di skill.', count('skills') ? ['Skill modulari rilevate.'] : [], count('skills') ? [] : ['Nessuna skill custom rilevata.']);
-assess('custom_agents', 3, 'La presenza di agenti non è premiata senza ruoli osservabili e distinti.', count('custom_agents') ? ['Agenti custom rilevati.'] : ['Setup semplice: nessun agente custom da coordinare.'], []);
-const runtimeUsedTools = components.filter(component => component.properties?.usage_status === 'used').length;
-assess('tool_integrations', Math.min(5, 1.5 + count('tool_integrations') * .8 + Math.min(1, runtimeUsedTools * .25)), 'Disponibilità, menzione e uso sono stati separati: solo un evento strutturato di invocazione prova l’uso runtime.', runtimeUsedTools ? [`${runtimeUsedTools} tool con invocazioni strutturate osservate.`] : count('tool_integrations') ? ['Configurazioni di tool rilevate senza attribuire automaticamente l’uso.'] : [], runtimeUsedTools ? [] : ['Nessuna invocazione strutturata di tool rilevata nelle fonti autorizzate.']);
-assess('validation', validationFiles.length ? 2 + Math.min(3, validationFiles.length / 3) : 0, validationFiles.length ? 'Test, lint o CI rilevati.' : 'Nessun meccanismo di validazione rilevato.', validationFiles.length ? ['Controlli automatici presenti.'] : [], validationFiles.length ? [] : ['Aggiungere test, lint o una build ripetibile.']);
-const foundations = ['src', 'tests', 'docs', 'skills'].filter(folder => files.some(file => file.relative.startsWith(`${folder}/`))).length;
-assess('maintainability', 1.8 + foundations * .75, 'Valutazione della separazione delle responsabilità osservabile nella struttura.', foundations ? ['Directory funzionali separate rilevate.'] : [], []);
-const routable = components.filter(component => ['skill','agent','mcp_server','integration','tool'].includes(component.kind));
-const describedRatio = routable.length ? routable.filter(component => component.description && component.description.length > 30).length / routable.length : 0;
-const triggeredRatio = routable.length ? routable.filter(component => component.activation?.triggers?.length).length / routable.length : 0;
-const outputRatio = routable.length ? routable.filter(component => component.outputs?.length).length / routable.length : 0;
-assess('tool_ergonomics', 5 * (.45 * describedRatio + .35 * triggeredRatio + .2 * outputRatio), 'Misura descrizioni discriminanti, trigger espliciti e contratti di output dei componenti instradabili.', describedRatio > .8 ? ['La maggior parte dei componenti ha una descrizione utilizzabile dal modello.'] : [], [triggeredRatio < .8 ? 'Alcuni componenti non espongono trigger osservabili.' : null, outputRatio < .5 ? 'Molti componenti non dichiarano output strutturati.' : null].filter(Boolean));
-const policyArtifacts = toolAnalysis.artifacts.filter(artifact => ['client-enforced', 'deterministic-hook'].includes(artifact.enforcementKey));
-const policyText = policyArtifacts.map(artifact => safeText(artifact.file)).join('\n');
-const hasPermissionPolicy = policyArtifacts.some(artifact => artifact.format === 'codex_execution_rule') || /approval|sandbox|permission|allow|ask|deny|forbidden/i.test(policyText);
-assess('permission_safety', hasPermissionPolicy ? 3.5 : 1.5, 'Valuta least privilege, approvazioni e isolamento senza acquisire valori sensibili.', hasPermissionPolicy ? ['Policy di autorizzazione o sandbox rilevata.'] : [], hasPermissionPolicy ? ['L’efficacia della policy non è verificata a runtime.'] : ['Nessuna policy esplicita di autorizzazione o sandbox rilevata.']);
-const triggerCounts = new Map();
-for (const component of routable) for (const trigger of component.activation?.triggers || []) triggerCounts.set(trigger.value, (triggerCounts.get(trigger.value) || 0) + 1);
-const allTriggers = [...triggerCounts.values()];
-const ambiguousRatio = allTriggers.length ? allTriggers.filter(count => count > 2).length / allTriggers.length : 1;
-assess('context_efficiency', 5 * (1 - Math.min(1, ambiguousRatio)), 'Valuta sovrapposizione dei trigger e probabilità di caricare componenti irrilevanti.', ambiguousRatio < .15 ? ['Trigger prevalentemente distintivi.'] : [], ambiguousRatio >= .15 ? ['Diversi trigger sono condivisi da troppi componenti e possono produrre falsi positivi.'] : []);
-const invalidInstructionArtifacts = toolAnalysis.artifacts.filter(artifact => artifact.category === 'behavior_contract' && artifact.syntaxStatus === 'invalid');
-const scopedInstructionArtifacts = behaviorArtifacts.filter(artifact => artifact.selector || artifact.scopeKey === 'directory-and-descendants');
-const hierarchyScore = behaviorArtifacts.length ? Math.max(0, Math.min(5, 2.5 + (scopedInstructionArtifacts.length ? 1 : 0) + (toolAnalysis.resolution.status === 'single' || toolAnalysis.resolution.status === 'explicit' ? 1 : .5) - invalidInstructionArtifacts.length)) : 0;
-assess('instruction_hierarchy', hierarchyScore, 'Valuta validità, scope e risoluzione vendor; aggiungere file duplicati non aumenta automaticamente il punteggio.', behaviorArtifacts.length ? [`${behaviorArtifacts.length} fonti di istruzioni valide con owner e consumer espliciti.`] : [], [invalidInstructionArtifacts.length ? `${invalidInstructionArtifacts.length} fonti di istruzioni non valide.` : null, toolAnalysis.resolution.status === 'undetermined' ? 'Il tool di riferimento non è determinabile da soli artefatti condivisi.' : null].filter(Boolean));
-const capabilityOwners = new Map();
-for (const component of routable) for (const capability of component.capabilities || []) capabilityOwners.set(capability, (capabilityOwners.get(capability) || 0) + 1);
-const overlaps = [...capabilityOwners.values()].filter(count => count > 2).length;
-assess('architectural_proportionality', Math.max(1, 4.5 - overlaps * .45), 'Premia semplicità e responsabilità distinguibili; la quantità di componenti non aumenta il punteggio.', overlaps ? [] : ['Nessuna sovrapposizione grave di capacità rilevata.'], overlaps ? [`${overlaps} capacità risultano distribuite su più di due componenti.`] : []);
-const observableFiles = files.filter(file => /trace|telemetry|opentelemetry|metrics|observability/i.test(file.relative));
-assess('observability', observableFiles.length ? Math.min(5, 2 + observableFiles.length * .5) : 0, 'Valuta trace, metriche, audit e possibilità di ricostruire routing ed esito.', observableFiles.length ? ['Artefatti di osservabilità rilevati.'] : [], observableFiles.length ? [] : ['Nessuna evidenza di trace o metriche del comportamento agentico.']);
-const evalFiles = files.filter(file => /(^|\/)(evals?|benchmarks?|prompt-tests?)(\/|\.|$)/i.test(file.relative));
-assess('evaluation_maturity', evalFiles.length ? Math.min(5, 2 + evalFiles.length / 3) : 0, 'Valuta dataset di prompt, aspettative, grader e regressioni di routing.', evalFiles.length ? ['Casi di valutazione automatica rilevati.'] : [], evalFiles.length ? [] : ['Nessun dataset di prompt con risultati attesi o grader rilevato.']);
-for (const assessment of assessments.filter(item => item.score < 2.5)) {
-  const findingId = `finding_${assessment.dimension}`, recommendationId = `rec_${assessment.dimension}`;
-  findings.push({ id: findingId, title: `Maturità da rafforzare: ${assessment.dimension.replaceAll('_', ' ')}`, category: assessment.dimension, severity: assessment.score === 0 ? 'high' : 'medium', description: assessment.weaknesses[0] || assessment.rationale, impact: 'Riduce affidabilità, chiarezza o capacità di evoluzione del setup AI.', affected_component_ids: [], evidence_ids: assessment.evidence_ids, recommendation_ids: [recommendationId], effort: 'small', confidence: .9, verification_status: 'partially_verified' });
-  recommendations.push({ id: recommendationId, priority: 'quick_win', title: `Rafforzare ${assessment.dimension.replaceAll('_', ' ')}`, description: assessment.weaknesses[0] || 'Aggiungere una pratica esplicita e verificabile.', finding_ids: [findingId], expected_result: 'Setup più robusto e governabile.', completion_criteria: ['La pratica è documentata e verificabile nel repository.'], effort: 'small', status: 'proposed' });
-  assessment.recommendation_ids.push(recommendationId);
+for (const gap of linkAnalysis.gaps.filter(gap => linkAnalysis.records.some(record => record.tool_id === gap.tool_id && record.target_id === gap.target_id && record.required === true))) {
+  const target = components.find(item => item.id === gap.target_id);
+  target.properties.connection_status = target.properties.connection_status === 'binding_declared' ? 'partial_binding' : 'missing_binding';
+  const id = `gap_${gap.tool_id}_${gap.target_id}`;
+  const rec = `rec_${id}`;
+  findings.push({ id, title: `Collegamento non dimostrato: ${target.name}`, category: 'knowledge', severity: 'informational', description: 'Nessuna regola vincolante applicabile è stata dimostrata per questa risorsa. La sola presenza non crea un collegamento al tool.', impact: 'La consultazione della risorsa non può essere dedotta dal setup.', affected_component_ids: [target.id], evidence_ids: target.evidence_ids, recommendation_ids: [rec], effort: 'small', confidence: .5, verification_status: 'not_verified' });
+  recommendations.push({ id: rec, priority: 'short_term', title: `Esplicitare l’uso di ${target.name}`, description: gap.suggested_action, finding_ids: [id], expected_result: 'Collegamento tracciabile a una regola applicabile se la risorsa serve al task.', completion_criteria: ['La regola indica quando e come consultare la risorsa; oppure viene documentato che non è necessaria.'], effort: 'small', status: 'proposed' });
 }
-const overall = assessments.reduce((total, item) => total + item.score, 0) / assessments.length;
+const applicableArtifacts = [...new Set(toolAnalysis.resolution.applicable_tool_ids.flatMap(id => applicableInstructions(toolAnalysis.artifacts, id, configuredWorkspace.task_path || '.', toolModes)))];
+const referenceInspection = inspectInstructionReferences({ artifacts: applicableArtifacts, files, readText: safeText });
+const snapshotFiles = [...materialCache.values()].filter(item => !isSensitiveFile(item.file)).map(item => {
+  const content = item.content.split(/\r?\n/).map(line => descriptionOnly
+    ? line.replace(/((?:api[_-]?key|token|password|secret|authorization)\s*[=:]\s*).*/gi, '$1[REDACTED]')
+      .replace(/https?:\/\/[^\s"'<>]+/g, url => { try { const value = new URL(url); value.username = ''; value.password = ''; value.search = ''; value.hash = ''; return value.toString(); } catch { return '[REDACTED_URL]'; } })
+      .replace(/\b(?:sk|key|token|secret)[-_][A-Za-z0-9_-]{12,}\b/gi, '[SECRET]')
+    : redactPrompt(line)).join('\n');
+  return { path: reportPath(item.file.relative), sha256: crypto.createHash('sha256').update(content).digest('hex'), content, truncated: item.truncated };
+}).sort((a,b) => a.path.localeCompare(b.path,'en'));
+const snapshot = {
+  files: snapshotFiles, inventory_paths: files.map(file=>reportPath(file.relative)), component_ids: components.map(item => item.id),
+  components: components.map(item => ({ id: item.id, kind: item.kind, path: item.path, description: item.description })),
+  instruction_sources: applicableArtifacts.map(item => ({ path: reportPath(item.path), tool_ids: toolAnalysis.resolution.applicable_tool_ids.filter(id=>applicableInstructions([item],id,configuredWorkspace.task_path||'.',toolModes).length), scope: item.path.includes('/') ? item.path.slice(0,item.path.lastIndexOf('/')) : '.' })),
+  inaccessible_paths: inaccessiblePaths.map(item => ({ ...item, path: reportPath(item.path) })),
+  profile_versions: Object.fromEntries(toolAnalysis.resolution.applicable_tool_ids.map(id => [id, toolAnalysis.profiles[id].profile_version])),
+  context: { declarations, task_path: configuredWorkspace.task_path || '.', purpose: configuredWorkspace.purpose || null, workflow_components: configuredWorkspace.workflow_components || [] },
+  scope: { roots: roots.map(reportPath), excluded: [...skip], analysis_level: analysisLevel, captured_at: now, coherence: 'single_read_cache_with_change_detection; no filesystem-wide atomicity' },
+  content_policy: 'redacted_line_preserving_excerpt_snapshot'
+};
+snapshot.id = snapshotId(snapshot);
+const citationFor = (source, line = 1) => {
+  const file = snapshotFiles.find(item => item.path === reportPath(source));
+  const text = file?.content.split('\n')[line - 1];
+  return text ? [{ path: file.path, start_line: line, end_line: line, excerpt: text }] : [];
+};
+const contracts = { version: '1.0.0', records: linkAnalysis.records.map(item => ({
+  ...item, source_path: item.source_path ? reportPath(item.source_path) : null,
+  reference_chain: item.reference_chain.map(reportPath),
+  evidence: item.evidence.flatMap(citation => citationFor(citation.path, citation.start_line)),
+  excerpt: item.excerpt ? redactPrompt(item.excerpt) : null,
+  resolved_path: item.resolved_path ? reportPath(item.resolved_path) : null,
+  source_component_id: referenceToolComponentIds.get(item.tool_id)
+})), unassociated_component_ids: components.filter(component => !component.parent_id && component.subtype !== 'reference_ai_coding_tool' && !linkAnalysis.records.some(record => record.target_id === component.id)).map(item => item.id) };
+for (const relationship of relationships) {
+  relationship.properties ||= {};
+  relationship.properties.relation_kind ||= relationship.type === 'contains' ? 'structural' : relationship.type === 'configured_by' ? 'configured' : 'observed';
+}
+for (const component of components) {
+  component.properties ||= {};
+  component.properties.confidence_interpretation = 'Legacy heuristic weight, not a calibrated probability';
+  component.properties.lifecycle = { declared: true, configured: component.properties.usage_status === 'configured' || component.kind === 'configuration', availability_verified: false, invocation_observed: component.properties.usage_status === 'used', outcome_verified: false };
+}
+const evaluation = createStaticEvaluation({ snapshot, toolContext: { requested: toolAnalysis.resolution.requested, status: toolAnalysis.resolution.status, applicable_tool_ids: toolAnalysis.resolution.applicable_tool_ids, primary_tool_ids: toolAnalysis.resolution.primary_tool_ids, declarations, tool_modes: toolModes, profiles: toolAnalysis.profiles, purpose: configuredWorkspace.purpose || null }, checks: [
+  { rule_id: 'instructions.references', rule_version: '1.0.0', outcome: inaccessiblePaths.length ? 'insufficient_evidence' : referenceInspection.issues.length ? 'fail' : referenceInspection.references.length ? 'pass' : 'not_applicable', rationale: referenceInspection.issues.length ? 'Riferimenti mancanti, ciclici o fuori perimetro; consultare il registro.' : 'Controllo deterministico dei riferimenti locali osservabili.', evidence: referenceInspection.references.flatMap(item => citationFor(item.source_path, item.line)) },
+  { rule_id: 'tool.identity', rule_version: '1.0.0', outcome: toolAnalysis.resolution.detected_tool_ids.length && declarations.every(item => toolAnalysis.resolution.detected_tool_ids.includes(item.id)) && !toolAnalysis.diagnostics.some(item => item.code === 'explicit_reference_tool_unconfirmed') ? 'pass' : 'insufficient_evidence', rationale: toolAnalysis.resolution.rule, evidence: toolAnalysis.detected.flatMap(item => item.signals.flatMap(signal => citationFor(signal.path))) }
+] });
+evaluation.contracts = contracts;
+snapshot.static_contracts = structuredClone(contracts);
+snapshot.tool_context = structuredClone(evaluation.tool_context);
+snapshot.id = snapshotId(snapshot);
+const overall = evaluation.summary?.overall_score ?? null;
 const referenceToolData = {
   standard: toolAnalysis.resolution.standard,
+  declared_tools: declarations,
   requested: toolAnalysis.resolution.requested,
   status: toolAnalysis.resolution.status,
   primary_tool_ids: toolAnalysis.resolution.primary_tool_ids.map(toolId => referenceToolComponentIds.get(toolId)).filter(Boolean),
@@ -723,7 +842,7 @@ const document = {
     name: configuredWorkspace.name || (roots.length === 1 ? path.basename(root) : 'Workspace multi-cartella'),
     type: configuredWorkspace.type || 'project',
     purpose: configuredWorkspace.purpose || 'Valutazione automatica approfondita del setup AI.',
-    maturity: overall >= 4 ? 'optimized' : overall >= 3 ? 'defined' : overall >= 2 ? 'emerging' : 'initial'
+    maturity: 'unknown'
   },
   scope: {
     authorized_folders: roots.map(reportPath),
@@ -765,24 +884,59 @@ const document = {
   ],
   unverified_items: toolAnalysis.diagnostics.filter(item => item.severity !== 'informational' || item.code.includes('unverified')).map(item => ({ code: item.code, description: sanitizeDiagnosticMessage(item.message), paths: item.paths.map(reportPath) })),
   executive_summary: {
-    overall_score: +overall.toFixed(1),
-    design_score: +overall.toFixed(1),
+    overall_score: overall,
+    design_score: overall,
     verified_runtime_score: null,
     runtime_status: 'unverified',
     scale: '0-5',
     purpose: 'Report architetturale approfondito basato su configurazioni, manifest e definizioni semantiche.',
-    score_policy: 'Il runtime verificato prevale sul design quando sono disponibili eval con ground truth.',
+    score_policy: 'Qualità e copertura sono separate; nessun voto complessivo sotto la soglia documentata. Le osservazioni chat non verificano gli esiti.',
     strengths: assessments.flatMap(item => item.strengths).slice(0, 5),
     criticalities: findings.map(item => item.title),
     priority_actions: recommendations.slice(0, 3).map(item => item.title)
   },
   extensions: {
-    'ai-setup-classifier.report': { version: '2.0', data: { quality_over_quantity: true, semantic_scan: true } },
+    [EVALUATION_KEY]: evaluation,
+    [CONTRACT_KEY]: contracts,
+    'ai-setup-classifier.instruction-references': { version: '1.0.0', data: { references: referenceInspection.references.map(item => ({ ...item, source_path: reportPath(item.source_path), target_path: reportPath(item.target_path) })), issues: referenceInspection.issues.map(item => ({ ...item, path: reportPath(item.path), ...(item.target_path ? { target_path: reportPath(item.target_path) } : {}), ...(item.chain ? { chain: item.chain.map(reportPath) } : {}) })) } },
+    'ai-setup-classifier.instruction-links': { version: '1.0.0', data: { gaps: linkAnalysis.gaps, task_path: linkAnalysis.task_path, limitations: linkAnalysis.limitations, bindings: linkAnalysis.bindings.map(item => ({ ...item, source_path: reportPath(item.source_path), excerpt: redactPrompt(item.excerpt) })), references: linkAnalysis.references.map(item => ({ ...item, source_path: reportPath(item.source_path), excerpt: redactPrompt(item.excerpt) })) } },
+    'ai-setup-classifier.report': { version: '2.0', data: { quality_over_quantity: true, semantic_scan: false } },
     'ai-setup-classifier.reference-tools': { version: '2.0', data: referenceToolData },
     'ai-setup-classifier.chat-evals': { version: '1.0', data: { source: 'authorized_local_history_opt_in', opted_in: configuredWorkspace.include_chat_history === true, privacy: 'best_effort_redacted_prompt_samples_only', examples: chatSamples } }
   }
 };
 if (inaccessiblePaths.length) document.limitations.push({ id: 'lim_inaccessible_paths', description: `${inaccessiblePaths.length} cartelle non sono state lette per limiti di accesso.`, paths: inaccessiblePaths.slice(0, 50).map(item => ({ ...item, path: reportPath(item.path) })) });
+if (descriptionOnly) {
+  const instructionSources = toolAnalysis.artifacts.filter(item => item.category === 'behavior_contract').map(item => ({
+    path: reportPath(item.path), format: item.format, recognized_tool_ids: item.recognizedToolIds,
+    applicable_tool_ids: toolAnalysis.resolution.applicable_tool_ids.filter(id => applicableInstructions([item], id, configuredWorkspace.task_path || '.', toolModes).length),
+    selector: item.selector ?? null, activation: item.activation, scope: instructionScope(item) === '.' ? '.' : reportPath(instructionScope(item))
+  }));
+  snapshot.instruction_references = structuredClone(document.extensions['ai-setup-classifier.instruction-references'].data);
+  snapshot.id = snapshotId(snapshot);
+  document.extensions[DESCRIPTION_KEY] = {
+    version: '1.0.0', snapshot,
+    instruction_sources: describeInstructions(snapshot, instructionSources),
+    configuration_sources: snapshot.files.filter(file => /\.(toml|ini|json|jsonc|ya?ml|cfg)$/i.test(file.path)).map(file => { const artifact = toolAnalysis.artifacts.find(item => reportPath(item.path) === file.path); return { path: file.path, format: artifact?.format || 'unrecognized_configuration_candidate', syntax_status: artifact?.syntaxStatus || 'unverified' }; }),
+    knowledge_bases: components.filter(item => item.kind === 'knowledge_base' || item.subtype === 'documentation_collection').map(item => ({
+      component_id: item.id, path: item.path, description: item.description,
+      source_paths: components.filter(child => child.parent_id === item.id).map(child => child.path),
+      bindings: relationships.filter(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual').map(link => link.id),
+      status: relationships.some(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual') ? 'consultation_prescribed' : 'collection_only'
+    })),
+    collection_limits: { complete_workspace: inaccessiblePaths.length === 0 && !snapshot.files.some(file => file.truncated), exclusions: document.scope.excluded, note: 'Coverage is limited to authorized roots, exclusions and supported parsers; not proof of complete machine inventory.' }
+  };
+  delete document.extensions[EVALUATION_KEY];
+  delete document.extensions[CONTRACT_KEY];
+  document.assessments = [];
+  document.findings = [];
+  document.recommendations = [];
+  document.metadata.title = 'Descrizione del setup AI';
+  document.methodology.output_role = 'description_only';
+  document.methodology.behavior_contract_evaluated_separately = false;
+  document.workspace.purpose = configuredWorkspace.purpose || 'Descrizione documentata del setup AI.';
+  document.executive_summary = { purpose: 'Inventario, istruzioni e collegamenti documentati. La valutazione è calcolata dal classificatore.', overall_score: null, design_score: null, runtime_status: 'unverified' };
+}
 const serialized = `${JSON.stringify(document, null, 2)}\n`;
 const temporaryOutput = `${output}.${process.pid}.tmp`;
 fs.writeFileSync(temporaryOutput, serialized, 'utf8');
@@ -793,4 +947,4 @@ if (validationErrors.length) {
 }
 fs.renameSync(temporaryOutput, output);
 console.log(`Workspace analizzato: ${roots.join(' | ')}`);
-console.log(`AI Setup report generated: ${output} (${overall.toFixed(1)}/5)`);
+console.log(`AI Setup ${descriptionOnly ? 'description' : 'report'} generated: ${output} (${descriptionOnly ? 'senza valutazione' : overall === null ? 'valutazione parziale' : `${overall.toFixed(1)}/5`})`);

@@ -1,136 +1,135 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { t } from '../i18n/index.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORY_META } from '../data.js';
-import { categoryFor, isVisibleSetupComponent } from '../utils/appUtils.js';
+import { categoryFor } from '../utils/appUtils.js';
+import { buildGraphModel, layoutGraph, graphEdgePath, projectGroupEdges } from '../utils/graphModel.js';
+import { CONTRACT_KEY, relationKind } from '../evaluator/contracts.js';
+import { ContractPanel, RelationshipPanel, RELATION_LABELS } from './ContractPanel.jsx';
 import { resolvePrimaryTool } from '../simulator/primaryTool.js';
+import {useGraphViewport, MIN_ZOOM, MAX_ZOOM} from '../utils/useGraphViewport.js';
+import {componentColor, contrastText} from '../utils/paletteColors.js';
+import '../graph.css';
 
-function attachPoint(from, to, box) {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const scale = 1 / Math.max(Math.abs(dx) / (box.width / 2), Math.abs(dy) / (box.height / 2));
-  return { x: from.x + dx * scale, y: from.y + dy * scale };
-}
-
-function descendantsOf(componentId, components) {
-  const children = components.filter(component => component.parent_id === componentId);
-  return children.flatMap(child => [child, ...descendantsOf(child.id, components)]);
-}
-
-function Detail({ component, report }) {
-  const relationships = report.relationships.filter(relationship => relationship.source_id === component.id || relationship.target_id === component.id);
-  const children = descendantsOf(component.id, report.components);
-  const triggers = component.activation?.triggers || [];
-  return <div className="panel"><p className="eyebrow">{component.kind} · {component.subtype}</p><h2>{component.name}</h2><p>{component.description}</p>{children.length > 0 && <p className="component-count">{children.length} elementi contenuti</p>}{component.capabilities?.length > 0 && <><h3>Capacità</h3><p>{component.capabilities.join(', ')}</p></>}{triggers.length > 0 && <><h3>Trigger rilevati</h3><p>{triggers.map(trigger => trigger.value).join(', ')}</p></>}<h3>Connessioni</h3>{relationships.length ? relationships.slice(0, 12).map(relationship => <p key={relationship.id}>{relationship.type} · {relationship.verification_status}</p>) : <p>Nessuna relazione riportata nel documento.</p>}</div>;
-}
-
-function WorkspacePanel({ report, components, relationships }) {
-  const counts = components.reduce((map, component) => ({ ...map, [component.kind]: (map[component.kind] || 0) + 1 }), {});
-  return <div className="panel"><p className="eyebrow">SETUP OSSERVATO</p><h2>{report.workspace.name}</h2><p>{report.workspace.purpose}</p><h3>Inventario visualizzato</h3>{Object.entries(counts).map(([kind, count]) => <p className="inventory-row" key={kind}><span>{kind.replaceAll('_', ' ')}</span><b>{count}</b></p>)}<h3>Copertura</h3><p>{components.length} componenti principali e {relationships.length} relazioni visibili. Gli elementi contenuti sono disponibili tramite Esamina.</p></div>;
-}
-
-function ComponentTree({ parent, components, palette, depth = 0 }) {
-  const children = components.filter(component => component.parent_id === parent.id);
-  if (!children.length) return null;
-  return <div className="component-tree" style={{ '--depth': depth }}>{children.map(child => <article className="examined-child" key={child.id} style={{ '--node': palette.categories[categoryFor(child)] || '#94a3b8' }}><header><span>{child.kind.replaceAll('_', ' ')}</span><strong>{child.name}</strong></header>{child.description && <p>{child.description}</p>}{child.path && <code>{child.path}</code>}<ComponentTree parent={child} components={components} palette={palette} depth={depth + 1} /></article>)}</div>;
-}
-
-function ComponentExaminer({ component, report, palette, onBack }) {
-  const descendants = descendantsOf(component.id, report.components);
-  return <section className="component-examiner"><header className="examiner-toolbar"><button onClick={onBack}>← Torna al grafico completo</button><span>{descendants.length} elementi espansi</span></header><div className="examiner-content"><article className="examined-root" style={{ '--node': palette.categories[categoryFor(component)] || '#94a3b8' }}><p className="eyebrow">{component.kind} · {component.subtype}</p><h1>{component.name}</h1><p>{component.description}</p>{component.path && <code>{component.path}</code>}</article>{descendants.length ? <ComponentTree parent={component} components={report.components} palette={palette} /> : <div className="examiner-empty">Questo componente non contiene elementi figli nel report.</div>}</div></section>;
-}
-
-function GroupExaminer({ group, report, palette, onBack }) {
-  const expandedCount = group.items.reduce((total, component) => total + 1 + descendantsOf(component.id, report.components).length, 0);
-  return <section className="component-examiner"><header className="examiner-toolbar"><button onClick={onBack}>← Torna al grafico completo</button><span>{expandedCount} elementi espansi</span></header><div className="examiner-content"><article className="examined-root examined-group" style={{ '--node': palette.categories[group.id] || '#94a3b8' }}><p className="eyebrow">COMPONENTE PRINCIPALE</p><h1>{group.label}</h1><p>{group.items.length} elementi del setup, con tutti i contenuti associati.</p></article>{group.items.map(component => <article className="examined-root" key={component.id} style={{ '--node': palette.categories[group.id] || '#94a3b8' }}><p className="eyebrow">{component.kind} · {component.subtype}</p><h2>{component.name}</h2><p>{component.description}</p>{component.path && <code>{component.path}</code>}<ComponentTree parent={component} components={report.components} palette={palette} /></article>)}</div></section>;
-}
+const TYPES = [['all', 'Tutti'], ['legacy_unverified', 'Da verificare'], ['contractual', 'Contratti'], ['configured', 'Configurazioni'], ['available', 'Disponibili'], ['observed', 'Osservazioni'], ['structural', 'Struttura']];
+const PAGE_SIZE = 24;
+const connectionLabel = (item, model) => item.properties?.disabled ? 'Disabilitato' : item.properties?.connection_ready === false ? 'Configurazione incompleta' : model.linkedIds.has(item.id) ? 'Collegato al setup' : 'Collegamento non rilevato';
 
 export function SetupGraph({ report, palette }) {
+  const model = useMemo(() => buildGraphModel(report), [report]);
   const [selected, setSelected] = useState(null);
-  const [examinedId, setExaminedId] = useState(null);
-  const [selectedGroupId, setSelectedGroupId] = useState(null);
-  const [examinedGroupId, setExaminedGroupId] = useState(null);
-  const [expanded, setExpanded] = useState(new Set());
+  const [openGroup, setOpenGroup] = useState(null);
+  const elementDialog = useRef(null), componentTrigger = useRef(null);
+  const [selectedRelation, setSelectedRelation] = useState(null);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('all');
+  const [kind, setKind] = useState('all');
+  const [tool, setTool] = useState('all');
+  const [page, setPage] = useState(0);
+  const [mapPage, setMapPage] = useState(0);
+  const primary = useMemo(() => resolvePrimaryTool(report).component, [report]);
+  const visualRelations = [...model.relations, ...model.possibleRelations, ...model.availableRelations];
   const [fullscreen, setFullscreen] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [edges, setEdges] = useState([]);
-  const [detailAnchor, setDetailAnchor] = useState(null);
-  const graphRef = useRef();
-  const hubRef = useRef();
-  const groupRefs = useRef({});
-  const dragRef = useRef(null);
-
-  const visibleComponents = useMemo(() => report.components.filter(component => isVisibleSetupComponent(component) && !component.parent_id), [report]);
-  const visibleComponentIds = useMemo(() => new Set(visibleComponents.map(component => component.id)), [visibleComponents]);
-  const visibleRelationships = useMemo(() => report.relationships.filter(relationship => visibleComponentIds.has(relationship.source_id) && visibleComponentIds.has(relationship.target_id)), [report, visibleComponentIds]);
-  const primaryResolution = useMemo(() => resolvePrimaryTool(report), [report]);
-  const hub = primaryResolution.component && visibleComponentIds.has(primaryResolution.component.id) ? primaryResolution.component : null;
-  const referenceStatus = report.extensions?.['ai-setup-classifier.reference-tools']?.data?.status;
-  const hubCaption = hub ? 'Tool AI principale' : referenceStatus === 'multiple' ? 'Setup AI multi-tool' : referenceStatus === 'undetermined' ? 'Tool AI non determinato' : 'Workspace analizzato';
-  const groups = useMemo(() => Object.entries(CATEGORY_META).map(([id, meta]) => ({ ...meta, id, items: visibleComponents.filter(component => component.id !== hub?.id && categoryFor(component) === id) })).filter(group => group.items.length), [visibleComponents, hub]);
-  const detail = visibleComponents.find(component => component.id === selected);
-  const examined = report.components.find(component => component.id === examinedId);
-  const selectedGroup = groups.find(group => group.id === selectedGroupId);
-  const examinedGroup = groups.find(group => group.id === examinedGroupId);
-
-  useLayoutEffect(() => {
-    const calculateEdges = () => {
-      const graph = graphRef.current;
-      const hubNode = hubRef.current;
-      if (!graph || !hubNode) return;
-      const graphBox = graph.getBoundingClientRect();
-      const hubBox = hubNode.getBoundingClientRect();
-      const hubCenter = { x: hubBox.left - graphBox.left + hubBox.width / 2, y: hubBox.top - graphBox.top + hubBox.height / 2 };
-      setEdges(groups.flatMap(group => {
-        const node = groupRefs.current[group.id];
-        if (!node) return [];
-        const box = node.getBoundingClientRect();
-        const center = { x: box.left - graphBox.left + box.width / 2, y: box.top - graphBox.top + box.height / 2 };
-        return [{ id: group.id, start: attachPoint(hubCenter, center, { width: hubBox.width, height: hubBox.height }), end: attachPoint(center, hubCenter, { width: box.width, height: box.height }), color: palette.categories[group.id] }];
-      }));
-    };
-    calculateEdges();
-    const observer = new ResizeObserver(calculateEdges);
-    if (graphRef.current) observer.observe(graphRef.current);
-    window.addEventListener('resize', calculateEdges);
-    return () => { observer.disconnect(); window.removeEventListener('resize', calculateEdges); };
-  }, [groups, fullscreen, palette]);
-
-  useEffect(() => {
-    if (!selectedGroupId) return undefined;
-    const dismissPopup = event => {
-      if (event.target.closest?.('.focus-detail, .category-node')) return;
-      setSelectedGroupId(null);
-      setDetailAnchor(null);
-    };
-    window.addEventListener('click', dismissPopup);
-    return () => window.removeEventListener('click', dismissPopup);
-  }, [selectedGroupId]);
-
-  const selectGroup = (id, event) => {
-    const graph = graphRef.current;
-    const node = event.currentTarget;
-    if (!graph || !node) return setSelectedGroupId(id);
-    const graphBox = graph.getBoundingClientRect();
-    const nodeBox = node.getBoundingClientRect();
-    const left = nodeBox.left - graphBox.left + nodeBox.width / 2;
-    const top = nodeBox.top - graphBox.top + nodeBox.height / 2;
-    setSelectedGroupId(id);
-    setDetailAnchor({ left: Math.max(180, Math.min(graphBox.width - 180, left)), top: Math.max(115, Math.min(graphBox.height - 120, top)), placeAbove: top > graphBox.height * .58 });
+  const canvas = useRef(null), search = useRef(null), graphRoot = useRef(null), detailHeading = useRef(null);
+  const {view, fit, zoomBy, panBy, handlers} = useGraphViewport(canvas, 1220, 930);
+  const zoom = view.scale;
+  const toolIds = useMemo(() => new Set(model.tools.map(item => item.id)), [model]);
+  const filtered = useMemo(() => [...model.tools, ...model.elements].filter(item =>
+    (category === 'all' || categoryFor(item) === category) &&
+    [item.name, item.path, item.description].join(' ').toLocaleLowerCase('it-IT').includes(query.toLocaleLowerCase('it-IT').trim())
+  ), [model, query, category]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const inventory = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const relations = visualRelations.filter(item => (kind === 'all' || relationKind(item) === kind) && (tool === 'all' || item.source_id === tool || item.target_id === tool));
+  const matchingIds = new Set(filtered.map(item => item.id));
+  const relevant = relations.filter(item => matchingIds.has(item.source_id) || matchingIds.has(item.target_id));
+  const selectedGroup = model.groups.find(group => group.id === selected);
+  const dialogGroup = model.groups.find(group => group.id === openGroup);
+  const selectedIds = new Set(selectedGroup ? selectedGroup.items.map(item => item.id) : selected ? [selected] : []);
+  const selectionRelations = selected ? relevant.filter(item => selectedIds.has(item.source_id) || selectedIds.has(item.target_id)) : relevant;
+  // Overview is stable: components surround the primary tool, elements live in the inspector.
+  const visibleGroups = model.groups.filter(group => group.items.some(item => matchingIds.has(item.id)));
+  const candidates = [...model.tools.filter(item => item.id !== primary?.id && (matchingIds.has(item.id) || relevant.some(edge => edge.source_id === item.id || edge.target_id === item.id))), ...visibleGroups];
+  const mapPageCount = Math.max(1, Math.ceil(candidates.length / 12)), mapCurrent = Math.min(mapPage, mapPageCount - 1);
+  const nodes = candidates.slice(mapCurrent * 12, (mapCurrent + 1) * 12);
+  if (primary && (candidates.length || matchingIds.has(primary.id))) nodes.unshift(primary);
+  const shownIds = new Set(nodes.map(item => item.id));
+  const edges = projectGroupEdges(selectionRelations, model.groupFor, shownIds);
+  const layout = layoutGraph(nodes, edges, toolIds, primary?.id);
+  const edgeColor = edge => {
+    const target = nodes.find(item => item.id === edge.target_id);
+    const source = nodes.find(item => item.id === edge.source_id);
+    return componentColor(target?.kind === 'group' ? target : source?.kind === 'group' ? source : target || source, palette);
   };
-  const selectComponent = id => { setSelected(id); setSelectedGroupId(null); setDetailAnchor(null); };
-  const toggle = id => setExpanded(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
-  const startPan = event => { if (event.target.closest('button, textarea, input')) return; dragRef.current = { x: event.clientX, y: event.clientY, pan }; event.currentTarget.setPointerCapture(event.pointerId); setIsPanning(true); };
-  const movePan = event => { if (dragRef.current) setPan({ x: dragRef.current.pan.x + event.clientX - dragRef.current.x, y: dragRef.current.pan.y + event.clientY - dragRef.current.y }); };
-  const stopPan = event => { if (!dragRef.current) return; dragRef.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); setIsPanning(false); };
+  const detail = selectedGroup || model.byId.get(selected);
+  const contained = selectedGroup ? selectedGroup.items : model.components.filter(item => item.parent_id === detail?.id);
+  const detailReport = {...report, relationships: visualRelations};
+  const selectedEdge = visualRelations.find(item => item.id === selectedRelation);
+  const contractCount = model.contracts.filter(item => item.status === 'contract_present').length;
+  const categories = Object.entries(CATEGORY_META).filter(([id]) => model.components.some(item => categoryFor(item) === id));
+  const legacy = !report.extensions?.[CONTRACT_KEY];
 
-  if (examinedGroup) return <GroupExaminer group={examinedGroup} report={report} palette={palette} onBack={() => setExaminedGroupId(null)} />;
-  if (examined) return <ComponentExaminer component={examined} report={report} palette={palette} onBack={() => setExaminedId(null)} />;
-  return <section className={`workspace ${fullscreen ? 'graph-focus-workspace' : ''}`}>
-    <aside className="sidebar"><div className="side-title"><span>COMPONENTI</span><b>{visibleComponents.length}</b></div><div className="category-list">{groups.map(group => <button key={group.id} onClick={() => toggle(group.id)}><i style={{ color: palette.categories[group.id] }}>{group.icon}</i><span>{group.label}</span><b>{group.items.length}</b></button>)}</div><section className="legend"><div className="side-title"><span>MAPPA</span></div><p>Le linee radiali organizzano le categorie; non implicano una relazione AWDF.</p><p>{visibleRelationships.length} relazioni documentate</p></section></aside>
-    <section className="graph-wrap"><div className="graph-toolbar"><span>AWDF · {report.format_version}</span><div><button onClick={() => setZoom(value => Math.max(.7, +(value - .1).toFixed(1)))} aria-label="Riduci zoom">−</button><button className="zoom-level" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}>{Math.round(zoom * 100)}%</button><button onClick={() => setZoom(value => Math.min(1.5, +(value + .1).toFixed(1)))} aria-label="Aumenta zoom">+</button><button onClick={() => setPan({ x: 0, y: 0 })}>⌖ Centra</button><button onClick={() => setExpanded(new Set())}>Comprimi</button><button onClick={() => setExpanded(new Set(groups.map(group => group.id)))}>Espandi</button><button className="fullscreen-toggle" onClick={() => setFullscreen(value => !value)}>{fullscreen ? '× Esci' : '⛶ Schermo intero'}</button></div></div>
-      <div ref={graphRef} className={`graph ${isPanning ? 'is-panning' : ''}`} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan}><div className="graph-stage" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}><svg className="edges" viewBox={`0 0 ${graphRef.current?.clientWidth || 1} ${graphRef.current?.clientHeight || 1}`} preserveAspectRatio="none" aria-hidden="true">{edges.map(edge => <g key={edge.id}><line x1={edge.start.x} y1={edge.start.y} x2={edge.end.x} y2={edge.end.y} stroke={edge.color} /><circle cx={edge.end.x} cy={edge.end.y} r="6" fill={edge.color} /></g>)}</svg><button ref={hubRef} className="central-node" onClick={event => { if (hub) selectComponent(hub.id, event); }}><span className="central-icon">✦</span><strong>{hub?.name || report.workspace.name}</strong><small>{hubCaption}</small><footer><span>↔ {visibleRelationships.length} relazioni</span><span>● {report.workspace.maturity}</span></footer></button>{groups.map((group, index) => { const angle = 360 * index / groups.length - 90; const x = 50 + 38 * Math.cos(angle * Math.PI / 180); const y = 50 + 34 * Math.sin(angle * Math.PI / 180); const placement = Math.abs(x - 50) > Math.abs(y - 50) ? (y < 50 ? 'up' : 'down') : (y < 50 ? 'left' : 'right'); return <div key={group.id} className="radial-group" style={{ left: `${x}%`, top: `${y}%` }}><button ref={element => { groupRefs.current[group.id] = element; }} className="category-node" style={{ '--node': palette.categories[group.id] }} onClick={event => { toggle(group.id); selectGroup(group.id, event); }}><i>{group.icon}</i><strong>{group.label}</strong><span>{group.items.length} elementi</span></button>{expanded.has(group.id) && <div className={`orbit-items opens-${placement}`}><div className="item-stack">{group.items.map(component => <button className="component-node" style={{ '--node': palette.categories[group.id] }} key={component.id} onClick={event => selectComponent(component.id, event)}>{component.name}</button>)}</div></div>}</div>; })}</div>{selectedGroup && detailAnchor && <div className={`focus-detail ${detailAnchor.placeAbove ? 'above' : ''}`} style={{ left: detailAnchor.left, top: detailAnchor.top }}><button className="focus-detail-close" aria-label="Chiudi dettaglio" onClick={() => { setSelectedGroupId(null); setDetailAnchor(null); }}>×</button><p className="eyebrow">COMPONENTE PRINCIPALE</p><h2>{selectedGroup.label}</h2><p>{selectedGroup.items.length} elementi del setup.</p><button className="focus-detail-examine" onClick={() => setExaminedGroupId(selectedGroup.id)}>Esamina componente</button></div>}</div>
-      <div className="graph-footer"><span>{visibleComponents.length} componenti principali</span><span>{visibleRelationships.length} relazioni</span><span>{report.components.length - visibleComponents.length} elementi contenuti</span></div></section>
-    <aside className="details">{detail ? <Detail component={detail} report={report} /> : <WorkspacePanel report={report} components={visibleComponents} relationships={visibleRelationships} />}</aside>
+  useEffect(() => { setOpenGroup(null); setSelected(null); setSelectedRelation(null); setQuery(''); setCategory('all'); setTool('all'); setPage(0); setMapPage(0); }, [report]);
+  useEffect(() => { setPage(0); }, [query, category]);
+  useEffect(() => { setMapPage(0); }, [selected, kind, tool, query, category]);
+  useEffect(() => {
+    const element = graphRoot.current;
+    const change = () => setFullscreen(document.fullscreenElement === element);
+    document.addEventListener('fullscreenchange', change);
+    return () => document.removeEventListener('fullscreenchange', change);
+  }, []);
+  useEffect(() => {
+    const dialog = elementDialog.current;
+    if (dialogGroup && dialog && !dialog.open) dialog.showModal();
+    else if (!dialogGroup && dialog?.open) dialog.close();
+  }, [dialogGroup]);
+  const closeElements = () => { elementDialog.current?.close(); setOpenGroup(null); componentTrigger.current?.focus({preventScroll:true}); };
+  const openElements = (item, event) => {
+    componentTrigger.current = event.currentTarget;
+    setOpenGroup(item.id);
+    setSelected(item.id);
+    setSelectedRelation(null);
+  };
+  const inspectElement = id => {
+    closeElements();
+    setSelected(id);
+    setSelectedRelation(null);
+    requestAnimationFrame(() => { detailHeading.current?.scrollIntoView({block:'start',behavior:'instant'}); detailHeading.current?.focus({preventScroll:true}); });
+  };
+  const choose = id => { setSelected(id); setSelectedRelation(null); };
+  const reveal = edge => { setSelected(edge.target_id); setSelectedRelation(edge.id); requestAnimationFrame(() => detailHeading.current?.focus({ preventScroll: true })); };
+
+
+  return <section className="atlas" ref={graphRoot}>
+    <dialog ref={elementDialog} className="atlas-elements-dialog" style={{"--node": dialogGroup ? componentColor(dialogGroup, palette) : undefined}} aria-labelledby="atlas-elements-title" onCancel={event => { event.preventDefault(); closeElements(); }} onClose={() => setOpenGroup(null)} onClick={event => { if (event.target !== event.currentTarget) return; const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeElements(); }}>
+      <header><div><p className="eyebrow">{t("ELEMENTI DELLA COMPONENTE")}</p><h2 id="atlas-elements-title">{dialogGroup?.name}</h2><p>{dialogGroup?.items.length || 0} {t("elementi")}</p></div><button autoFocus aria-label={t("Chiudi lista elementi")} onClick={closeElements}>×</button></header>
+      <div className="atlas-elements-list">{dialogGroup?.items.length ? <ul>{dialogGroup.items.map(item => <li key={item.id}><button onClick={() => inspectElement(item.id)}><strong>{item.name}<span aria-hidden="true">↗</span></strong><span>{item.description || 'Descrizione non disponibile.'}</span><small>{connectionLabel(item, model)}</small></button></li>)}</ul> : <p>{t("Questa componente non contiene elementi.")}</p>}</div>
+    </dialog>
+    <header className="atlas-heading"><div><p className="eyebrow">{t("WORKSPACE / MAPPA DEL SETUP")}</p><h1>{t("Ogni connessione ha una fonte.")}</h1><p>{t("Il tool AI al centro, le componenti intorno e i singoli elementi al loro interno.")}</p></div><div className="atlas-summary"><span><b>{model.tools.length}</b> {t("tool AI")}</span><span><b>{contractCount}</b> {t("contratti presenti")}</span><span><b>{model.groups.length}</b> {t("componenti")}</span><span><b>{model.elements.length}</b> {t("elementi")}</span></div></header>
+    <div className="atlas-layout">
+      <aside className="atlas-inventory" aria-label={t("Inventario elementi")}>
+        <div className="atlas-section-label">{t("Elementi")} <span>{model.elements.length}</span></div>
+        <div className="atlas-search"><span aria-hidden="true">⌕</span><input ref={search} type="search" aria-label={t("Cerca elementi")} placeholder={t("Cerca nome o percorso…")} value={query} onChange={event => setQuery(event.target.value)} />{query && <button aria-label={t("Cancella ricerca")} onClick={() => { setQuery(''); search.current?.focus(); }}>×</button>}</div>
+        <label className="atlas-filter-label" htmlFor="atlas-category">{t("Componente")}</label><select id="atlas-category" value={category} onChange={event => setCategory(event.target.value)}><option value="all">{t("Tutte le componenti")}</option>{categories.map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}</select>
+        <div className="atlas-inventory-list">{inventory.map(item => <button key={item.id} aria-pressed={selected === item.id} onClick={() => choose(item.id)} style={{ '--node': palette.categories[categoryFor(item)] || 'var(--ui-muted)' }}><i aria-hidden="true">{CATEGORY_META[categoryFor(item)]?.icon || '◇'}</i><span><strong>{item.name}</strong><small>{CATEGORY_META[categoryFor(item)]?.label || item.kind}{item.parent_id ? ' · contenuto' : ''}</small></span><span className={model.linkedIds.has(item.id) ? 'atlas-connected' : 'atlas-unlinked'} aria-label={connectionLabel(item, model)}>{model.linkedIds.has(item.id) ? '↗' : '○'}</span></button>)}{!inventory.length && <div className="atlas-empty"><strong>{t("Nessun elemento trovato")}</strong><p>{t("Prova un altro nome o cambia componente.")}</p></div>}</div>
+        <div className="atlas-pagination"><button aria-label={t("Pagina precedente")} disabled={!currentPage} onClick={() => setPage(currentPage - 1)}>←</button><span aria-live="polite">{filtered.length} {t("risultati ·")} {currentPage + 1}/{pageCount}</span><button aria-label={t("Pagina successiva")} disabled={currentPage + 1 >= pageCount} onClick={() => setPage(currentPage + 1)}>→</button></div>
+      </aside>
+      <section className="atlas-map" aria-label={t("Collegamenti del setup")}>
+        <div className="atlas-map-top"><div><p className="eyebrow">{t("RETE DELLE RELAZIONI")}</p><h2>{detail ? detail.name : 'Come lavora il tuo setup'}</h2></div>{selected && <button onClick={() => choose(null)}>{t("Mostra tutta la rete")}</button>}</div>
+        <div className="atlas-filters"><div className="atlas-kind-filter" aria-label={t("Tipo di collegamento")}>{TYPES.map(([id, label]) => <button key={id} aria-pressed={kind === id} onClick={() => { setKind(id); setSelectedRelation(null); }}><i className={'atlas-line-key ' + id} aria-hidden="true" />{label}</button>)}</div><label>{t("Tool")} <select aria-label={t("Filtra per tool")} value={tool} onChange={event => { setTool(event.target.value); setSelectedRelation(null); }}><option value="all">{t("Tutti i tool")}</option>{model.tools.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
+        <p className="atlas-navigation-help">{t("Rotella o pizzico per zoomare · trascina per spostarti · Adatta per ritrovare tutto il grafico")}</p><div className="atlas-map-note">{legacy ? "Report precedente: i collegamenti tratteggiati sono possibili relazioni da verificare nei contratti." : "Tool principale al centro e componenti intorno. Ogni linea riassume collegamenti reali ai singoli elementi, definiti da istruzioni, configurazioni o cataloghi del tool."}</div>
+        <div className="atlas-canvas" ref={canvas} tabIndex={0} role="region" aria-label={t("Mappa interattiva. Trascina per spostarti, usa la rotella per zoomare. Tastiera: frecce, più, meno e zero per adattare.")} {...handlers}>
+          {nodes.length ? <div className="atlas-stage-size" style={{ width: "100%", height: "100%" }}><div className="atlas-stage" style={{ width: layout.width, height: layout.height, transform: 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + zoom + ')' }}>
+            <svg className="atlas-edges" width={layout.width} height={layout.height} aria-hidden="true"><defs>{edges.map((edge,index) => <marker key={edge.id} id={'atlas-arrow-'+index} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9" style={{'--edge':edgeColor(edge)}} /></marker>)}</defs>{edges.map((edge,index) => <path key={edge.id} style={{'--edge':edgeColor(edge)}} className={relationKind(edge) + ((selectedRelation === edge.id || edge.members?.includes(selectedRelation)) ? ' is-selected' : '')} d={graphEdgePath(layout.positions.get(edge.source_id), layout.positions.get(edge.target_id))} markerEnd={'url(#atlas-arrow-'+index+')'} />)}</svg>
+            {!primary && <div className="atlas-center-placeholder" style={{left:470,top:385}}>{t("Tool principale non determinato")}<small>{t("Il report non identifica un unico tool principale.")}</small></div>}
+            {nodes.map(item => { const position = layout.positions.get(item.id), isTool = toolIds.has(item.id); return <button key={item.id} className={'atlas-node ' + (isTool ? 'atlas-tool-node' : 'atlas-group-node') + (item.id === primary?.id ? ' atlas-primary-node' : '')} aria-pressed={selected === item.id || (item.kind === 'group' && item.items.some(element => element.id === selected))} style={{ left: position.x, top: position.y, width: position.width, height: position.height, '--node': componentColor(item, palette), '--node-ink': contrastText(componentColor(item, palette)) }} aria-haspopup={item.kind === 'group' ? 'dialog' : undefined} onClick={event => item.kind === 'group' ? openElements(item, event) : choose(item.id)}><span className="atlas-node-type">{item.id === primary?.id ? 'TOOL AI PRINCIPALE' : isTool ? 'TOOL AI' : t("COMPONENTE")}<span aria-hidden="true">↗</span></span><strong>{item.name}</strong><small>{item.id === primary?.id ? 'Centro del tuo setup' : isTool ? item.properties?.tool_id : item.items.length + ' elementi · ' + item.items.filter(element => model.linkedIds.has(element.id)).length + ' collegati'}</small></button>; })}
+          </div></div> : <div className="atlas-map-empty"><div className="atlas-empty-symbol" aria-hidden="true">⌁</div><h3>{legacy && kind === 'contractual' ? 'Le connessioni attendono una fonte' : 'Nessuna relazione in questa vista'}</h3><p>{legacy ? 'Questo report precede i contratti. Importa una nuova scansione delle istruzioni, configurazioni e cataloghi del tool per ricostruire i collegamenti.' : 'Cambia tipo, tool o selezione. Le risorse restano disponibili nell’inventario.'}</p>{(selected || query || category !== 'all' || tool !== 'all') && <button onClick={() => { choose(null); setQuery(''); setCategory('all'); setTool('all'); }}>{t("Azzera i filtri")}</button>}</div>}
+        </div>
+        <div className="atlas-toolbar"><span>{nodes.length} {t("nodi ·")} {edges.length} {t("collegamenti")}{mapPageCount > 1 ? ' · gruppo ' + (mapCurrent + 1) + '/' + mapPageCount : ''}</span><div>{mapPageCount > 1 && <><button aria-label={t("Componenti precedenti nella mappa")} disabled={!mapCurrent} onClick={() => setMapPage(mapCurrent - 1)}>←</button><button aria-label={t("Componenti successivi nella mappa")} disabled={mapCurrent + 1 >= mapPageCount} onClick={() => setMapPage(mapCurrent + 1)}>→</button></>}<button disabled={zoom <= MIN_ZOOM} aria-label={t("Riduci zoom")} onClick={() => zoomBy(1/1.2)}>−</button><button onClick={fit} aria-label={t("Adatta mappa")}>{Math.round(zoom * 100)}%</button><button disabled={zoom >= MAX_ZOOM} aria-label={t("Aumenta zoom")} onClick={() => zoomBy(1.2)}>+</button><button onClick={fit}>{t("Adatta")}</button><button aria-label={t("Sposta vista a sinistra")} onClick={() => panBy(100,0)}>←</button><button aria-label={t("Sposta vista in alto")} onClick={() => panBy(0,100)}>↑</button><button aria-label={t("Sposta vista in basso")} onClick={() => panBy(0,-100)}>↓</button><button aria-label={t("Sposta vista a destra")} onClick={() => panBy(-100,0)}>→</button>{document.fullscreenEnabled && <button onClick={async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await graphRoot.current.requestFullscreen(); } catch { setFullscreen(false); } }}>{fullscreen ? 'Esci' : 'Schermo intero'}</button>}</div></div>
+        <section className="atlas-connection-list"><div className="atlas-section-label">{kind === 'all' ? t("Collegamenti del setup") : RELATION_LABELS[kind]} <span>{selectionRelations.length} {t("relazioni")}</span></div>{selectionRelations.slice(0, PAGE_SIZE).map(edge => { const contract = model.byContract.get(edge.properties?.contract_id); return <button key={edge.id} aria-pressed={(selectedRelation === edge.id || edge.members?.includes(selectedRelation))} onClick={() => reveal(edge)}><span><strong>{model.byId.get(edge.source_id)?.name}</strong><i aria-hidden="true">→</i><strong>{model.byId.get(edge.target_id)?.name}</strong></span><small>{contract ? contract.reference_chain.join(' → ') + ' · ambito ' + contract.scope : RELATION_LABELS[relationKind(edge)] + ' · ' + (edge.description || '')}</small><b aria-hidden="true">↗</b></button>; })}{selectionRelations.length > PAGE_SIZE && <p>{t("Seleziona un elemento per restringere le relazioni; il registro completo è disponibile sotto la mappa.")}</p>}{!selectionRelations.length && <p>{t("La presenza nel workspace non dimostra un obbligo d’uso.")}</p>}</section>
+      </section>
+      <aside className="atlas-detail" aria-label={t("Dettaglio selezione")}><div className="atlas-section-label">{selectedGroup ? 'COMPONENTE / ELEMENTI' : detail ? 'ELEMENTO / FONTI' : 'LEGGERE LA MAPPA'}{detail && <button aria-label={t("Chiudi dettaglio")} onClick={() => choose(null)}>×</button>}</div><h2 ref={detailHeading} tabIndex={-1}>{detail?.name || 'Dal tool al singolo elemento.'}</h2>{detail ? <><p>{detail.description}</p>{!selectedGroup && <p>{connectionLabel(detail, model)}</p>}{detail.path && <code className="atlas-path">{detail.path}</code>}<p className="atlas-detail-kind">{CATEGORY_META[categoryFor(detail)]?.label || detail.kind}</p>{detail.parent_id && <button onClick={() => choose(detail.parent_id)}>↑ {model.byId.get(detail.parent_id)?.name || 'Componente contenitore'}</button>}{!selectedGroup && <><ContractPanel report={report} targetId={detail.id} selectedId={selectedEdge?.properties?.contract_id} /><RelationshipPanel report={detailReport} targetId={detail.id} /></>}<details className="atlas-contained" open={selectedGroup ? true : undefined}><summary>{t("Elementi contenuti (")}{contained.length})</summary>{contained.map(item => <button key={item.id} onClick={() => choose(item.id)}><strong>{item.name} ↗</strong><small>{item.description}</small><small>{connectionLabel(item, model)}</small></button>)}</details>{selectedEdge && <RelationshipPanel report={detailReport} relationshipId={selectedEdge.id} />}</> : <><p>{t("Apri una componente per esplorare gli elementi. Seleziona un elemento o un collegamento per leggerne descrizione e fonti.")}</p><ol className="atlas-reading-guide"><li><b>{t("Tool AI principale")}</b><span>{t("Il centro del setup che può utilizzare gli elementi.")}</span></li><li><b>{t("Componente")}</b><span>{t("Un insieme di elementi dello stesso tipo, come Skill o MCP server.")}</span></li><li><b>{t("Elemento")}</b><span>{t("Una singola unità con nome e descrizione, per esempio Skill evaluator.")}</span></li></ol><div className="atlas-guidance"><strong>{t("Collegamento e utilizzo")}</strong><p>{t("Un elemento può essere collegato anche dalla configurazione o dal catalogo del tool, senza un obbligo nelle istruzioni. La verifica dell’esecuzione resta distinta.")}</p></div><p className="atlas-muted">{report.workspace.name}</p></>}</aside>
+    </div>
+    <details className="atlas-register"><summary>{t("Registro completo · contratti e relazioni")}</summary><ContractPanel report={report} /><RelationshipPanel report={detailReport} /></details>
   </section>;
 }

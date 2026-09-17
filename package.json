@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "npm run test:awdf && npm run test:rules && npm run test:scanner && npm run test:simulator && npm run build",
+    "test": "npm run test:description && npm run test:awdf && npm run test:rules && npm run test:scanner && npm run test:simulator && npm run test:evaluator && npm run test:graph && npm run build",
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "build": "vite build",
@@ -13,11 +13,19 @@
     "validate:settings": "node scripts/validate-settings.mjs ai-setup-settings.json",
     "test:awdf": "node scripts/test-awdf.mjs",
     "test:simulator": "node scripts/test-simulator.mjs",
-    "test:scanner": "node scripts/test-scanner.mjs",
+    "test:scanner": "node scripts/test-scanner.mjs && node scripts/test-configuration-links.mjs",
     "test:rules": "node scripts/test-ai-tool-rules.mjs",
     "skill:install": "node scripts/install-skill.mjs",
     "validate:simulation": "node scripts/validate-awdf-simulation.mjs simulation-result.json ai-setup.json",
-    "scan:setup": "node scripts/scan-setup.mjs . ai-setup.json ai-setup-settings.json"
+    "scan:setup": "node scripts/describe-setup.mjs . ai-setup.json ai-setup-settings.json",
+    "test:evaluator": "node scripts/test-instruction-links.mjs && node --test scripts/test-evaluator.mjs",
+    "evaluate:setup": "node scripts/evaluate-setup.mjs",
+    "benchmark:evaluator": "node scripts/benchmark-evaluator.mjs",
+    "test:ui": "node scripts/prepare-evaluator-ui.mjs && node scripts/test-evaluator-ui.mjs && node scripts/test-design-ui.mjs && node scripts/test-component-ui.mjs && node scripts/test-viewport-ui.mjs && node scripts/test-palette-ui.mjs",
+    "test:graph": "node scripts/test-graph-model.mjs",
+    "describe:setup": "node scripts/describe-setup.mjs . ai-setup.json ai-setup-settings.json",
+    "test:description": "node scripts/test-description.mjs",
+    "test:description:ui": "npm run test:description && node scripts/test-description-ui.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
