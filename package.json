@@ -24,7 +24,7 @@
     "test:ui": "node scripts/prepare-evaluator-ui.mjs && node scripts/test-evaluator-ui.mjs && node scripts/test-design-ui.mjs && node scripts/test-component-ui.mjs && node scripts/test-viewport-ui.mjs && node scripts/test-palette-ui.mjs",
     "test:graph": "node scripts/test-graph-model.mjs",
     "describe:setup": "node scripts/describe-setup.mjs . ai-setup.json ai-setup-settings.json",
-    "test:description": "node scripts/test-description.mjs",
+    "test:description": "node scripts/test-description.mjs && node scripts/test-description-regressions.mjs",
     "test:description:ui": "npm run test:description && node scripts/test-description-ui.mjs"
   },
   "dependencies": {

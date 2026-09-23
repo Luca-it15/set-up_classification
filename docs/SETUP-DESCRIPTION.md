@@ -27,3 +27,13 @@ The exact predicates and equal weights are project policy, not vendor-supplied r
 ## Limitations
 
 The source snapshot is redacted and bounded by read limits; it is not an atomic filesystem snapshot. Hashes detect changes, not provenance authenticity. The parser recognizes only a subset of configuration and instruction syntax. Matching a proxy declaration is evidence of configuration, not proof the process is running. New static predicates require a maintained source, applicability, explicit unknown behavior and regression tests.
+
+## Scope and reference handling
+
+Task paths and workflow resource paths/scopes in the settings are workspace-relative. Each authorized root is evaluated separately before its paths are projected into the report's relative, anonymized or absolute representation. Instructions in sibling roots never supply a missing resource in another root.
+
+Declared workflow resources remain inventory entries even if discovery cannot locate them. Required resources without a demonstrated binding produce insufficient evidence; optional resources do not lower the checklist score. A declaration does not prove installation or availability.
+
+Local navigation links are checked at their source without recursively loading the destination as instructions. Recognized imperative directives and Claude imports are traversed; genuine instruction cycles remain failures. Excluded targets are recorded as excluded rather than missing.
+
+A multi-document collection with a recognized consultation prescription can qualify as a knowledge base regardless of its directory name. Existing document components are reused as members; unbound collections and isolated documents are not promoted automatically.

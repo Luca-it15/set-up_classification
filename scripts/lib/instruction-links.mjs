@@ -65,13 +65,15 @@ export function applicableInstructions(artifacts, toolId, taskPath = '.', toolMo
     return true;
   });
 }
-export function inspectInstructionReferences({ artifacts, files, readText }) {
+export function inspectInstructionReferences({ artifacts, files, readText, referenceStatus = (target, file) => file ? 'present' : 'missing' }) {
   const byPath = new Map(files.map(file => [normalize(file.relative), file]));
-  const references = [], issues = [], visitedPaths = new Set();
-  const visit = (file, chain = []) => {
+  const references = [], issues = [], visitedPaths = new Set(), completed = new Set();
+  const visit = (file, chain = [], toolIds = []) => {
     const source = normalize(file.relative);
     if (chain.includes(source)) { issues.push({ code: 'instruction_reference_cycle', path: source, chain: [...chain, source] }); return; }
     if (chain.length > 16) { issues.push({ code: 'instruction_reference_depth', path: source }); return; }
+    const visitKey = JSON.stringify([source, [...toolIds].sort()]);
+    if (completed.has(visitKey)) return;
     visitedPaths.add(source);
     let content;
     try { content = readText(file); } catch { issues.push({ code: 'instruction_reference_unreadable', path: source }); return; }
@@ -80,12 +82,17 @@ export function inspectInstructionReferences({ artifacts, files, readText }) {
       if (!resolved) continue;
       if (resolved.outside) { issues.push({ code: 'instruction_reference_outside_scope', path: source, line: number }); continue; }
       const targetFile = byPath.get(resolved.path);
-      references.push({ source_path: source, target_path: resolved.path, line: number, excerpt: line, status: targetFile ? 'present' : 'missing' });
-      if (!targetFile) issues.push({ code: 'instruction_reference_missing', path: source, target_path: resolved.path, line: number });
-      else if (chain.includes(resolved.path) || resolved.path === source || !visitedPaths.has(resolved.path)) visit(targetFile, [...chain, source]);
+      const effectiveStatus = referenceStatus(resolved.path, targetFile);
+      references.push({ source_path: source, target_path: resolved.path, line: number, excerpt: line, status: effectiveStatus });
+      if (effectiveStatus !== 'present') issues.push({ code: 'instruction_reference_' + effectiveStatus, path: source, target_path: resolved.path, line: number });
+      // Navigation links do not load instructions. Only recognized directives/imports do.
+      const command = directive(line);
+      const loadsInstructions = (command && !command.conditions.length) || (ref.imported && toolIds.includes('claude_code'));
+      if (targetFile && effectiveStatus === 'present' && loadsInstructions) visit(targetFile, [...chain, source], toolIds);
     }
+    completed.add(visitKey);
   };
-  for (const artifact of artifacts.filter(item => item.category === 'behavior_contract' && item.activation !== 'shadowed_by_override')) visit(artifact.file);
+  for (const artifact of artifacts.filter(item => item.category === 'behavior_contract' && item.activation !== 'shadowed_by_override')) visit(artifact.file, [], artifact.recognizedToolIds || []);
   return { references, issues, visited_paths: [...visitedPaths] };
 }
 export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText, files, taskPath = '.', toolModes = {}, incomplete = false, intended = [] }) {

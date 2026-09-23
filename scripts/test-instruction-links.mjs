@@ -13,7 +13,7 @@ assert.equal(scan('Use `llm-wiki/`.',{artifacts:[{...artifact('AGENTS.md','Use `
 assert.equal(scan('',{artifacts:[artifact('frontend/AGENTS.md','Use `../llm-wiki/`.')], taskPath:'backend/a.js'}).bindings.length,0);
 assert.equal(scan('',{artifacts:[artifact('frontend/AGENTS.md','Use `../llm-wiki/`.')], taskPath:'frontend/a.js'}).bindings.length,1);
 assert.equal(scan('',{incomplete:true}).gaps[0].status,'insufficient_evidence');
-const files = [{relative:'AGENTS.md',text:'[Policy](policy.md)\n[Missing](missing.md)\n@../outside.md'}, {relative:'policy.md',text:'[Cycle](AGENTS.md)'}];
+const files = [{relative:'AGENTS.md',text:'Follow [Policy](policy.md)\n[Missing](missing.md)\n@../outside.md'}, {relative:'policy.md',text:'Follow [Cycle](AGENTS.md)'}];
 const refs = inspectInstructionReferences({artifacts:[artifact('AGENTS.md','')].map(a=>({...a,file:files[0]})),files,readText:f=>f.text});
 assert.ok(refs.issues.some(issue=>issue.code==='instruction_reference_cycle'));
 assert.ok(refs.issues.some(issue=>issue.code==='instruction_reference_missing'));

@@ -9,7 +9,7 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import { createStaticEvaluation, EVALUATION_KEY } from '../src/evaluator/index.js';
 import { snapshotId } from './lib/snapshot.mjs';
 import { CONTRACT_KEY } from '../src/evaluator/contracts.js';
-import { analyzeInstructionLinks, inspectInstructionReferences, applicableInstructions, instructionScope } from './lib/instruction-links.mjs';
+import { analyzeInstructionLinks, inspectInstructionReferences, applicableInstructions as applicableInstructionsForTask, instructionScope } from './lib/instruction-links.mjs';
 import { analyzeAiToolSetup } from './lib/ai-tool-rules.mjs';
 import { validateAwdfFile } from './validate-awdf.mjs';
 
@@ -97,6 +97,7 @@ const sensitive = /(^|\/)(sessions?|chats?|conversations?|\.env(?:\..+)?|.*(?:se
 const isSensitiveFile = file => [file?.relative, file?.localRelative, file?.absolute, file?.linkTarget].filter(Boolean).some(value => sensitive.test(String(value).replaceAll('\\', '/')));
 const files = [];
 const inaccessiblePaths = [];
+const excludedPaths = [];
 const repositoryRoots = new Set();
 function walk(dir, workspaceRoot) {
   let entries;
@@ -109,7 +110,10 @@ function walk(dir, workspaceRoot) {
     const absolute = path.join(dir, item.name);
     const localRelative = path.relative(workspaceRoot, absolute).replaceAll('\\', '/');
     if (item.name.toLowerCase() === '.git') repositoryRoots.add(dir);
-    if (isExcluded(item.name, localRelative)) continue;
+    if (isExcluded(item.name, localRelative)) {
+      excludedPaths.push(roots.length > 1 ? rootLabels.get(workspaceRoot) + '/' + localRelative : localRelative);
+      continue;
+    }
     const rootLabel = rootLabels.get(workspaceRoot);
     const relative = roots.length > 1 ? `${rootLabel}/${localRelative}` : localRelative;
     if (item.isDirectory()) walk(absolute, workspaceRoot);
@@ -296,6 +300,18 @@ if (declarations.length) {
   toolAnalysis.resolution.rule = 'Explicit tool roles; signatures corroborate configuration only. Declared runtime versions remain unverified.';
 }
 const toolModes = { ...Object.fromEntries(declarations.map(item => [item.id, item.mode])), ...configuredWorkspace.tool_modes };
+// Settings task paths are relative to each authorized workspace, not to the report.
+const workspaceTaskPath = (workspaceRoot, taskPath = '.') => roots.length > 1
+  ? path.posix.join(rootLabels.get(workspaceRoot), taskPath.replaceAll('\\', '/')) : taskPath;
+function applicableInstructions(artifacts, toolId, taskPath = '.', modes = {}) {
+  return artifacts.filter(item => applicableInstructionsForTask([item], toolId, workspaceTaskPath(item.file.workspaceRoot, taskPath), modes).length);
+}
+function referenceStatus(target, file) {
+  if (excludedPaths.some(excluded => target === excluded || target.startsWith(excluded + '/'))) return 'excluded';
+  if (file && isSensitiveFile(file)) return 'excluded';
+  if (inaccessiblePaths.some(item => target === item.path || target.startsWith(item.path + '/'))) return 'unreadable';
+  return file ? 'present' : 'missing';
+}
 const artifactPathValues = new Set(toolAnalysis.artifacts.flatMap(artifact => [
   artifact.path,
   artifact.artifactPath,
@@ -574,17 +590,20 @@ for (const file of repositoryDocuments) {
 }
 // Describe additional Markdown collections regardless of folder naming.
 if (descriptionOnly) {
-  const represented = new Set([...rawComponentPaths.values()]);
+  const represented = new Map(components.map(component => [rawComponentPaths.get(component.id), component]));
   const groups = new Map();
   for (const file of files.filter(file => /\.mdx?$/i.test(file.localRelative) && !isSensitiveFile(file) && !/(^|\/)tests?\/fixtures\//i.test(file.localRelative))) {
-    if (represented.has(file.relative)) continue;
+    const existing = represented.get(file.relative);
+    if (existing && (existing.kind !== 'document' || existing.parent_id || existing.properties.setup_category !== 'documentation')) continue;
     const dir = path.posix.dirname(file.relative);
     if (!groups.has(dir)) groups.set(dir, []);
     groups.get(dir).push(file);
   }
   for (const [dir, members] of groups) {
-    const parent = members.length > 1 ? addComponent('folder', 'documentation_collection', path.posix.basename(dir) || 'Markdown', dir, 'documentation', 'Raccolta Markdown rilevata; funzione e consultazione da verificare.', { properties: { discovery_status: 'candidate', source_paths: members.map(file => reportPath(file.relative)) } }) : null;
+    const parent = members.length > 1 ? addComponent('folder', 'documentation_collection', path.posix.basename(dir) || 'Markdown', dir, 'documentation', 'Raccolta Markdown rilevata; funzione e consultazione da verificare.', { properties: { document_count: members.length, discovery_status: 'candidate', source_paths: members.map(file => reportPath(file.relative)) } }) : null;
     for (const file of members) {
+      const existing = represented.get(file.relative);
+      if (existing) { if (parent) existing.parent_id = parent; continue; }
       const details = textDetails(file);
       addComponent('document', 'markdown_source', path.basename(file.relative), file.relative, 'documentation', details.description, { ...details.details, parent_id: parent });
     }
@@ -724,23 +743,39 @@ for (const diagnostic of toolAnalysis.diagnostics) {
   recommendations.push({ id: recommendationId, priority: diagnostic.severity === 'high' ? 'quick_win' : 'short_term', title: `Correggere ${diagnostic.code.replaceAll('_', ' ')}`, description: safeDiagnosticMessage, finding_ids: [findingId], expected_result: 'Regole vendor applicabili senza attribuzioni o precedenze implicite.', completion_criteria: ['Il path, lo schema e lo scope risultano validi secondo la documentazione ufficiale del vendor.'], effort: 'small', status: 'proposed' });
 }
 const assessments = [];
-const linkAnalysis = analyzeInstructionLinks({
-  artifacts: toolAnalysis.artifacts,
-  targets: components.filter(component => !component.parent_id && component.subtype !== 'reference_ai_coding_tool').map(component => ({ id: component.id, path: rawComponentPaths.get(component.id) })),
+// Keep declared resources in the inventory even when discovery found no target.
+const intendedByRoot = new Map(roots.map(workspaceRoot => [workspaceRoot, (configuredWorkspace.workflow_components || []).map(item => ({
+  ...item, path: workspaceTaskPath(workspaceRoot, item.path), scope: workspaceTaskPath(workspaceRoot, item.scope || '.')
+}))]));
+for (const intended of intendedByRoot.values()) for (const item of intended) {
+  if (components.some(component => rawComponentPaths.get(component.id) === item.path)) continue;
+  addComponent('other', 'declared_workflow_resource', path.posix.basename(item.path), item.path, 'other',
+    'Risorsa dichiarata nei settings; presenza e disponibilità non confermate.', {
+      evidenceType: 'configuration', evidencePath: settingsPath,
+      evidenceSummary: 'Risorsa dichiarata in workspace.workflow_components.',
+      properties: { discovery_status: 'not_observed', lifecycle: { declared: true, configured: false, availability_verified: false, invocation_observed: false, outcome_verified: false } }
+    });
+}
+const analyses = roots.map(workspaceRoot => analyzeInstructionLinks({
+  artifacts: toolAnalysis.artifacts.filter(item => item.file.workspaceRoot === workspaceRoot),
+  targets: components.filter(component => component.subtype !== 'reference_ai_coding_tool' && (!component.parent_id || intendedByRoot.get(workspaceRoot).some(item => item.path === rawComponentPaths.get(component.id))))
+    .map(component => ({ id: component.id, path: rawComponentPaths.get(component.id) }))
+    .filter(item => roots.length === 1 || item.path === rootLabels.get(workspaceRoot) || item.path?.startsWith(rootLabels.get(workspaceRoot) + '/')),
   toolIds: toolAnalysis.resolution.applicable_tool_ids,
   readText: safeText,
-  taskPath: configuredWorkspace.task_path || '.',
-  toolModes,
-  files,
-  intended: configuredWorkspace.workflow_components || [],
-  incomplete: inaccessiblePaths.length > 0 || toolAnalysis.artifacts.filter(item=>item.recognizedToolIds.includes('codex') && item.category==='behavior_contract').reduce((sum,item)=>sum+Buffer.byteLength(safeText(item.file)),0)>32768
-});
+  taskPath: workspaceTaskPath(workspaceRoot, configuredWorkspace.task_path || '.'),
+  toolModes, files,
+  intended: intendedByRoot.get(workspaceRoot),
+  incomplete: inaccessiblePaths.length > 0 || toolAnalysis.artifacts.filter(item => item.file.workspaceRoot === workspaceRoot && item.recognizedToolIds.includes('codex') && item.category === 'behavior_contract').reduce((sum,item) => sum + Buffer.byteLength(safeText(item.file)), 0) > 32768
+}));
+const linkAnalysis = { ...analyses[0], task_path: configuredWorkspace.task_path || '.' };
+for (const key of ['bindings', 'gaps', 'references', 'records']) linkAnalysis[key] = analyses.flatMap(item => item[key]);
 for (const binding of linkAnalysis.bindings) {
   const sourceId = referenceToolComponentIds.get(binding.tool_id);
   const targetComponent = components.find(item => item.id === binding.target_id);
-  if (targetComponent?.subtype === 'documentation_collection' && targetComponent.properties?.knowledge_candidate) {
+  if (targetComponent?.subtype === 'documentation_collection' && targetComponent.properties?.document_count >= 2) {
     targetComponent.kind = 'knowledge_base';
-    targetComponent.subtype = targetComponent.properties.knowledge_candidate;
+    targetComponent.subtype = targetComponent.properties.knowledge_candidate || 'managed_document_corpus';
     targetComponent.description = `Corpus di ${targetComponent.properties.document_count} fonti la cui consultazione è prescritta al tool AI.`;
     targetComponent.properties = { ...targetComponent.properties, setup_category: 'knowledge_bases', definition_standard: 'managed_retrievable_corpus_v1', knowledge_item_count: targetComponent.properties.document_count, retrieval_mechanism: 'filesystem_collection' };
     targetComponent.tags = ['knowledge_bases'];
@@ -771,7 +806,7 @@ for (const gap of linkAnalysis.gaps.filter(gap => linkAnalysis.records.some(reco
   recommendations.push({ id: rec, priority: 'short_term', title: `Esplicitare l’uso di ${target.name}`, description: gap.suggested_action, finding_ids: [id], expected_result: 'Collegamento tracciabile a una regola applicabile se la risorsa serve al task.', completion_criteria: ['La regola indica quando e come consultare la risorsa; oppure viene documentato che non è necessaria.'], effort: 'small', status: 'proposed' });
 }
 const applicableArtifacts = [...new Set(toolAnalysis.resolution.applicable_tool_ids.flatMap(id => applicableInstructions(toolAnalysis.artifacts, id, configuredWorkspace.task_path || '.', toolModes)))];
-const referenceInspection = inspectInstructionReferences({ artifacts: applicableArtifacts, files, readText: safeText });
+const referenceInspection = inspectInstructionReferences({ artifacts: applicableArtifacts, files, readText: safeText, referenceStatus });
 const snapshotFiles = [...materialCache.values()].filter(item => !isSensitiveFile(item.file)).map(item => {
   const content = item.content.split(/\r?\n/).map(line => descriptionOnly
     ? line.replace(/((?:api[_-]?key|token|password|secret|authorization)\s*[=:]\s*).*/gi, '$1[REDACTED]')
