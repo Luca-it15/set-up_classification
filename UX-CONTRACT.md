@@ -54,3 +54,23 @@ Il clic su una componente apre subito una finestra modale nativa con la lista de
 Zoom e navigazione: useGraphViewport gestisce una camera con traslazione libera e scala 20–300%, zoom ancorato al puntatore, trascinamento mouse/touch e pizzico. La scelta manuale dello zoom persiste durante resize e selezione; Adatta ripristina la vista centrata. Frecce e pulsanti offrono alternative al trascinamento; +/− zoomano, 0/Home adattano. I gesti sono limitati alla superficie del grafico.
 
 Palette componenti: il colore scelto controlla lo sfondo pieno e il bordo del nodo aggregato, le linee e le frecce verso la componente e gli accenti della lista elementi. Hover e selezione preservano il colore. paletteColors sceglie testo nero/bianco per contrasto sul colore utente; il tool centrale mantiene sfondo/bordo/testo configurati separatamente. Anche le categorie presenti solo in elementi annidati compaiono nelle impostazioni.
+
+## Setup builder and sharing — 2026-09-23
+
+Source: the user request for independent HTML/PNG exports and a setup builder with generated instructions. No installation, workspace overwrite or automatic provider configuration is implied.
+
+| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
+|---|---|---|---|---|
+| Local download | src/utils/download.js | Format-specific Blob/text | AWDF, settings, HTML, PNG, Markdown | Browser downloads |
+| Instruction authoring | SetupBuilder + setupBuilder.js | Explicit component draft | Codex → AGENTS.md; Claude Code → CLAUDE.md | Scanner round trips |
+| Export diagram | setupExport.js + graphModel.js | Report and user palette | HTML/full inventory; PNG/map inventory | Offline load and PNG decode |
+| Sharing modal | Modal.jsx | Existing native-dialog contract | Escape, containment, focus restoration | Browser error/retry and keyboard |
+| Builder form | Native controls + validateBuilder | SETUP_COMPONENT_TYPES | Add/edit, import from report, remove/undo | Validation focus and persistence |
+
+App owns the draft independently of the report. Session storage preserves it in the current tab across navigation and refresh. If storage fails, the draft remains in memory, a message explains the limitation, and page unload is guarded. Removal offers Undo. Invalid fields retain their values and receive associated errors and focus on submit. Generation does not clear the draft. No draft content is sent to a server. New users can enter the builder from initial settings without authorizing scan roots.
+
+New UI and generated prose follow the interface language. Names, paths, identifiers and host filenames remain literal. Conditional usage is emitted on the same line as its instruction so the scanner cannot treat it as unconditional. Runtime integrations require separate configuration.
+
+Exports retain names and descriptions. Structured component paths are opt-in; paths within free text are not automatically redacted. Configuration snapshots and arbitrary extensions are not embedded. HTML escapes text and uses a restrictive offline CSP; SVG has no external resources. PNG prevents duplicate requests while busy and retains the modal on failure for retry or HTML export. Oversized images fail explicitly instead of omitting elements.
+
+Verification: scripts/test-builder-export.mjs and scripts/test-builder-export-ui.mjs; evidence in .tmp-evidence-checks/builder-export/. Existing map and evaluation contracts remain authoritative.

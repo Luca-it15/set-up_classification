@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "npm run test:description && npm run test:awdf && npm run test:rules && npm run test:scanner && npm run test:simulator && npm run test:evaluator && npm run test:graph && npm run build",
+    "test": "npm run test:builder-export && npm run test:description && npm run test:awdf && npm run test:rules && npm run test:scanner && npm run test:simulator && npm run test:evaluator && npm run test:graph && npm run build",
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "build": "vite build",
@@ -25,7 +25,9 @@
     "test:graph": "node scripts/test-graph-model.mjs",
     "describe:setup": "node scripts/describe-setup.mjs . ai-setup.json ai-setup-settings.json",
     "test:description": "node scripts/test-description.mjs && node scripts/test-description-regressions.mjs",
-    "test:description:ui": "npm run test:description && node scripts/test-description-ui.mjs"
+    "test:description:ui": "npm run test:description && node scripts/test-description-ui.mjs",
+    "test:builder-export": "node scripts/test-builder-export.mjs",
+    "test:builder-export:ui": "node scripts/test-description.mjs && node scripts/test-builder-export-ui.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

@@ -11,6 +11,9 @@ import { EvaluationPage } from './components/EvaluationPage.jsx';
 import { PromptLabPage } from './components/PromptLabPage.jsx';
 import { SettingsEditor } from './components/SettingsEditor.jsx';
 import { SetupGraph } from './components/SetupGraph.jsx';
+import { SetupBuilder } from './components/SetupBuilder.jsx';
+import { ExportSetupDialog } from './components/ExportSetupDialog.jsx';
+import { readBuilderDraft } from './utils/setupBuilder.js';
 import {
   categoryFor,
   clonePalette,
@@ -42,6 +45,19 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(() => !appSettings.initialized || !appSettings.workspace?.folders?.length);
   const [settingsSection, setSettingsSection] = useState('workspace');
   const [activeView, setActiveView] = useState('setup');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [builderDraft, setBuilderDraft] = useState(readBuilderDraft);
+  const [builderStored, setBuilderStored] = useState(true);
+  useEffect(() => {
+    try { sessionStorage.setItem('awdf-builder-v1', JSON.stringify(builderDraft)); setBuilderStored(true); }
+    catch { setBuilderStored(false); }
+  }, [builderDraft]);
+  useEffect(() => {
+    if (builderStored || (!builderDraft.name && !builderDraft.components.length)) return;
+    const guard = event => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [builderStored, builderDraft]);
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState(null);
   const [runtimeEvaluation, setRuntimeEvaluation] = useState(() => evaluateChatExamples(reportFile, reportChatExamples(reportFile)));
@@ -82,7 +98,7 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => { document.title = t(({setup:t("Mappa setup"),assessment:t("Valutazione e roadmap"),simulator:'Prompt Lab'})[activeView]) + ' · AI Setup Atlas'; }, [activeView, language]);
+  useEffect(() => { document.title = t(({setup:t("Mappa setup"),assessment:t("Valutazione e roadmap"),simulator:'Prompt Lab',builder:t('Setup builder')})[activeView]) + ' · AI Setup Atlas'; }, [activeView, language]);
 
   const updatePaletteColor = (section, key, value) => setPaletteConfigs(configs => ({ ...configs, [paletteId]: { ...configs[paletteId], [section]: { ...configs[paletteId][section], [key]: value } } }));
   const resetPalette = () => setPaletteConfigs(configs => ({ ...configs, [paletteId]: clonePalette(PALETTES[paletteId]) }));
@@ -164,10 +180,11 @@ export default function App() {
   };
 
   return <main className={`app ${palette.mode}`} style={{ '--canvas': palette.canvas.background, '--grid': palette.canvas.grid, '--ink': palette.centralTool.text, '--central': palette.centralTool.background, '--central-border': palette.centralTool.border }}>
-    <header className="app-header"><div className="brand"><div className="logo">⌘</div><div><strong>AI Setup <em>Atlas</em></strong><span>{report.workspace.name}</span></div></div><div className="header-actions"><button onClick={() => reportInput.current.click()}>{t("↑ Importa AWDF")}</button><input ref={reportInput} hidden type="file" accept=".json" onChange={uploadReport} /><button className="ghost" onClick={() => download(report, 'ai-setup.json')}>{t("↓ Esporta AWDF")}</button><button className="ghost" onClick={() => { setSettingsSection('workspace'); setSettingsOpen(true); }}>{t("⚙ Impostazioni")}</button><input ref={settingsInput} hidden type="file" accept=".json" onChange={importSettings} /><button className="ghost" onClick={() => setActiveView('simulator')}>▷ Prompt Lab</button></div></header>
-    <nav className="view-tabs" aria-label={t("Sezioni del report")}><button aria-current={activeView === 'setup' ? 'page' : undefined} className={activeView === 'setup' ? 'active' : ''} onClick={() => setActiveView('setup')}>{t("Mappa setup")}</button><button aria-current={activeView === 'assessment' ? 'page' : undefined} className={activeView === 'assessment' ? 'active' : ''} onClick={() => setActiveView('assessment')}>{t("Valutazione e roadmap")}</button><button aria-current={activeView === 'simulator' ? 'page' : undefined} className={activeView === 'simulator' ? 'active' : ''} onClick={() => setActiveView('simulator')}>Prompt Lab</button></nav>
+    <header className="app-header"><div className="brand"><div className="logo">⌘</div><div><strong>AI Setup <em>Atlas</em></strong><span>{report.workspace.name}</span></div></div><div className="header-actions"><button onClick={() => reportInput.current.click()}>{t("↑ Importa AWDF")}</button><input ref={reportInput} hidden type="file" accept=".json" onChange={uploadReport} /><button className="ghost" onClick={() => download(report, 'ai-setup.json')}>{t("↓ Esporta AWDF")}</button><button className="ghost" onClick={() => setExportOpen(true)}>{t("Condividi setup")}</button><button className="ghost" onClick={() => { setSettingsSection('workspace'); setSettingsOpen(true); }}>{t("⚙ Impostazioni")}</button><input ref={settingsInput} hidden type="file" accept=".json" onChange={importSettings} /><button className="ghost" onClick={() => setActiveView('simulator')}>▷ Prompt Lab</button></div></header>
+    <nav className="view-tabs" aria-label={t("Sezioni del report")}><button aria-current={activeView === 'setup' ? 'page' : undefined} className={activeView === 'setup' ? 'active' : ''} onClick={() => setActiveView('setup')}>{t("Mappa setup")}</button><button aria-current={activeView === 'assessment' ? 'page' : undefined} className={activeView === 'assessment' ? 'active' : ''} onClick={() => setActiveView('assessment')}>{t("Valutazione e roadmap")}</button><button aria-current={activeView === 'simulator' ? 'page' : undefined} className={activeView === 'simulator' ? 'active' : ''} onClick={() => setActiveView('simulator')}>Prompt Lab</button><button aria-current={activeView === 'builder' ? 'page' : undefined} className={activeView === 'builder' ? 'active' : ''} onClick={() => setActiveView('builder')}>{t('Setup builder')}</button></nav>
     {notice && !settingsOpen && <div className="notice" role="status" aria-live="polite">{notice}<button aria-label={t("Chiudi messaggio")} onClick={() => setNotice('')}>×</button></div>}
-    {activeView === 'setup' ? <SetupGraph report={report} palette={palette} /> : activeView === 'assessment' ? <EvaluationPage report={report} runtimeEvaluation={runtimeEvaluation} openSimulator={() => setActiveView('simulator')} /> : <PromptLabPage prompt={prompt} setPrompt={setPrompt} run={runSimulation} result={result} report={report} setNotice={setNotice} setRuntimeEvaluation={setRuntimeEvaluation} />}
-    {settingsOpen && <SettingsEditor settings={appSettings} setSettings={setAppSettings} section={settingsSection} setSection={setSettingsSection} paletteId={paletteId} setPaletteId={setPaletteId} palette={palette} groups={settingsGroups} updateColor={updatePaletteColor} reset={resetPalette} importSettings={() => settingsInput.current.click()} exportSettings={exportSettings} notice={notice} saving={saving} save={saveSettings} close={() => setSettingsOpen(false)} setNotice={setNotice} />}
+    {activeView === 'builder' ? <SetupBuilder draft={builderDraft} setDraft={setBuilderDraft} stored={builderStored} report={report} setNotice={setNotice}/> : activeView === 'setup' ? <SetupGraph report={report} palette={palette} /> : activeView === 'assessment' ? <EvaluationPage report={report} runtimeEvaluation={runtimeEvaluation} openSimulator={() => setActiveView('simulator')} /> : <PromptLabPage prompt={prompt} setPrompt={setPrompt} run={runSimulation} result={result} report={report} setNotice={setNotice} setRuntimeEvaluation={setRuntimeEvaluation} />}
+    {exportOpen && <ExportSetupDialog report={report} palette={palette} language={language} close={() => setExportOpen(false)} setNotice={setNotice}/>}
+    {settingsOpen && <SettingsEditor openBuilder={() => { setSettingsOpen(false); setActiveView('builder'); }} settings={appSettings} setSettings={setAppSettings} section={settingsSection} setSection={setSettingsSection} paletteId={paletteId} setPaletteId={setPaletteId} palette={palette} groups={settingsGroups} updateColor={updatePaletteColor} reset={resetPalette} importSettings={() => settingsInput.current.click()} exportSettings={exportSettings} notice={notice} saving={saving} save={saveSettings} close={() => setSettingsOpen(false)} setNotice={setNotice} />}
   </main>;
 }

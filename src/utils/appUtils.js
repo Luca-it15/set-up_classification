@@ -1,3 +1,4 @@
+import { saveText } from './download.js';
 import { DESCRIPTION_KEY, validateDescription } from '../evaluator/description.js';
 import { classifyDescription, withStaticClassification } from '../evaluator/static-classifier.js';
 import { validateRuntimeProofs } from '../evaluator/runtime.js';
@@ -68,12 +69,7 @@ export function download(value, name) {
     delete value.extensions['org.awdf.evaluation'];
     delete value.extensions[CONTRACT_KEY];
   }
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  saveText(JSON.stringify(value, null, 2), name, 'application/json;charset=utf-8');
 }
 
 function contentText(content) {

@@ -36,3 +36,5 @@ Object.assign(messages, {
     "Ferramenta ou ferramentas de IA principais no centro e componentes à volta. Cada linha resume ligações reais a elementos definidos por instruções, configurações ou catálogos."
   ]
 });
+import { featureMessages } from './featureMessages.js';
+Object.assign(messages, featureMessages);

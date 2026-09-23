@@ -158,3 +158,13 @@ Format references: [AWDF specification](specification/AWDF-SPECIFICATION.md), [c
 ## License
 
 [MIT](LICENSE)
+
+## Share a setup or build a new one
+
+**Share setup** exports the current report as standalone HTML or PNG. HTML contains an offline diagram, component descriptions and relationship register. PNG contains all map groups and their element names, independently of current zoom, filters or pagination. Structured component paths are optional. Names and descriptions remain visible: review them before sharing. Diagrams exceeding readable PNG limits can still be exported as HTML.
+
+**Setup builder** creates a draft independently of the report. Choose Codex or Claude Code, enter the objective, and add components manually or from the report. Each component has a type, name, path/configured identifier, description and optional usage condition. Components can be edited, removed and restored with Undo.
+
+The preview generates AGENTS.md for Codex or CLAUDE.md for Claude Code in the selected interface language. Save it at the project root and review it before merging with existing instructions. These files prescribe usage; they do not install plugins, configure MCP or switch runtime models. The draft survives refresh in the current browser tab when session storage is available. No scan folders are needed to use the builder.
+
+Tests: npm run test:builder-export and npm run test:builder-export:ui. The browser test uses Playwright, installed locally or supplied through AWDF_NODE_MODULES.

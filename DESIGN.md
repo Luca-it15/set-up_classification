@@ -127,3 +127,11 @@ For descriptive AWDF imports, rule details show source links and deterministic a
 ## Interface languages (2026-09-12)
 
 Italian, English, Spanish, French, German and Portuguese use a local UI catalog. Settings has a native language select with immediate preview. Keep source evidence, identifiers and user content unchanged. Longer translations wrap naturally within existing layouts.
+
+## Builder and offline sharing — 2026-09-23
+
+The setup builder is a fourth application view. It preserves the runtime token system (model B), native controls and existing typography. The instruction-file preview sits beside the component editor: each selected resource has a visible counterpart in AGENTS.md or CLAUDE.md. Below 1000px the preview follows the form in document flow; long preview text scrolls internally.
+
+Sharing uses a native modal and the existing semantic surface/border/text tokens. Offline diagrams inherit the user-owned graph palette through createSetupExport and the existing contrast helper. The complete group map and element inventory are independent of viewport cropping. HTML also carries the full component descriptions and relationship register, with inline styles and SVG and no external scripts, fonts or assets.
+
+No global palette or typography values changed. New forms, preview, modal and feedback consume the documented --ui-*, --font-* and radius tokens.
