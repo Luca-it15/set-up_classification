@@ -44,6 +44,10 @@ export function buildGraphModel(report) {
   const groups = new Map(), groupFor = new Map();
   for (const item of components.filter(isVisibleSetupComponent)) {
     if (tools.some(tool => tool.id === item.id)) continue;
+    // Documentation is visible in the setup map only when an AI-host link
+    // reaches the document or its collection. It remains in the AWDF inventory.
+    if ((item.kind === 'document' && item.subtype !== 'behavior_contract' && !linkedIds.has(item.id) && !linkedIds.has(item.parent_id))
+      || (item.subtype === 'documentation_collection' && !linkedIds.has(item.id))) continue;
     // A skill definition and its support files describe one element, not additional skills.
     if (item.subtype === 'agent_skill_artifact' || /_collection$/.test(item.subtype || '') || item.subtype === 'custom_agents') continue;
     const category = categoryFor(item), id = 'group:'+category, meta = CATEGORY_META[category] || CATEGORY_META.other;
@@ -54,10 +58,15 @@ export function buildGraphModel(report) {
 }
 
 export function layoutGraph(nodes, relations, toolIds, primaryId = null) {
-  const positions = new Map(), hub = nodes.find(node => node.id === primaryId);
-  const orbit = nodes.filter(node => node.id !== hub?.id);
+  const primaryIds = Array.isArray(primaryId) ? primaryId : primaryId ? [primaryId] : [];
+  const hubs = nodes.filter(node => primaryIds.includes(node.id));
+  const positions = new Map();
+  const orbit = nodes.filter(node => !primaryIds.includes(node.id));
   const width = 1220, height = 930, cx = width / 2, cy = height / 2;
-  if (hub) positions.set(hub.id, { x: cx - 140, y: cy - 80, width: 280, height: 160 });
+  hubs.forEach((hub, index) => positions.set(hub.id, {
+    x: cx - 140,
+    y: cy - 80 + (index - (hubs.length - 1) / 2) * 175, width: 280, height: 160
+  }));
   orbit.forEach((node, index) => {
     const angle = -Math.PI / 2 + index * Math.PI * 2 / Math.max(orbit.length, 1);
     positions.set(node.id, { x: cx + Math.cos(angle) * 460 - 110, y: cy + Math.sin(angle) * 350 - 48, width: 220, height: 96 });

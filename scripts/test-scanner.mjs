@@ -74,7 +74,7 @@ try {
   if (standaloneDocs.length !== 2) throw new Error('README e documenti singoli non devono diventare knowledge base.');
   if (report.methodology.tool_usage_standard?.version !== 'tool_usage_evidence_v1') throw new Error('Standard di evidenza tool assente dal report.');
   const referenceTools = report.extensions?.['ai-setup-classifier.reference-tools']?.data;
-  if (referenceTools?.status !== 'multiple' || referenceTools.primary_tool_ids.length !== 0) throw new Error('Il setup multi-tool non deve scegliere un primary implicito.');
+  if (referenceTools?.status !== 'multiple' || referenceTools.primary_tool_ids.length !== 3) throw new Error('Il setup multi-tool deve conservare tutti i tool AI principali rilevati.');
   const expectedReferenceTools = new Map(report.components.filter(component => component.properties?.tool_id).map(component => [component.properties.tool_id, component]));
   for (const toolId of ['codex', 'claude_code', 'github_copilot']) {
     const component = expectedReferenceTools.get(toolId);

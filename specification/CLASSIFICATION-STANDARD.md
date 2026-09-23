@@ -35,7 +35,8 @@ Automatic classification requires all of the following:
 1. a coherent collection rather than an isolated file;
 2. at least two observable knowledge items, unless a structured store or managed knowledge-base resource is explicitly configured;
 3. an explicit knowledge-oriented location or declaration;
-4. a retrieval mechanism, such as filesystem search, an index, a queryable structured store or a vector store.
+4. a retrieval mechanism, such as filesystem search, an index, a queryable structured store or a vector store;
+5. an applicable instruction or configuration that binds the corpus to at least one identified AI host in this setup, with source, scope and condition recorded.
 
 The following do **not** qualify on their own:
 
@@ -44,7 +45,7 @@ The following do **not** qualify on their own:
 - an ordinary `docs/` directory with no knowledge-base or retrieval declaration;
 - a vector-store dependency with no identifiable corpus or data source.
 
-Those items remain `document` or `documentation_collection` components. A user can declare an external or otherwise non-observable knowledge base manually; it remains `declared_only` and records its child elements when supplied.
+Those items remain `document` or `documentation_collection` components. Unlinked documentation is retained as inventory evidence but is not shown as part of the AI setup map. A user can declare an external or otherwise non-observable knowledge base manually; it remains `declared_only` and records its child elements when supplied.
 
 Primary references:
 
@@ -69,3 +70,8 @@ Alias matching must use the curated tool glossary and token boundaries. Generic 
 ## 4. AI coding-tool rule ownership
 
 Rule files for Codex, Claude Code and GitHub Copilot follow the normalized ownership, surface, enforcement, scope, validity, precedence and multi-tool rules in [AI-TOOL-RULES.md](AI-TOOL-RULES.md). Shared artifacts such as `AGENTS.md` or `CLAUDE.md` identify compatible instruction surfaces; by themselves they do not prove which compatible tool is installed or used.
+
+
+## 5. Multiple primary AI hosts
+
+Distinct vendor-specific evidence may establish several primary AI coding hosts in the same authorized setup. Keep every detected host and its own applicable configurations and instruction bindings in `primary_tool_ids`; do not infer a single winner from shared instructions or file order. A single-host routing simulation still requires the user to choose one host when several are primary.

@@ -1,6 +1,6 @@
 ---
 name: awdf-evaluator
-description: Describe an authorized AI setup in an evidence-backed AWDF file, including configuration connections, instruction contents and linked Markdown knowledge bases. Produces descriptions, not scores or AI reviews.
+description: Describe an authorized AI setup in an evidence-backed AWDF file, including configuration connections, instruction contents and knowledge bases linked to an AI host. Produces descriptions, not scores or AI reviews.
 ---
 
 # AWDF setup descriptor
@@ -23,7 +23,9 @@ Read the resulting snapshot and verify coverage of:
 - AI hosts and their declared roles, instruction scope and activation conditions.
 - Configuration files, model/provider selectors, MCP servers, plugins, skill registrations, hooks, permissions, commands and transports where present. Preserve their redacted source content even when a parser cannot interpret them.
 - AGENTS.md, AGENTS.override.md, CLAUDE.md, nested instructions, scoped rules and imported files. Describe every instruction, including prohibitions, conditions, exceptions and verification requirements, citing its source lines. Keep examples and comments distinguishable from active instructions. The scanner preserves source blocks; these are not semantic judgments.
-- Markdown corpora regardless of directory name. List members and contents/topic evidence. Distinguish a collection that exists from a knowledge base whose consultation is prescribed. Record the complete host → instruction → resource chain, scope and condition. A file name or a mention is not a usage requirement.
+- Start with the AI coding hosts actually configured or evidenced in the authorized roots. More than one host may be primary; preserve each host and its own applicable resources without arbitrarily choosing a winner. Shared AGENTS.md alone does not establish which host is installed.
+- Inspect documentation only to resolve setup instructions and references. A README, ordinary docs directory, or arbitrary Markdown collection is documentation, not a knowledge base merely because it exists or is mentioned. Keep unrelated documentation out of the setup map.
+- Call a collection a knowledge base only with evidence of a coherent retrievable corpus and an applicable AI-host instruction or configuration that directs consultation. For example, if AGENTS.md instructs the applicable tool to search llm-wiki, preserve the host → AGENTS.md → llm-wiki chain, source lines, scope and condition. A vague name, isolated file or incidental mention is insufficient. List members and topic evidence for a qualifying corpus. Do not claim that the tool actually consulted it without runtime evidence.
 
 ## Connections and uncertainty
 

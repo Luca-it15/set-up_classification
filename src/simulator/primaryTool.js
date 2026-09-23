@@ -16,8 +16,8 @@ export function resolvePrimaryTool(report) {
     ? data.primary_tool_keys.filter(value => typeof value === 'string' && value.trim())
     : [];
 
-  // The scanner deliberately leaves primary_tool_ids empty for an unresolved
-  // multi-tool setup. Its explicit status must therefore win over array size.
+  // The simulator needs one selected orchestrator even when the report
+  // correctly records several primary AI hosts.
   if (data?.status === 'multiple' || primaryToolIds.length > 1 || primaryToolKeys.length > 1) {
     return { component: null, warning: primaryToolWarnings.multiple };
   }

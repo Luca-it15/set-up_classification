@@ -993,6 +993,7 @@ export function analyzeAiToolSetup(files, { readText, explicitTool = 'auto' } = 
     primaryToolIds = [detected[0].tool_id];
   } else if (detected.length > 1) {
     status = 'multiple';
+    primaryToolIds = detected.map(item => item.tool_id);
   } else if (sharedCandidates.length) {
     status = 'undetermined';
   } else {

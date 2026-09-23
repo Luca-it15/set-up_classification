@@ -154,14 +154,11 @@ export function validateReferenceToolsExtension(document) {
       break;
     }
     case 'multiple':
-      if (primaryIds.length) {
-        errors.push("reference-tools status 'multiple' must not select a primary tool");
-      }
       if (applicableKeySet.size < 2 || applicableIds.length < 2) {
         errors.push("reference-tools status 'multiple' requires at least two applicable tools");
       }
-      if (!setEquals(applicableKeySet, detectedKeySet)) {
-        errors.push("reference-tools status 'multiple' requires identical applicable and detected tool sets");
+      if (!setEquals(primaryKeySet, applicableKeySet) || !setEquals(applicableKeySet, detectedKeySet)) {
+        errors.push("reference-tools status 'multiple' requires identical primary, applicable and detected tool sets");
       }
       break;
     case 'explicit': {

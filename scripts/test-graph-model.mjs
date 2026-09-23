@@ -32,6 +32,15 @@ for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++){
  const a=boxes[i],b=boxes[j];
  assert.ok(a.x+a.width<=b.x || b.x+b.width<=a.x || a.y+a.height<=b.y || b.y+b.height<=a.y,'Radial cards must not overlap');
 }
+
+const multiHubs=[{id:'codex'},{id:'claude'},{id:'copilot'}];
+const multi=layoutGraph([...multiHubs,...orbitNodes],[],new Set(multiHubs.map(item=>item.id)),multiHubs.map(item=>item.id));
+const multiBoxes=[...multi.positions.values()];
+for(let i=0;i<multiBoxes.length;i++)for(let j=i+1;j<multiBoxes.length;j++){
+ const a=multiBoxes[i],b=multiBoxes[j];
+ assert.ok(a.x+a.width<=b.x || b.x+b.width<=a.x || a.y+a.height<=b.y || b.y+b.height<=a.y,'Multi-tool cards must not overlap');
+}
+assert.equal(new Set(multiHubs.map(item=>multi.positions.get(item.id).x)).size,1);
 console.log('Radial layout PASS: stable central tool, 12 surrounding nodes without overlap, legacy links preserved separately.');
 
 const grouped = buildGraphModel({components:[

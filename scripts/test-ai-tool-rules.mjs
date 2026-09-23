@@ -252,7 +252,7 @@ const analyze = (entries, explicitTool = 'auto', selectedRoot = workspaceRoot) =
     '.github/copilot-instructions.md': '- Copilot rule.'
   });
   assert.equal(result.resolution.status, 'multiple');
-  assert.deepEqual(result.resolution.primary_tool_ids, []);
+  assert.deepEqual(result.resolution.primary_tool_ids, ['codex', 'claude_code', 'github_copilot']);
   assert.deepEqual(result.resolution.applicable_tool_ids.sort(), ['claude_code', 'codex', 'github_copilot']);
   assert.match(result.artifacts.find(item => item.format === 'codex_project_config').recognizedBy[0].officialSource, /config-basic$/);
 }

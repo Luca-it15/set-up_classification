@@ -427,7 +427,7 @@ for (const file of files.filter(file => /^(?:agents|\.claude\/agents|\.github\/a
 const knowledgeBaseByKey = new Map();
 function addKnowledgeBase(key, name, basePath, subtype, members) {
   if (knowledgeBaseByKey.has(key)) return knowledgeBaseByKey.get(key);
-  const id = addComponent('knowledge_base', subtype, name, basePath, 'knowledge_bases', `Corpus gestito di ${members.length} fonti, organizzato per il recupero di conoscenza nel setup AI.`, { properties: { definition_standard: 'managed_retrievable_corpus_v1', knowledge_item_count: members.length, source_root: reportPath(basePath), retrieval_mechanism: 'filesystem_collection' } });
+  const id = addComponent('folder', 'documentation_collection', name, basePath, 'documentation', `Raccolta di ${members.length} documenti. Il collegamento al setup AI richiede una prescrizione applicabile.`, { properties: { document_count: members.length, knowledge_candidate: subtype, source_root: reportPath(basePath) } });
   knowledgeBaseByKey.set(key, id);
   return id;
 }
@@ -453,7 +453,7 @@ for (const [key, members] of knowledgeGroups) {
   const parentId = addKnowledgeBase(key, `${workspaceDisplayName(first.workspaceRoot)} · ${folder}`, basePath, folder === 'llm-wiki' ? 'llm_wiki' : 'managed_document_corpus', members);
   for (const file of members) {
     const meta = textDetails(file);
-    addComponent('document', 'knowledge_document', path.basename(file.relative, path.extname(file.relative)), file.relative, 'knowledge_bases', meta.description, { ...meta.details, parent_id: parentId });
+    addComponent('document', 'knowledge_source_document', path.basename(file.relative, path.extname(file.relative)), file.relative, 'documentation', meta.description, { ...meta.details, parent_id: parentId });
   }
 }
 function skillDetails(file) {
@@ -583,7 +583,7 @@ if (descriptionOnly) {
     groups.get(dir).push(file);
   }
   for (const [dir, members] of groups) {
-    const parent = members.length > 1 ? addComponent('knowledge_base', 'markdown_corpus_candidate', path.posix.basename(dir) || 'Markdown', dir, 'knowledge_bases', 'Raccolta Markdown rilevata; funzione e consultazione da verificare.', { properties: { discovery_status: 'candidate', source_paths: members.map(file => reportPath(file.relative)) } }) : null;
+    const parent = members.length > 1 ? addComponent('folder', 'documentation_collection', path.posix.basename(dir) || 'Markdown', dir, 'documentation', 'Raccolta Markdown rilevata; funzione e consultazione da verificare.', { properties: { discovery_status: 'candidate', source_paths: members.map(file => reportPath(file.relative)) } }) : null;
     for (const file of members) {
       const details = textDetails(file);
       addComponent('document', 'markdown_source', path.basename(file.relative), file.relative, 'documentation', details.description, { ...details.details, parent_id: parent });
@@ -710,7 +710,7 @@ for (const artifact of toolAnalysis.artifacts) {
   }
 }
 
-if (toolAnalysis.resolution.status === 'multiple') toolAnalysis.diagnostics.push({ code: 'multiple_reference_tools', severity: 'informational', toolId: null, paths: toolAnalysis.resolution.candidates.flatMap(candidate => candidate.evidence_paths), message: 'Più tool AI hanno firme esclusive indipendenti: tutti i profili vengono applicati e nessun primary viene scelto automaticamente.' });
+if (toolAnalysis.resolution.status === 'multiple') toolAnalysis.diagnostics.push({ code: 'multiple_reference_tools', severity: 'informational', toolId: null, paths: toolAnalysis.resolution.candidates.flatMap(candidate => candidate.evidence_paths), message: 'Più tool AI hanno firme esclusive indipendenti: tutti i profili vengono applicati e tutti i tool rilevati restano possibili tool principali, senza sceglierne uno solo.' });
 if (toolAnalysis.resolution.status === 'undetermined') toolAnalysis.diagnostics.push({ code: 'reference_tool_undetermined', severity: 'medium', toolId: null, paths: toolAnalysis.resolution.candidates.flatMap(candidate => candidate.evidence_paths), message: 'Sono presenti soltanto artefatti condivisi: non è possibile attribuire con rigore il setup a Codex, Claude Code o GitHub Copilot.' });
 for (const diagnostic of toolAnalysis.diagnostics) {
   if (diagnostic.severity === 'informational') continue;
@@ -738,6 +738,18 @@ const linkAnalysis = analyzeInstructionLinks({
 for (const binding of linkAnalysis.bindings) {
   const sourceId = referenceToolComponentIds.get(binding.tool_id);
   const targetComponent = components.find(item => item.id === binding.target_id);
+  if (targetComponent?.subtype === 'documentation_collection' && targetComponent.properties?.knowledge_candidate) {
+    targetComponent.kind = 'knowledge_base';
+    targetComponent.subtype = targetComponent.properties.knowledge_candidate;
+    targetComponent.description = `Corpus di ${targetComponent.properties.document_count} fonti la cui consultazione è prescritta al tool AI.`;
+    targetComponent.properties = { ...targetComponent.properties, setup_category: 'knowledge_bases', definition_standard: 'managed_retrievable_corpus_v1', knowledge_item_count: targetComponent.properties.document_count, retrieval_mechanism: 'filesystem_collection' };
+    targetComponent.tags = ['knowledge_bases'];
+    for (const child of components.filter(item => item.parent_id === targetComponent.id)) {
+      child.subtype = 'knowledge_document';
+      child.properties.setup_category = 'knowledge_bases';
+      child.tags = ['knowledge_bases'];
+    }
+  }
   if (targetComponent) targetComponent.properties.connection_status = 'binding_declared';
   if (descriptionOnly) {
     const sourceArtifact = toolAnalysis.artifacts.find(item => item.path === binding.source_path);
@@ -918,7 +930,7 @@ if (descriptionOnly) {
     version: '1.0.0', snapshot,
     instruction_sources: describeInstructions(snapshot, instructionSources),
     configuration_sources: snapshot.files.filter(file => /\.(toml|ini|json|jsonc|ya?ml|cfg)$/i.test(file.path)).map(file => { const artifact = toolAnalysis.artifacts.find(item => reportPath(item.path) === file.path); return { path: file.path, format: artifact?.format || 'unrecognized_configuration_candidate', syntax_status: artifact?.syntaxStatus || 'unverified' }; }),
-    knowledge_bases: components.filter(item => item.kind === 'knowledge_base' || item.subtype === 'documentation_collection').map(item => ({
+    knowledge_bases: components.filter(item => item.kind === 'knowledge_base').map(item => ({
       component_id: item.id, path: item.path, description: item.description,
       source_paths: components.filter(child => child.parent_id === item.id).map(child => child.path),
       bindings: relationships.filter(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual').map(link => link.id),

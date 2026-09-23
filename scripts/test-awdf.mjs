@@ -92,14 +92,13 @@ const semanticInvalid = [
   },
   {
     name: 'multiple with divergent detected state',
-    expected: "status 'multiple' requires identical applicable and detected tool sets",
+    expected: "status 'multiple' requires identical primary, applicable and detected tool sets",
     mutate(document) {
-      document.components[0].properties.reference_role = 'coexisting';
-      addReferenceTool(document, { id: 'cmp_claude', key: 'claude_code' });
+      addReferenceTool(document, { id: 'cmp_claude', key: 'claude_code', role: 'primary' });
       Object.assign(referenceData(document), {
         status: 'multiple',
-        primary_tool_ids: [],
-        primary_tool_keys: [],
+        primary_tool_ids: ['cmp_codex', 'cmp_claude'],
+        primary_tool_keys: ['codex', 'claude_code'],
         applicable_tool_ids: ['cmp_codex', 'cmp_claude'],
         applicable_tool_keys: ['codex', 'claude_code'],
         detected_tool_keys: ['codex']
@@ -214,12 +213,11 @@ const semanticValid = [
   {
     name: 'multiple detected tools',
     mutate(document) {
-      document.components[0].properties.reference_role = 'coexisting';
-      addReferenceTool(document, { id: 'cmp_claude', key: 'claude_code' });
+      addReferenceTool(document, { id: 'cmp_claude', key: 'claude_code', role: 'primary' });
       Object.assign(referenceData(document), {
         status: 'multiple',
-        primary_tool_ids: [],
-        primary_tool_keys: [],
+        primary_tool_ids: ['cmp_codex', 'cmp_claude'],
+        primary_tool_keys: ['codex', 'claude_code'],
         applicable_tool_ids: ['cmp_codex', 'cmp_claude'],
         applicable_tool_keys: ['codex', 'claude_code'],
         detected_tool_keys: ['claude_code', 'codex']

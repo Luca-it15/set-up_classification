@@ -3,35 +3,39 @@ version: alpha
 name: AI Setup Atlas
 description: Un atlante operativo delle regole e delle risorse di un setup AI.
 colors:
-  background: '#141821'
-  surface: '#1c2230'
-  raised: '#272f40'
-  text: '#eef1fa'
-  muted: '#a7b2c9'
-  primary: '#b9b6ff'
-  warning: '#f2c48d'
-  border: '#394257'
+  background: '#020617'
+  surface: '#0f172a'
+  raised: '#1e293b'
+  text: '#f8fafc'
+  muted: '#94a3b8'
+  primary: '#22d3ee'
+  warning: '#fbbf24'
+  border: '#334155'
 typography:
   display:
-    fontFamily: "'Bahnschrift', 'Trebuchet MS', sans-serif"
+    fontFamily: "'JetBrains Mono', 'Cascadia Code', Consolas, monospace"
   body:
-    fontFamily: "'Segoe UI', sans-serif"
+    fontFamily: "'JetBrains Mono', 'Cascadia Code', Consolas, monospace"
   data:
-    fontFamily: 'Consolas, monospace'
+    fontFamily: "'JetBrains Mono', 'Cascadia Code', Consolas, monospace"
 rounded:
-  control: '12px'
-  panel: '20px'
+  control: '8px'
+  panel: '16px'
 spacing:
   section-gap: '34px'
   page: '40px'
 components:
   button:
-    rounded: '12px'
+    rounded: '8px'
   card:
-    rounded: '20px'
+    rounded: '16px'
 ---
 
 # AI Setup Atlas
+
+## Archify direction — 2026-09-23
+
+The user selected Archify as the visual reference for the existing website. The application is an evidence console: one dominant technical canvas, compact toolbars, dark midnight surfaces, mono typography and restrained semantic color. Cyan marks focus and navigation; category hues belong to actual components and relationships. Flat tonal panels and precise borders replace broad card styling. Keep the existing graph interactions, six locales, keyboard access, reduced-motion behavior and user palette controls. Runtime owner remains `src/styles.css`; the final Archify direction overrides earlier shared shell tokens. The graph canvas palette remains user-configurable.
 
 ## Overview
 

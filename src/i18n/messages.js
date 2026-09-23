@@ -19,3 +19,20 @@ Object.assign(messages, {"Tipo task":["Task type","Tipo de tarea","Type de tâch
 
 Object.assign(messages, {"Candidato debole":["Weak candidate","Candidato débil","Candidat faible","Schwacher Kandidat","Candidato fraco"],"Bloccato":["Blocked","Bloqueado","Bloqué","Blockiert","Bloqueado"],"Non disponibile":["Unavailable","No disponible","Indisponible","Nicht verfügbar","Indisponível"]});
 
+
+Object.assign(messages, {
+  "I tool AI principali al centro, le componenti intorno e i singoli elementi al loro interno.": [
+    "Primary AI tools at the center, components around them and individual elements within each component.",
+    "Las herramientas de IA principales en el centro, los componentes alrededor y sus elementos dentro.",
+    "Les outils IA principaux au centre, les composants autour et leurs éléments à l'intérieur.",
+    "Die wichtigsten KI-Tools in der Mitte, die Komponenten darum herum und ihre Elemente darin.",
+    "As ferramentas de IA principais no centro, os componentes à volta e os seus elementos no interior."
+  ],
+  "Tool o tool principali al centro e componenti intorno. Ogni linea riassume collegamenti reali ai singoli elementi, definiti da istruzioni, configurazioni o cataloghi del tool.": [
+    "Primary AI tool or tools at the center, with components around them. Each line summarizes real links to individual elements defined by instructions, configuration or tool catalogs.",
+    "Herramienta o herramientas de IA principales en el centro y componentes alrededor. Cada línea resume vínculos reales con elementos definidos por instrucciones, configuración o catálogos.",
+    "Outil ou outils IA principaux au centre et composants autour. Chaque ligne résume les liens réels vers les éléments définis par les instructions, la configuration ou les catalogues.",
+    "Ein oder mehrere wichtigste KI-Tools in der Mitte, Komponenten darum herum. Jede Linie fasst belegte Verbindungen zu Elementen aus Anweisungen, Konfigurationen oder Tool-Katalogen zusammen.",
+    "Ferramenta ou ferramentas de IA principais no centro e componentes à volta. Cada linha resume ligações reais a elementos definidos por instruções, configurações ou catálogos."
+  ]
+});
