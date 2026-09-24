@@ -36,7 +36,7 @@ export function classifyDescription(report) {
   const evaluated = outcomes.filter(item => ['pass', 'fail'].includes(item.outcome));
   const coverage = applicableCount ? evaluated.length / applicableCount : 0;
   // A small checklist is not a calibrated measure of overall setup quality.
-  const summary = { overall_score: null, quality_score: null, coverage, checklist_score: evaluated.length ? 5 * evaluated.filter(item => item.outcome === 'pass').length / evaluated.length : null };
+  const summary = { overall_score: null, quality_score: null, coverage, checklist_score: null, passed: evaluated.filter(item => item.outcome === 'pass').length, failed: evaluated.filter(item => item.outcome === 'fail').length, evaluated: evaluated.length, applicable: applicableCount };
   return { version: '2.0.0', status: 'static_checklist', snapshot: d.snapshot, tool_context: d.snapshot.tool_context, contracts: d.snapshot.static_contracts, rules: structuredClone(STATIC_RULES), outcomes, summary, analysts: [], disagreements: [], provenance: { mode: 'static_classifier', independent_contexts: false }, limitations: ['Esiti deterministici limitati ai predicati pubblicati. Nessuna autovalutazione AI, giudizio generale o verifica runtime.'] };
 }
 
