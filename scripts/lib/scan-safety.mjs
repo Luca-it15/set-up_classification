@@ -2,7 +2,7 @@ import path from 'node:path';
 
 const chatDirectory = /^(?:sessions?|chats?|conversations?)$/i;
 const sensitiveDirectory = /^(?:secrets?|credentials?|\.secrets?|\.ssh)$/i;
-const sensitiveFile = /^(?:\.env(?:\..+)?|credentials?\.(?:json|ya?ml|toml|ini)|secrets?\.(?:json|ya?ml|toml|ini)|id_(?:rsa|ed25519|ecdsa)|[^/]+\.(?:pem|key|p12|pfx))$/i;
+const sensitiveFile = /^(?:\.env(?:\..+)?|credentials?\.[a-z0-9]+|secrets?\.[a-z0-9]+|id_(?:rsa|ed25519|ecdsa)|[^/]+\.(?:pem|key|p12|pfx))$/i;
 const privateKeyBlock = /-----BEGIN (?:[A-Z ]* )?PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z ]* )?PRIVATE KEY-----/g;
 
 export function sensitiveRelativePath(relative) {
