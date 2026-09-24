@@ -896,7 +896,7 @@ const document = {
   },
   workspace: {
     id: 'workspace',
-    name: configuredWorkspace.name || (roots.length === 1 ? path.basename(root) : 'Workspace multi-cartella'),
+    name: pathPolicy === 'anonymized' ? (roots.length === 1 ? 'Workspace 1' : 'Workspace autorizzati') : (configuredWorkspace.name || (roots.length === 1 ? path.basename(root) : 'Workspace multi-cartella')),
     type: configuredWorkspace.type || 'project',
     purpose: configuredWorkspace.purpose || 'Valutazione automatica approfondita del setup AI.',
     maturity: 'unknown'
