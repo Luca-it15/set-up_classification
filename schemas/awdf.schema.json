@@ -234,6 +234,24 @@
     {
       "if": {
         "properties": {
+          "format_version": {
+            "pattern": "^1\\.1\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "extensions": {
+            "required": [
+              "org.awdf.description"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
           "extensions": {
             "required": [
               "org.awdf.description"
