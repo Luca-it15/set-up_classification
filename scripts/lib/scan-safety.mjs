@@ -9,7 +9,7 @@ export function sensitiveRelativePath(relative) {
   const segments = String(relative || '').replaceAll('\\', '/').split('/').filter(Boolean);
   return segments.some((segment, index) =>
     (index < segments.length - 1 && ((index === 0 || (index === 1 && /^\.(?:codex|copilot|claude)$/i.test(segments[0]))) && chatDirectory.test(segment) || sensitiveDirectory.test(segment))) ||
-    (index === segments.length - 1 && sensitiveFile.test(segment))
+    (index === segments.length - 1 && (sensitiveFile.test(segment) || sensitiveDirectory.test(segment) || ((index === 0 || (index === 1 && /^\.(?:codex|copilot|claude)$/i.test(segments[0]))) && chatDirectory.test(segment))))
   );
 }
 
