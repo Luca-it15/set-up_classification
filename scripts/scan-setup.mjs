@@ -996,7 +996,10 @@ if (descriptionOnly) {
 }
 const redactValue = value => typeof value === 'string' ? redactSensitiveText(value, { anonymized: pathPolicy === 'anonymized', roots }) : value;
 const sanitizedDocument = JSON.parse(JSON.stringify(document, (_key, value) => redactValue(value)));
-if (descriptionOnly) sanitizedDocument.extensions[DESCRIPTION_KEY].snapshot.id = snapshotId(sanitizedDocument.extensions[DESCRIPTION_KEY].snapshot);
+for (const key of [DESCRIPTION_KEY, EVALUATION_KEY]) {
+  const captured = sanitizedDocument.extensions?.[key]?.snapshot;
+  if (captured) captured.id = snapshotId(captured);
+}
 const serialized = `${JSON.stringify(sanitizedDocument, null, 2)}\n`;
 const temporaryOutput = `${output}.${process.pid}.tmp`;
 fs.writeFileSync(temporaryOutput, serialized, 'utf8');
