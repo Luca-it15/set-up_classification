@@ -22,6 +22,8 @@ const input = '{"GITHUB_TOKEN":"ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456","apiKey":"
 const redacted = redactSensitiveText(input);
 assert.doesNotMatch(redacted, /ghp_|hunter2|"abc"/);
 assert.match(redacted, /"oauth":"safe"/);
+assert.doesNotMatch(redactSensitiveText('{"env":{"UNUSUAL_NAME":"sensitive-value"},"headers":{"X-Custom":"private-value"}}'), /sensitive-value|private-value/);
+assert.doesNotMatch(redactSensitiveText('[mcp_servers.demo.env]\nRANDOM = "private-value"'), /private-value/);
 assert.match(redactSensitiveText('file=' + path.join(root, 'config.toml'), { anonymized: true, roots: [root] }), /\[WORKSPACE_1\]/);
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'awdf-scan-safety-'));
