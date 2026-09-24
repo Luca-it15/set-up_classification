@@ -1,43 +1,170 @@
-# AI Workspace Description Format (AWDF)
+# AI Setup Classifier · AWDF
 
-AWDF is an open, versioned JSON format for describing AI-enabled development workspaces, including tools, agents, skills, knowledge sources, workflows, relationships, evidence, risks and recommendations.
+AI Setup Classifier describes authorized AI development workspaces and displays their components, instructions and evidence in a local interface.
 
-This repository is the AWDF 1.0.0 reference implementation: the **AWDF Evaluator** produces documents, the validator checks them, and the **AWDF Viewer** explores them locally.
+The current workflow separates collection from classification:
 
 ```text
-Real AI Workspace
-        ↓
-AWDF Evaluator
-        ↓
-ai-setup.json
-        ↓
-AWDF Validator
-        ↓
-AWDF Viewer
+Authorized workspaces → Descriptor skill/scanner → Descriptive AWDF
+                                                        ↓
+                                         Local viewer → Static checklist
 ```
 
-## Use
+The skill produces an AWDF 1.1 description without AI scores, findings, recommendations or reviewer subagents. On import, the software computes its own versioned static checklist. The checklist is deliberately narrow; the overall setup quality score remains null. See [description format, rule sources and limitations](docs/SETUP-DESCRIPTION.md).
+
+## Quick start
+
+Node.js and npm are required:
 
 ```bash
+git clone https://github.com/Luca-it15/set-up_classification.git
+cd set-up_classification
 npm install
 npm start
-npm run validate:awdf
-npm run validate:settings
-npm run test:awdf
 ```
 
-`npm start` launches one local Node process at `http://127.0.0.1:3000`: it serves the viewer and the small API used to read and update `ai-setup-settings.json`. No external hosting is required. On first launch, Settings asks which folders belong to the workspace. The native folder selector stores absolute paths; relative paths are rejected by both the server and scanner. Workspace paths and palette preferences can be edited in the UI; **Save** updates the existing settings file directly, while import/export remain available as backup. The scanner uses that file as its authorized scope. The viewer also accepts AWDF JSON uploads. See `specification/` for the English specification, versioning and changelog; `schemas/` for Draft 2020-12 schemas; `examples/` for sample documents.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). One Node process serves the React interface and local settings/report APIs. Use `npm start` on subsequent runs.
 
-AWDF uses Semantic Versioning. Consumers accept supported major versions, ignore unknown optional fields and extensions, and reject unsupported majors. Never put credentials, tokens, private keys, cookies or passwords in an AWDF document.
+To change the address or port in PowerShell:
 
-## AI Setup Classifier
+```powershell
+$env:AWDF_HOST='0.0.0.0'
+$env:AWDF_PORT='3100'
+npm start
+```
 
-Generate a repository-grounded technical report with:
+## Authorize folders and describe a setup
+
+1. Open **Settings → Workspace** and authorize at least one folder using the folder picker or an absolute path.
+2. Set the workspace name, purpose, analysis depth, exclusions and path policy.
+3. Keep chat history disabled unless explicitly needed. Redaction is best-effort.
+4. Save the settings to `ai-setup-settings.json`.
+5. Run the descriptor in another terminal, then refresh the page:
 
 ```bash
-npm run scan:setup
+npm run describe:setup
 ```
 
-The scanner is read-only and refuses to start until `ai-setup-settings.json` contains at least one authorized folder. It excludes dependencies, build artefacts and sensitive files, inspects safe configuration and authorized chat samples, and classifies known tools with `skills/setup-evaluator/references/tool-glossary.md`. It evaluates Behavior Contract, Knowledge, Skills, Custom Agents, Tool & integrations, Validation and Maintainability. `AGENTS.md` is treated as a behavior contract: its actionable rules are assessed separately from the repository inventory, and length alone never increases its score. The resulting `ai-setup.json` is loaded directly by the Viewer.
+`npm run scan:setup` is an alias for the same descriptive workflow. For explicit output/settings paths:
 
-Current status: AWDF 1.0.0 baseline with schema validation, cross-reference conformance tests, a migrated Codex workspace example, evaluator skill and React viewer. Roadmap: richer workflow view, comparison and server-side sharing.
+```bash
+node scripts/describe-setup.mjs /authorized/workspace description.json settings.json
+node scripts/validate-awdf.mjs description.json
+```
+
+The initialized settings determine the authorized roots. The scanner does not execute discovered programs or contact provider endpoints. It validates the generated report before replacing the output file.
+
+`workspace.task_path` and the paths/scopes in `workspace.workflow_components` are relative to each authorized root. With several roots, each is analyzed in its own scope; the report prefixes paths to distinguish roots. Nested instructions apply only when the selected task falls within their scope.
+
+## What the description preserves
+
+- AI hosts, instructions, skills, agents, configurations, integrations and their evidence.
+- Redacted instruction source blocks with source lines, scope and activation information.
+- Recognized configuration links, including supported MCP/plugin declarations and provider connections.
+- Knowledge collections with multiple documents and an applicable instruction prescribing consultation. The directory name is not a qualification rule; ordinary unbound documentation remains documentation.
+- Explicitly declared workflow resources, including those that could not be discovered. A missing required resource remains in the contract check instead of becoming inapplicable.
+- Collection limits, exclusions, inaccessible sources and unsupported syntax.
+
+Configuration does not prove installation, successful activation or execution. `configured` records configuration evidence, `mentioned` records textual mentions, and `used` requires a structured invocation event.
+
+## Explore the report
+
+### Setup map
+
+![Setup map](docs/screenshots/setup-map.png)
+
+The reference AI tool appears at the center, with components grouped by category. A component groups elements of the same type; an element is an individual skill, plugin, MCP server or other resource. Expand groups, inspect elements and their metadata, drag the canvas, zoom or recenter it. Layout connections are distinguished from relationships supported by AWDF evidence. Unrelated documentation is kept out of the setup map.
+
+### Static checklist
+
+For descriptive imports, the software checks:
+
+- resolution of local Markdown references in applicable instructions;
+- a recognized explicit test command;
+- the documented CLAUDE.md line-budget target;
+- bindings for explicitly required resources.
+
+Excluded or inaccessible references yield insufficient evidence. Ordinary navigation links do not recursively load instructions or create import-cycle failures. Recognized instruction directives and imports are traversed and checked for cycles.
+
+Coverage and pass/fail counts are separate from overall quality; the descriptive import has no numeric checklist or quality score. Unsupported wording remains uncertain. These checks do not assess semantic adequacy or verify runtime behavior. Legacy reports may still expose their historical assessments and roadmap; those are not generated by the current skill.
+
+### Prompt Lab
+
+Prompt Lab statically predicts routing without executing agents or tools. Enter a prompt, select an example or import a chat to inspect candidate components, expected steps, routing gaps and tool-resolution warnings. Export the result to `simulation-result.json` if needed.
+
+### Settings and import/export
+
+Settings manage authorized folders, exclusions, analysis depth, declared AI hosts, manual components and palettes. The top bar imports AWDF descriptions and exports the displayed report; computed evaluation extensions are removed when exporting a descriptive artifact. Settings backups can be imported and exported separately.
+
+## Install the descriptor skill
+
+The portable skill is in [skills/setup-evaluator/SKILL.md](skills/setup-evaluator/SKILL.md). Its invocation name, `awdf-evaluator`, is retained for compatibility.
+
+```bash
+npm run skill:install -- all
+```
+
+For a single client:
+
+```bash
+npm run skill:install -- codex
+npm run skill:install -- claude
+npm run skill:install -- copilot
+```
+
+Add `--scope=project` to install in this repository. With `all`, Codex and Copilot share `.agents/skills`; Claude uses `.claude/skills`. For a Copilot-only installation, the installer uses `.copilot/skills` at user scope or `.github/skills` at project scope.
+
+The skill depends on this repository's scripts and schemas, so start the client from the clone root. Example request:
+
+```text
+Use awdf-evaluator to describe the authorized folders and generate a validated descriptive ai-setup.json without AI assessment.
+```
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm start` | Start the local interface and APIs |
+| `npm run describe:setup` / `npm run scan:setup` | Generate a descriptive AWDF from authorized folders |
+| `npm run validate:awdf` | Validate the local AWDF report |
+| `npm run validate:settings` | Validate workspace settings |
+| `npm run validate:simulation` | Validate a simulation against the local report |
+| `npm test` | Run descriptor regressions, validators, scanner, simulator, evaluator, graph tests and build |
+| `npm run test:ui` | Run the separate browser UI test suite |
+| `npm run build` | Build the interface in `dist/` |
+| `npm run skill:install -- <target>` | Install the descriptor skill |
+
+The legacy `scan-setup.mjs` and `evaluate-setup.mjs` review workflows remain for compatibility and historical tests. They are not the descriptor skill workflow. See [legacy evidence evaluation](docs/EVIDENCE-EVALUATION.md) for that separate format.
+
+## Files and privacy
+
+Local reports and settings can contain private paths and setup material. The scanner excludes sensitive paths and redacts recognized credentials, but exports still require review before sharing. Choose relative or anonymized paths before sharing; redaction remains best-effort.
+
+```text
+schemas/         AWDF, settings and simulation schemas
+scripts/         Descriptor/scanner, validators, installer and tests
+skills/          Descriptor skill and references
+specification/   Format, classification and tool rules
+src/             Viewer, static classifier and simulator
+examples/        Sample reports and configurations
+tests/           Fixtures and conformance cases
+server.mjs       Local HTTP server and Vite middleware
+```
+
+Local APIs: `GET /api/settings`, `PUT /api/settings`, `GET /api/report` and `POST /api/select-folder`.
+
+Format references: [AWDF specification](specification/AWDF-SPECIFICATION.md), [classification standard](specification/CLASSIFICATION-STANDARD.md), [tool rules](specification/AI-TOOL-RULES.md), [versioning](specification/VERSIONING.md). AWDF 1.1 defines the [descriptive producer profile](skills/setup-evaluator/references/description-format.md); AWDF 1.0 review reports remain historical compatibility documents.
+
+## License
+
+[MIT](LICENSE)
+
+## Share a setup or build a new one
+
+**Share setup** exports the current report as standalone HTML or PNG. HTML contains an offline diagram, component descriptions and relationship register. PNG contains all map groups and their element names, independently of current zoom, filters or pagination. Structured component paths are optional. Names and descriptions remain visible: review them before sharing. Diagrams exceeding readable PNG limits can still be exported as HTML.
+
+**Setup builder** creates a draft independently of the report. Choose Codex or Claude Code, enter the objective, and add components manually or from the report. Each component has a type, name, path/configured identifier, description and optional usage condition. Components can be edited, removed and restored with Undo.
+
+The preview generates AGENTS.md for Codex or CLAUDE.md for Claude Code in the selected interface language. Save it at the project root and review it before merging with existing instructions. These files prescribe usage; they do not install plugins, configure MCP or switch runtime models. The draft survives refresh in the current browser tab when session storage is available. No scan folders are needed to use the builder.
+
+Tests: npm run test:builder-export and npm run test:builder-export:ui. The browser test uses Playwright, installed locally or supplied through AWDF_NODE_MODULES.

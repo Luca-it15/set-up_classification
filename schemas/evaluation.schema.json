@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "evaluation.schema.json",
+  "type": "object",
+  "required": ["version", "snapshot", "rules", "outcomes", "summary", "provenance", "analysts", "review_decisions", "disagreements"],
+  "properties": {
+    "version": {"const": "1.0.0"},
+    "snapshot": {"type": "object", "required": ["id", "files"], "properties": {"id": {"type": "string", "minLength": 1}, "files": {"type": "array", "items": {"type": "object", "required": ["path", "content", "sha256"], "properties": {"path": {"type": "string"}, "content": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}}}}},
+    "rules": {"type": "array", "items": {"type": "object", "required": ["id", "version", "description", "method", "weight", "applicability", "required_evidence", "criteria", "source", "rationale", "severity", "type"], "properties": {"id": {"type": "string"}, "version": {"type": "string"}, "method": {"enum": ["deterministic", "semantic", "runtime"]}, "weight": {"type": "number", "exclusiveMinimum": 0}}}},
+    "outcomes": {"type": "array", "items": {"type": "object", "required": ["rule_id", "rule_version", "outcome", "method", "rationale", "evidence"], "properties": {"outcome": {"enum": ["pass", "fail", "not_applicable", "insufficient_evidence", "not_evaluated"]}, "evidence": {"type": "array"}}}},
+    "summary": {"type": "object", "required": ["quality_score", "overall_score", "coverage"], "properties": {"quality_score": {"type": ["number", "null"], "minimum": 0, "maximum": 5}, "overall_score": {"type": ["number", "null"], "minimum": 0, "maximum": 5}, "coverage": {"type": "number", "minimum": 0, "maximum": 1}}},
+    "analysts": {"type": "array"}, "review_decisions": {"type": "array"}, "disagreements": {"type": "array"}, "provenance": {"type": "object"}
+  }
+}

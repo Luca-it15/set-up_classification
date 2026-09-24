@@ -22,6 +22,25 @@ export const CATEGORY_META = {
 
 export const TYPE_TO_CATEGORY = { skill:'skills', agent:'agents', mcp_server:'mcp_servers', knowledge_base:'knowledge_bases', llm_wiki:'knowledge_bases', rag:'knowledge_bases', vector_store:'knowledge_bases', document:'documentation', prompt:'prompts', tool:'tools', application:'tools', model:'models', workflow:'workflows', repository:'repositories', service:'services', configuration:'configurations' };
 
+export const SETUP_COMPONENT_TYPES = [
+  { id: 'behavior_contract', label: 'Behavior contract', kind: 'document', subtype: 'behavior_contract', category: 'behavior_contract', description: 'Istruzioni persistenti che governano il comportamento del modello.' },
+  { id: 'knowledge_base', label: 'Knowledge base', kind: 'knowledge_base', subtype: 'managed_knowledge_base', category: 'knowledge_bases', description: 'Corpus gestito di più fonti o record, con uno scopo e un meccanismo di recupero; non un singolo README o documento.' },
+  { id: 'document', label: 'Documento', kind: 'document', subtype: 'technical_documentation', category: 'documentation', description: 'Singola fonte informativa, guida, specifica o pagina; può essere un elemento di una knowledge base.' },
+  { id: 'skill', label: 'Skill', kind: 'skill', subtype: 'custom_skill', category: 'skills', description: 'Capacità specializzata con istruzioni e condizioni di attivazione.' },
+  { id: 'agent', label: 'Agent', kind: 'agent', subtype: 'custom_agent', category: 'custom_agents', description: 'Ruolo autonomo o specializzato con responsabilità e confini propri.' },
+  { id: 'plugin', label: 'Plugin', kind: 'integration', subtype: 'installed_plugin', category: 'plugins', description: 'Pacchetto installabile che estende il runtime con capacità, skill o connettori.' },
+  { id: 'mcp_server', label: 'MCP server', kind: 'mcp_server', subtype: 'configured_mcp_server', category: 'mcp_servers', description: 'Server che espone tool o risorse tramite Model Context Protocol.' },
+  { id: 'tool', label: 'Tool', kind: 'tool', subtype: 'ai_tool', category: 'tools', description: 'Applicazione o funzione invocabile per eseguire un’azione.' },
+  { id: 'model', label: 'Modello', kind: 'model', subtype: 'ai_model', category: 'models', description: 'Modello AI configurato o disponibile nel setup.' },
+  { id: 'prompt', label: 'Prompt', kind: 'document', subtype: 'prompt_template', category: 'prompts', description: 'Template di istruzioni riutilizzabile, distinto dalle regole permanenti.' },
+  { id: 'workflow', label: 'Workflow', kind: 'workflow', subtype: 'operational_workflow', category: 'workflows', description: 'Sequenza ripetibile di passaggi, componenti e risultati.' },
+  { id: 'repository', label: 'Repository', kind: 'repository', subtype: 'source_repository', category: 'repositories', description: 'Raccolta versionata di codice o contenuti sorgente.' },
+  { id: 'service', label: 'Servizio', kind: 'service', subtype: 'external_service', category: 'services', description: 'Servizio esterno o runtime raggiunto dal setup.' },
+  { id: 'configuration', label: 'Configurazione', kind: 'configuration', subtype: 'manual_configuration', category: 'configurations', description: 'Impostazioni che abilitano o governano altri componenti.' },
+  { id: 'validation', label: 'Validazione', kind: 'workflow', subtype: 'validation_workflow', category: 'validation', description: 'Test, eval, lint, build o controllo automatico della qualità.' },
+  { id: 'other', label: 'Altro', kind: 'other', subtype: 'manual_component', category: 'other', description: 'Componente non coperto dalle categorie standard.' }
+];
+
 export const PALETTES = {
   dark: { id:'dark', name:'Default Dark', mode:'dark', canvas:{background:'#101926',grid:'#243246',selection:'#d9f99d'}, centralTool:{background:'#e7f7c9',border:'#b7e870',text:'#163200'}, categories:{behavior_contract:'#79d5ff',validation:'#8fe8b5',custom_agents:'#8ee7e1',plugins:'#f5a8ce',tool_integrations:'#ffbe7b',knowledge:'#8fbcff',skills:'#d6b5ff',agents:'#8ee7e1',mcp_servers:'#ffbe7b',knowledge_bases:'#8fbcff',documentation:'#f5a8ce',prompts:'#ffc9a6',tools:'#b7e870',models:'#d0c6ff',workflows:'#f5da71',repositories:'#76d7ac',services:'#8fc9ff',configurations:'#d1bfa9',other:'#b8c0ca'}, severity:{critical:'#ff5a6d',high:'#ff966c',medium:'#f6d363',low:'#83d3a6',informational:'#8fbcff'} },
   light: { id:'light', name:'Default Light', mode:'light', canvas:{background:'#f5f8fb',grid:'#d9e2ea',selection:'#5d8e0f'}, centralTool:{background:'#e5f6c9',border:'#93c94d',text:'#1c3700'}, categories:{behavior_contract:'#167da8',validation:'#177a4e',custom_agents:'#007d78',plugins:'#bd3773',tool_integrations:'#bf6400',knowledge:'#2367b8',skills:'#7d48cc',agents:'#007d78',mcp_servers:'#bf6400',knowledge_bases:'#2367b8',documentation:'#bd3773',prompts:'#b94c0a',tools:'#568c00',models:'#6958ba',workflows:'#967000',repositories:'#087a4c',services:'#126eb0',configurations:'#735d48',other:'#64748b'}, severity:{critical:'#cc2440',high:'#c85228',medium:'#9c7200',low:'#18794e',informational:'#2367b8'} },

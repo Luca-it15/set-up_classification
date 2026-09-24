@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+const base=path.resolve('.tmp-evidence-checks'),workspace=path.join(base,'workspace');
+fs.mkdirSync(path.join(workspace,'.codex'),{recursive:true});
+fs.mkdirSync(path.join(workspace,'llm-wiki'),{recursive:true});
+fs.writeFileSync(path.join(workspace,'.codex','config.toml'),'model = "declared-model"\n');
+fs.writeFileSync(path.join(workspace,'AGENTS.md'),'# Project instructions\nBefore modifying code, consult \x60llm-wiki/index.md\x60 and relevant pages. Report conflicts with code.\nAfter changing code, run relevant tests and report commands and results. If a check cannot run, report the limitation.\nAsk for clarification when requirements are materially ambiguous.\nNever claim an unavailable tool ran successfully.\n');
+fs.writeFileSync(path.join(workspace,'llm-wiki','index.md'),'# Project knowledge\n[Implementation guide](guide.md)\n');
+fs.writeFileSync(path.join(workspace,'llm-wiki','guide.md'),'# Implementation guide\nThis fixture is a simple local coding workspace. No custom agents or external integrations are required.\n');
+const settings={version:'1.0',initialized:true,workspace:{name:'Evidence evaluator verification fixture',folders:[workspace],excluded:[],type:'project',purpose:'Local code changes using the documented knowledge collection; no external integrations required.',path_policy:'relative',analysis_level:'deep',tools:[{id:'codex',role:'primary',mode:'codex-cli',version:null}],workflow_components:[{tool_id:'codex',path:'llm-wiki',required:true,scope:'.'}]},viewer:{palette:'dark'}};
+fs.writeFileSync(path.join(base,'settings.json'),JSON.stringify(settings,null,2));
+const run=spawnSync(process.execPath,['scripts/scan-setup.mjs',workspace,path.join(base,'static.json'),path.join(base,'settings.json')],{encoding:'utf8'});
+if(run.status)throw Error(run.stderr);console.log(run.stdout);

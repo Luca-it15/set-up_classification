@@ -1,0 +1,314 @@
+{
+  "$schema": "../../schemas/awdf.schema.json",
+  "format": "awdf",
+  "format_name": "AI Workspace Description Format",
+  "format_version": "1.0.0",
+  "metadata": {
+    "report_id": "simulator_fixture",
+    "title": "Simulator routing fixture",
+    "created_at": "2026-08-17T00:00:00Z",
+    "updated_at": null,
+    "language": "it",
+    "generator": {
+      "name": "Simulator tests",
+      "version": "1.0.0"
+    },
+    "analysis_level": "standard"
+  },
+  "workspace": {
+    "id": "workspace_simulator",
+    "name": "Simulator fixture",
+    "type": "project",
+    "purpose": "Deterministic simulator regression tests",
+    "maturity": "defined"
+  },
+  "scope": {},
+  "methodology": {},
+  "inventory": {},
+  "components": [
+    {
+      "id": "cmp_codex",
+      "kind": "tool",
+      "subtype": "reference_ai_coding_tool",
+      "name": "Codex",
+      "description": "Primary AI development tool used by the fixture.",
+      "path": null,
+      "parent_id": null,
+      "properties": {
+        "tool_id": "codex",
+        "reference_role": "primary"
+      },
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [
+        "repository_analysis",
+        "validation"
+      ],
+      "activation": {
+        "mode": "always",
+        "triggers": []
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_claude",
+      "kind": "tool",
+      "subtype": "reference_ai_coding_tool",
+      "name": "Claude Code",
+      "description": "Alternative reference AI coding tool used by resolver tests.",
+      "path": null,
+      "parent_id": null,
+      "properties": {
+        "tool_id": "claude_code",
+        "reference_role": "coexisting"
+      },
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "component_presence",
+            "value": "claude_code",
+            "weight": 1
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_repository_analysis",
+      "kind": "skill",
+      "subtype": "test_skill",
+      "name": "repository-analysis",
+      "description": "Routes repository analysis requests in chronological tests.",
+      "path": null,
+      "parent_id": null,
+      "properties": {},
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [
+        "repository_analysis"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": []
+      },
+      "outputs": [
+        {
+          "type": "report"
+        }
+      ]
+    },
+    {
+      "id": "cmp_mediapipe",
+      "kind": "skill",
+      "subtype": "custom_skill",
+      "name": "mediapipe-scan-keypoint-reviewer",
+      "description": "Reviews MediaPipe Pose acquisition keypoints.",
+      "path": null,
+      "parent_id": null,
+      "properties": {},
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [
+        "computer_vision_review"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "mediapipe",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cmp_browser",
+      "kind": "integration",
+      "subtype": "installed_plugin",
+      "name": "browser@openai-bundled",
+      "description": "Controls the in-app browser.",
+      "path": null,
+      "parent_id": null,
+      "properties": {},
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [
+        "browser_control"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "browser",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_stitch",
+      "kind": "mcp_server",
+      "subtype": "configured_mcp_server",
+      "name": "stitch",
+      "description": "Design MCP server used for explicit-name routing.",
+      "path": null,
+      "parent_id": null,
+      "properties": {},
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "stitch",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_github",
+      "kind": "integration",
+      "subtype": "installed_plugin",
+      "name": "github@openai-curated",
+      "description": "Routes GitHub pull request and Actions work.",
+      "path": null,
+      "parent_id": null,
+      "properties": {},
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [
+        "github_management"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "github",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_pdf",
+      "kind": "integration",
+      "subtype": "installed_plugin",
+      "name": "pdf@openai-primary-runtime",
+      "description": "Creates and verifies PDF artifacts.",
+      "path": null,
+      "parent_id": null,
+      "properties": {},
+      "tags": [],
+      "confidence": 1,
+      "verification_status": "verified",
+      "evidence_ids": [],
+      "capabilities": [
+        "documentation_generation",
+        "pdf_generation"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "pdf",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": [
+        {
+          "type": "pdf"
+        }
+      ]
+    }
+  ],
+  "relationships": [],
+  "workflows": [],
+  "assessments": [],
+  "findings": [],
+  "recommendations": [],
+  "evidence": [],
+  "limitations": [],
+  "unverified_items": [],
+  "executive_summary": {},
+  "extensions": {
+    "ai-setup-classifier.reference-tools": {
+      "version": "2.0",
+      "data": {
+        "standard": "reference_tool_resolution_v2",
+        "requested": "auto",
+        "status": "single",
+        "primary_tool_ids": [
+          "cmp_codex"
+        ],
+        "primary_tool_keys": [
+          "codex"
+        ],
+        "applicable_tool_ids": [
+          "cmp_codex"
+        ],
+        "applicable_tool_keys": [
+          "codex"
+        ],
+        "detected_tool_keys": [
+          "codex"
+        ]
+      }
+    },
+    "ai-setup-classifier.chat-evals": {
+      "data": {
+        "examples": [
+          {
+            "id": "chat_repository_pdf",
+            "prompt": "Analizza il repository e crea un report PDF.",
+            "observed_tools": [
+              "pdf.render"
+            ],
+            "has_assistant_response": true
+          },
+          {
+            "id": "chat_browser",
+            "prompt": "Apri localhost nel browser e fai uno screenshot.",
+            "observed_tools": [
+              "browser.navigate"
+            ],
+            "has_assistant_response": true
+          }
+        ]
+      }
+    }
+  }
+}

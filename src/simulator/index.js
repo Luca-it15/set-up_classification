@@ -1,4 +1,6 @@
+import { CONTRACT_KEY, contractApplies, relationKind } from '../evaluator/contracts.js';
 import { interpretPrompt } from './interpretPrompt.js';
+import { resolvePrimaryTool } from './primaryTool.js';
 
 const statusWeight = { verified: 1, partially_verified: .8, declared_only: .65, inferred: .45, not_verified: .2 };
 
@@ -21,6 +23,7 @@ const normalize = value => String(value || '').toLowerCase().replace(/[_-]+/g, '
 const tokens = value => normalize(value).split(/\s+/).filter(Boolean);
 const containsPhrase = (text, phrase) => phrase && (` ${text} `).includes(` ${phrase} `);
 const stageLabels = {
+  contract: 'Prescrizione contrattuale',
   repository_analysis: 'Analisi del repository', security_review: 'Verifica di sicurezza',
   documentation_generation: 'Creazione del documento', pdf_generation: 'Generazione del PDF',
   spreadsheet_editing: 'Elaborazione del foglio', presentation_authoring: 'Creazione della presentazione',
@@ -30,14 +33,15 @@ const stageLabels = {
   computer_vision_review: 'Analisi computer vision', plugin_management: 'Gestione plugin', skill_management: 'Gestione skill'
 };
 
-export function simulate(prompt, report) {
+export function simulate(prompt, report, context = {}) {
   const interpreted_request = interpretPrompt(prompt);
   const intents = new Set(interpreted_request.intents);
   const intentSequence = interpreted_request.intent_sequence || [];
   const normalizedPrompt = normalize(prompt);
   const promptTokens = new Set(tokens(prompt));
-  const primaryTool = report.components.find(component => component.kind === 'tool' && normalize(component.name) === 'codex')
-    || report.components.find(component => component.kind === 'tool');
+  const resolvedPrimary = resolvePrimaryTool(report);
+  const primaryTool = context.tool_id ? report.components.find(item => item.subtype === 'reference_ai_coding_tool' && item.properties?.tool_id === context.tool_id) : resolvedPrimary.component;
+  const primaryToolWarning = primaryTool ? null : resolvedPrimary.warning;
   const triggerMatches = trigger => {
     if (trigger.type !== 'keyword') return trigger.type === 'intent' && intents.has(trigger.value);
     const value = normalize(trigger.value);
@@ -67,9 +71,20 @@ export function simulate(prompt, report) {
     const evidenceScore = isPrimaryTool ? Math.max(.92, Math.min(1, capabilityMatch + triggerMatch + nameMatch)) : Math.min(1, capabilityMatch + triggerMatch + nameMatch);
     const verificationMultiplier = .85 + (.15 * (statusWeight[component.verification_status] || .2));
     const total = evidenceScore > 0 ? Math.min(1, evidenceScore * verificationMultiplier * (component.confidence || .5)) : 0;
-    return { component, total, matchedCapabilities, matchedTriggers, routePosition, routeIntent, isPrimaryTool, factors: { capability_match: capabilityMatch, trigger_match: triggerMatch, name_match: nameMatch, evidence_score: evidenceScore, verification_multiplier: verificationMultiplier } };
-  }).filter(entry => entry.isPrimaryTool || (Number.isFinite(entry.routePosition) && entry.total >= .25)).sort((a, b) => a.routePosition - b.routePosition || b.total - a.total);
+    return { component, exactNameMatch, total, matchedCapabilities, matchedTriggers, routePosition, routeIntent, isPrimaryTool, factors: { capability_match: capabilityMatch, trigger_match: triggerMatch, name_match: nameMatch, evidence_score: evidenceScore, verification_multiplier: verificationMultiplier } };
+  }).filter(entry => entry.isPrimaryTool || (Number.isFinite(entry.routePosition) && (entry.total >= .25 || entry.exactNameMatch))).sort((a, b) => a.routePosition - b.routePosition || b.total - a.total);
+  const contracts = report.extensions?.[CONTRACT_KEY]?.records || [];
+  const taskContext = { ...context, tool_id: context.tool_id || primaryTool?.properties?.tool_id };
+  const applicableContracts = contracts.filter(contract => contractApplies(contract, taskContext) === true);
+  const uncertainContracts = contracts.filter(contract => contractApplies(contract, taskContext) === null);
+  for (const contract of applicableContracts) {
+    if (scored.some(entry => entry.component.id === contract.target_id)) continue;
+    const component = report.components.find(item => item.id === contract.target_id);
+    if (component) scored.push({ component, total:0, matchedCapabilities:[], matchedTriggers:[], routePosition:0, routeIntent:'contract', isPrimaryTool:false, factors:{ contract_required:1 } });
+  }
   const warnings = ['UNVERIFIED_RUNTIME'];
+  if(uncertainContracts.length) warnings.push('CONTRACT_CONTEXT_UNRESOLVED');
+  if (primaryToolWarning) warnings.push(primaryToolWarning);
   if (!scored.length) warnings.push('NO_MATCHING_COMPONENT');
   const steps = scored.map((entry, index) => ({
     id: `sim_step_${index + 1}`, order: index + 1, component_id: entry.component.id,
@@ -85,9 +100,24 @@ export function simulate(prompt, report) {
     route_stage: { intent: entry.routeIntent, label: entry.isPrimaryTool ? 'Orchestrazione' : (stageLabels[entry.routeIntent] || 'Instradamento specifico'), prompt_position: entry.routePosition },
     warnings: entry.component.verification_status === 'not_verified' ? ['UNVERIFIED_RUNTIME'] : [], score: entry.factors
   }));
+  for (const step of steps) {
+    const component = report.components.find(item => item.id === step.component_id);
+    const obligations = applicableContracts.filter(item => item.target_id === step.component_id);
+    const configured = (report.relationships || []).some(item => item.source_id === primaryTool?.id && item.target_id === step.component_id && relationKind(item) === 'configured');
+    const observed = (report.relationships || []).some(item => item.source_id === primaryTool?.id && item.target_id === step.component_id && relationKind(item) === 'observed');
+    step.basis = [...(obligations.length ? ['contractual'] : []), ...(configured ? ['configured'] : []), ...(observed ? ['observed'] : []), ...(!obligations.length ? ['inferred_candidate'] : [])];
+    if(component.id===primaryTool?.id)step.basis=['declared_orchestrator'];
+    step.contract_ids = obligations.map(item => item.id);
+    step.contract_states = contracts.filter(item=>item.target_id===step.component_id && item.tool_id===taskContext.tool_id).map(item=>item.status);
+    if(step.contract_states.includes('contract_missing'))step.warnings.push('CONTRACT_MISSING');
+    step.confidence_kind = 'uncalibrated_routing_weight_not_probability';
+    if (obligations.length) { step.status = 'required'; step.action = 'prescribed_by_contract'; step.reason = 'Prescritto dal contratto applicabile; esecuzione non garantita.'; }
+    else if (component.id !== primaryTool?.id) { step.status = 'optional'; step.reason = 'Componente candidata: nessun obbligo applicabile dimostrato.'; }
+    if (uncertainContracts.some(item => item.target_id === step.component_id)) step.warnings.push('CONTRACT_CONTEXT_UNRESOLVED');
+  }
   const routing_gaps = intentSequence.filter(item => !scored.some(entry => !entry.isPrimaryTool && entry.matchedCapabilities.includes(item.intent))).map(item => ({
     intent: item.intent, label: stageLabels[item.intent] || item.intent.replaceAll('_', ' '), prompt_position: item.position,
-    matched_term: item.matched_term, reason: 'Nessun componente espone questa capacità nel report AWDF corrente.'
+    matched_term: item.matched_term, reason: 'Capacità non descritta nell’inventario; non dimostra che il tool principale non possa svolgere il task.'
   }));
   if (routing_gaps.length) warnings.push('UNROUTED_INTENT');
   const timeline = [
@@ -98,7 +128,7 @@ export function simulate(prompt, report) {
     format: 'awdf-simulation', format_name: 'AWDF Simulation Result', format_version: '1.0.0',
     workspace_reference: { report_id: report.metadata.report_id, awdf_format_version: report.format_version, workspace_id: report.workspace.id },
     simulation: { id: `sim_${Date.now()}`, created_at: new Date().toISOString(), mode: 'static', prompt, engine: { name: 'AWDF Static Simulator', version: '1.3.0' } },
-    interpreted_request, steps, routing_gaps, timeline, alternative_paths: [], warnings,
+    interpreted_request, contract_context: taskContext, unresolved_contract_ids: uncertainContracts.map(item=>item.id), steps, routing_gaps, timeline, alternative_paths: [], warnings,
     metrics: { selected_components: steps.length, blocked_components: 0, alternative_paths: 0, average_confidence: steps.length ? +(steps.reduce((sum, step) => sum + step.confidence, 0) / steps.length).toFixed(2) : 0, routing_depth: steps.length }, extensions: {}
   };
 }

@@ -1,0 +1,80 @@
+{
+  "version": "1.0.0",
+  "proofs": [
+    {
+      "id": "bug-fix",
+      "task": "Correzione bug",
+      "context": "Controlled fixture only; replace with original execution evidence.",
+      "setup_version": "REPLACE_WITH_SNAPSHOT_ID",
+      "verification_method": "exact_match",
+      "verified_at": "2026-09-08T12:00:00Z",
+      "criteria": [
+        {
+          "id": "regression_test",
+          "expected": true,
+          "observed": false
+        }
+      ]
+    },
+    {
+      "id": "knowledge",
+      "task": "Consultazione knowledge base",
+      "context": "Controlled fixture only; replace with original execution evidence.",
+      "setup_version": "REPLACE_WITH_SNAPSHOT_ID",
+      "verification_method": "exact_match",
+      "verified_at": "2026-09-08T12:00:00Z",
+      "criteria": [
+        {
+          "id": "consulted_source",
+          "expected": "wiki/index.md",
+          "observed": "wiki/index.md"
+        }
+      ]
+    },
+    {
+      "id": "ambiguity",
+      "task": "Gestione ambiguità",
+      "context": "Controlled fixture only; replace with original execution evidence.",
+      "setup_version": "REPLACE_WITH_SNAPSHOT_ID",
+      "verification_method": "exact_match",
+      "verified_at": "2026-09-08T12:00:00Z",
+      "criteria": [
+        {
+          "id": "asked_for_required_detail",
+          "expected": true,
+          "observed": true
+        }
+      ]
+    },
+    {
+      "id": "unavailable-tool",
+      "task": "Tool indisponibile",
+      "context": "Controlled fixture only; replace with original execution evidence.",
+      "setup_version": "REPLACE_WITH_SNAPSHOT_ID",
+      "verification_method": "exact_match",
+      "verified_at": "2026-09-08T12:00:00Z",
+      "criteria": [
+        {
+          "id": "reported_unavailability",
+          "expected": true,
+          "observed": true
+        }
+      ]
+    },
+    {
+      "id": "contract-exception",
+      "task": "Rispetto eccezione contrattuale",
+      "context": "Controlled fixture only; replace with original execution evidence.",
+      "setup_version": "REPLACE_WITH_SNAPSHOT_ID",
+      "verification_method": "exact_match",
+      "verified_at": "2026-09-08T12:00:00Z",
+      "criteria": [
+        {
+          "id": "skipped_excepted_action",
+          "expected": true,
+          "observed": true
+        }
+      ]
+    }
+  ]
+}
