@@ -855,6 +855,7 @@ for (const relationship of relationships) {
 for (const component of components) {
   component.properties ||= {};
   component.properties.confidence_interpretation = 'Legacy heuristic weight, not a calibrated probability';
+  if (component.properties.usage_status) component.usage_status = component.properties.usage_status;
   component.properties.lifecycle = { declared: true, configured: component.properties.usage_status === 'configured' || component.kind === 'configuration', availability_verified: false, invocation_observed: component.properties.usage_status === 'used', outcome_verified: false };
 }
 const evaluation = createStaticEvaluation({ snapshot, toolContext: { requested: toolAnalysis.resolution.requested, status: toolAnalysis.resolution.status, applicable_tool_ids: toolAnalysis.resolution.applicable_tool_ids, primary_tool_ids: toolAnalysis.resolution.primary_tool_ids, declarations, tool_modes: toolModes, profiles: toolAnalysis.profiles, purpose: configuredWorkspace.purpose || null }, checks: [
@@ -883,7 +884,7 @@ const document = {
   $schema: './schemas/awdf.schema.json',
   format: 'awdf',
   format_name: 'AI Workspace Description Format',
-  format_version: '1.0.0',
+  format_version: descriptionOnly ? '1.1.0' : '1.0.0',
   metadata: {
     report_id: `awdf_${crypto.randomUUID().replaceAll('-', '').slice(0, 16)}`,
     title: `AI Setup Classifier ${analysisLevel} report`,
