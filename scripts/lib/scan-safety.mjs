@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+const chatDirectory = /^(?:sessions?|chats?|conversations?)$/i;
 const sensitiveDirectory = /^(?:secrets?|credentials?|\.secrets?|\.ssh)$/i;
 const sensitiveFile = /^(?:\.env(?:\..+)?|credentials?\.(?:json|ya?ml|toml|ini)|secrets?\.(?:json|ya?ml|toml|ini)|id_(?:rsa|ed25519|ecdsa)|[^/]+\.(?:pem|key|p12|pfx))$/i;
 const privateKeyBlock = /-----BEGIN (?:[A-Z ]* )?PRIVATE KEY-----[\s\S]*?-----END (?:[A-Z ]* )?PRIVATE KEY-----/g;
@@ -7,7 +8,7 @@ const privateKeyBlock = /-----BEGIN (?:[A-Z ]* )?PRIVATE KEY-----[\s\S]*?-----EN
 export function sensitiveRelativePath(relative) {
   const segments = String(relative || '').replaceAll('\\', '/').split('/').filter(Boolean);
   return segments.some((segment, index) =>
-    (index < segments.length - 1 && sensitiveDirectory.test(segment)) ||
+    (index < segments.length - 1 && ((index === 0 || (index === 1 && /^\.(?:codex|copilot|claude)$/i.test(segments[0]))) && chatDirectory.test(segment) || sensitiveDirectory.test(segment))) ||
     (index === segments.length - 1 && sensitiveFile.test(segment))
   );
 }
@@ -36,7 +37,7 @@ export function redactSensitiveText(input, { anonymized = false, roots = [] } = 
       const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       value = value.replace(new RegExp(escaped, 'gi'), '[WORKSPACE_' + (index + 1) + ']');
       if (normalized.includes('/')) {
-        const windowsForm = normalized.replaceAll('/', '\\\\');
+        const windowsForm = normalized.replaceAll('/', '\\');
         const escapedWindows = windowsForm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         value = value.replace(new RegExp(escapedWindows, 'gi'), '[WORKSPACE_' + (index + 1) + ']');
       }
