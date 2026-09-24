@@ -13,7 +13,7 @@
     "validate:settings": "node scripts/validate-settings.mjs ai-setup-settings.json",
     "test:awdf": "node scripts/test-awdf.mjs",
     "test:simulator": "node scripts/test-simulator.mjs",
-    "test:scanner": "node scripts/test-scanner.mjs && node scripts/test-configuration-links.mjs",
+    "test:scanner": "node scripts/test-scanner.mjs && node scripts/test-configuration-links.mjs && node scripts/test-scan-safety.mjs",
     "test:rules": "node scripts/test-ai-tool-rules.mjs",
     "skill:install": "node scripts/install-skill.mjs",
     "validate:simulation": "node scripts/validate-awdf-simulation.mjs simulation-result.json ai-setup.json",
