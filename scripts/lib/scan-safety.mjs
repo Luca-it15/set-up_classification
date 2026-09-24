@@ -30,7 +30,7 @@ export function redactSensitiveText(input, { anonymized = false, roots = [] } = 
   value = value.replace(/((?:[a-z][a-z0-9+.-]*:\/\/))([^\s/@]+):([^\s/@]+)@/gi, '$1[REDACTED]@');
   value = value.replace(/((?:[?&](?:api_?key|access_?token|auth|authorization|password|secret|token)=))[^&#\s]+/gi, '$1[REDACTED]');
   value = value.replace(/(["']?(?:api[_-]?key|apikey|access[_-]?token|token|password|passwd|secret|client[_-]?secret|authorization|credential|github_token)["']?\s*[:=]\s*)(["'])(.*?)\2/gi, '$1$2[REDACTED]$2');
-  value = value.replace(/(["']?(?:api[_-]?key|apikey|access[_-]?token|token|password|passwd|secret|client[_-]?secret|authorization|credential|github_token)["']?\s*[:=]\s*)([^\s,}\]]+)/gi, '$1[REDACTED]');
+  value = value.replace(/(["']?(?:api[_-]?key|apikey|access[_-]?token|token|password|passwd|secret|client[_-]?secret|authorization|credential|github_token)["']?\s*[:=]\s*)([^\s,}\]"']+)/gi, '$1[REDACTED]');
   if (anonymized) {
     for (const [index, root] of roots.entries()) {
       const normalized = path.resolve(root).replaceAll('\\', '/').replace(/\/$/, '');
