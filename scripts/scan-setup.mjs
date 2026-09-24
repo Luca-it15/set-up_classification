@@ -12,6 +12,7 @@ import { CONTRACT_KEY } from '../src/evaluator/contracts.js';
 import { analyzeInstructionLinks, inspectInstructionReferences, applicableInstructions as applicableInstructionsForTask, instructionScope } from './lib/instruction-links.mjs';
 import { analyzeAiToolSetup } from './lib/ai-tool-rules.mjs';
 import { validateAwdfFile } from './validate-awdf.mjs';
+import { isSensitiveSource, sensitiveRelativePath, redactSensitiveText } from './lib/scan-safety.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -93,11 +94,15 @@ function matchesExclusionRules(name, localRelative, rules) {
   });
 }
 const isExcluded = (name, localRelative) => matchesExclusionRules(name, localRelative, exclusionRules);
-const sensitive = /(^|\/)(sessions?|chats?|conversations?|\.env(?:\..+)?|.*(?:secret|token|credential|password|auth).*)(?:$|\/)/i;
-const isSensitiveFile = file => [file?.relative, file?.localRelative, file?.absolute, file?.linkTarget].filter(Boolean).some(value => sensitive.test(String(value).replaceAll('\\', '/')));
+const isSensitiveFile = file => isSensitiveSource(file, roots);
 const files = [];
 const inaccessiblePaths = [];
 const excludedPaths = [];
+const excludedPathDetails = [];
+function excludeSensitive(relative) {
+  if (!excludedPaths.includes(relative)) excludedPaths.push(relative);
+  if (!excludedPathDetails.some(item => item.path === relative)) excludedPathDetails.push({ path: relative, code: 'SENSITIVE_PATH' });
+}
 const repositoryRoots = new Set();
 function walk(dir, workspaceRoot) {
   let entries;
@@ -110,6 +115,10 @@ function walk(dir, workspaceRoot) {
     const absolute = path.join(dir, item.name);
     const localRelative = path.relative(workspaceRoot, absolute).replaceAll('\\', '/');
     if (item.name.toLowerCase() === '.git') repositoryRoots.add(dir);
+    if (sensitiveRelativePath(localRelative)) {
+      excludeSensitive(roots.length > 1 ? rootLabels.get(workspaceRoot) + '/' + localRelative : localRelative);
+      continue;
+    }
     if (isExcluded(item.name, localRelative)) {
       excludedPaths.push(roots.length > 1 ? rootLabels.get(workspaceRoot) + '/' + localRelative : localRelative);
       continue;
@@ -125,6 +134,8 @@ function walk(dir, workspaceRoot) {
         const targetStats = fs.statSync(resolvedAbsolute);
         if (!targetOwner) {
           inaccessiblePaths.push({ path: localRelative, code: 'SYMLINK_TARGET_OUTSIDE_AUTHORIZED_SCOPE' });
+        } else if (isSensitiveSource({ localRelative, linkTarget: resolvedAbsolute }, roots)) {
+          excludeSensitive(relative);
         } else if (targetStats.isFile() && ![output, settingsPath].includes(path.resolve(resolvedAbsolute))) {
           files.push({ absolute, resolvedAbsolute, relative, localRelative, workspaceRoot, isSymbolicLink: true, linkTarget: resolvedAbsolute });
         } else if (targetStats.isDirectory()) {
@@ -251,8 +262,9 @@ function addEvidence(type, file, summary) {
   const sourceFragment = rawSource.slice(sourcePath.length);
   const sourceRecord = file ? fileRecordIndex.get(sourcePath) : null;
   const canonicalSource = sourceRecord ? `${sourceRecord.relative}${sourceFragment}` : rawSource.replaceAll('\\', '/');
+  summary = redactSensitiveText(summary, { anonymized: pathPolicy === 'anonymized', roots });
   const id = eid(`${type}:${canonicalSource}:${summary}`);
-  const sensitiveSource = Boolean(file && sensitive.test(String(file).replaceAll('\\', '/'))) || isSensitiveFile(sourceRecord);
+  const sensitiveSource = isSensitiveFile(sourceRecord) || (sourcePath && !path.isAbsolute(sourcePath) && sensitiveRelativePath(sourcePath));
   let contentHash = null;
   if (file && !sensitiveSource) {
     const absolute = path.isAbsolute(sourcePath) ? sourcePath : reportPathIndex.get(sourcePath);
@@ -274,10 +286,11 @@ function addComponent(kind, subtype, name, file, category, description, details 
 const materialCache = new Map();
 const safeText = file => {
   if (materialCache.has(file.relative)) return materialCache.get(file.relative).content;
-  if (isSensitiveFile(file)) { inaccessiblePaths.push({ path: file.relative, code: 'SENSITIVE_SOURCE_NOT_READ' }); return ''; }
+  if (isSensitiveFile(file)) { excludeSensitive(file.relative); return ''; }
   const maxBytes = /\.(?:json|jsonc|toml|ya?ml)$/i.test(file.localRelative) ? 2 * 1024 * 1024 : 256000;
   try {
-    const before = fs.statSync(file.absolute), content = readUtf8Window(file.absolute, maxBytes), after = fs.statSync(file.absolute);
+    const before = fs.statSync(file.absolute), rawContent = readUtf8Window(file.absolute, maxBytes), after = fs.statSync(file.absolute);
+    const content = redactSensitiveText(rawContent, { anonymized: pathPolicy === 'anonymized', roots });
     const truncated = before.size > maxBytes;
     if (truncated) inaccessiblePaths.push({ path: file.relative, code: 'TRUNCATED_MATERIAL' });
     if (before.mtimeMs !== after.mtimeMs || before.size !== after.size) inaccessiblePaths.push({ path: file.relative, code: 'MATERIAL_CHANGED_DURING_CAPTURE' });
@@ -667,7 +680,7 @@ function loadToolGlossary() {
  })).filter(item=>item.name&&item.aliases.length);
 }
 const glossary = loadToolGlossary();
-const configCandidates = files.filter(file => !/^tests?\//i.test(file.localRelative) && !sensitive.test(file.relative) && /(^|\/)(package\.json|pyproject\.toml|requirements[^/]*\.txt|cargo\.toml|config\.toml|settings\.(?:json|ya?ml)|.*\.mcp\.json|\.tool-versions)$/i.test(file.localRelative));
+const configCandidates = files.filter(file => !/^tests?\//i.test(file.localRelative) && !isSensitiveFile(file) && /(^|\/)(package\.json|pyproject\.toml|requirements[^/]*\.txt|cargo\.toml|config\.toml|settings\.(?:json|ya?ml)|.*\.mcp\.json|\.tool-versions)$/i.test(file.localRelative));
 const configTexts = configCandidates.flatMap(file => {
   try { return [{ file, text: safeText(file).slice(0, 128000).toLowerCase() }]; } catch { return []; }
 });
@@ -808,15 +821,11 @@ for (const gap of linkAnalysis.gaps.filter(gap => linkAnalysis.records.some(reco
 const applicableArtifacts = [...new Set(toolAnalysis.resolution.applicable_tool_ids.flatMap(id => applicableInstructions(toolAnalysis.artifacts, id, configuredWorkspace.task_path || '.', toolModes)))];
 const referenceInspection = inspectInstructionReferences({ artifacts: applicableArtifacts, files, readText: safeText, referenceStatus });
 const snapshotFiles = [...materialCache.values()].filter(item => !isSensitiveFile(item.file)).map(item => {
-  const content = item.content.split(/\r?\n/).map(line => descriptionOnly
-    ? line.replace(/((?:api[_-]?key|token|password|secret|authorization)\s*[=:]\s*).*/gi, '$1[REDACTED]')
-      .replace(/https?:\/\/[^\s"'<>]+/g, url => { try { const value = new URL(url); value.username = ''; value.password = ''; value.search = ''; value.hash = ''; return value.toString(); } catch { return '[REDACTED_URL]'; } })
-      .replace(/\b(?:sk|key|token|secret)[-_][A-Za-z0-9_-]{12,}\b/gi, '[SECRET]')
-    : redactPrompt(line)).join('\n');
+  const content = descriptionOnly ? item.content : item.content.split(/\r?\n/).map(redactPrompt).join('\n');
   return { path: reportPath(item.file.relative), sha256: crypto.createHash('sha256').update(content).digest('hex'), content, truncated: item.truncated };
 }).sort((a,b) => a.path.localeCompare(b.path,'en'));
 const snapshot = {
-  files: snapshotFiles, inventory_paths: files.map(file=>reportPath(file.relative)), component_ids: components.map(item => item.id),
+  files: snapshotFiles, inventory_paths: files.map(file=>reportPath(file.relative)), excluded_paths: excludedPathDetails.map(item => ({ ...item, path: reportPath(item.path) })), component_ids: components.map(item => item.id),
   components: components.map(item => ({ id: item.id, kind: item.kind, path: item.path, description: item.description })),
   instruction_sources: applicableArtifacts.map(item => ({ path: reportPath(item.path), tool_ids: toolAnalysis.resolution.applicable_tool_ids.filter(id=>applicableInstructions([item],id,configuredWorkspace.task_path||'.',toolModes).length), scope: item.path.includes('/') ? item.path.slice(0,item.path.lastIndexOf('/')) : '.' })),
   inaccessible_paths: inaccessiblePaths.map(item => ({ ...item, path: reportPath(item.path) })),
@@ -971,7 +980,7 @@ if (descriptionOnly) {
       bindings: relationships.filter(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual').map(link => link.id),
       status: relationships.some(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual') ? 'consultation_prescribed' : 'collection_only'
     })),
-    collection_limits: { complete_workspace: inaccessiblePaths.length === 0 && !snapshot.files.some(file => file.truncated), exclusions: document.scope.excluded, note: 'Coverage is limited to authorized roots, exclusions and supported parsers; not proof of complete machine inventory.' }
+    collection_limits: { complete_workspace: inaccessiblePaths.length === 0 && excludedPathDetails.length === 0 && !snapshot.files.some(file => file.truncated), exclusions: document.scope.excluded, excluded_paths: excludedPathDetails.map(item => ({ ...item, path: reportPath(item.path) })), note: 'Coverage is limited to authorized roots, exclusions and supported parsers; not proof of complete machine inventory.' }
   };
   delete document.extensions[EVALUATION_KEY];
   delete document.extensions[CONTRACT_KEY];
@@ -984,7 +993,10 @@ if (descriptionOnly) {
   document.workspace.purpose = configuredWorkspace.purpose || 'Descrizione documentata del setup AI.';
   document.executive_summary = { purpose: 'Inventario, istruzioni e collegamenti documentati. La valutazione è calcolata dal classificatore.', overall_score: null, design_score: null, runtime_status: 'unverified' };
 }
-const serialized = `${JSON.stringify(document, null, 2)}\n`;
+const redactValue = value => typeof value === 'string' ? redactSensitiveText(value, { anonymized: pathPolicy === 'anonymized', roots }) : value;
+const sanitizedDocument = JSON.parse(JSON.stringify(document, (_key, value) => redactValue(value)));
+if (descriptionOnly) sanitizedDocument.extensions[DESCRIPTION_KEY].snapshot.id = snapshotId(sanitizedDocument.extensions[DESCRIPTION_KEY].snapshot);
+const serialized = `${JSON.stringify(sanitizedDocument, null, 2)}\n`;
 const temporaryOutput = `${output}.${process.pid}.tmp`;
 fs.writeFileSync(temporaryOutput, serialized, 'utf8');
 const validationErrors = validateAwdfFile(temporaryOutput);
