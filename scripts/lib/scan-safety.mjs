@@ -26,6 +26,11 @@ export function isSensitiveSource(file, roots) {
 export function redactSensitiveText(input, { anonymized = false, roots = [] } = {}) {
   let value = String(input ?? '');
   value = value.replace(privateKeyBlock, '[REDACTED_PRIVATE_KEY]');
+  // Preserve line breaks and JSON syntax while hiding arbitrary environment and header values.
+  value = value.replace(/("(?:env|headers)"\\s*:\\s*\\{)([\\s\\S]*?)(\\})/gi, (_match, open, body, close) =>
+    open + body.replace(/("(?:[^"\\\\]|\\\\.)+"\\s*:\\s*)("(?:[^"\\\\]|\\\\.)*"|[^,}\\s]+)/g, '$1"[REDACTED]"') + close);
+  value = value.replace(/(\\[(?:[^\\]\\r\\n]*\\.)?(?:env|headers?)\\]\\s*\\r?\\n)([\\s\\S]*?)(?=\\r?\\n\\[|$)/gi, (_match, heading, body) =>
+    heading + body.replace(/(^\\s*[A-Za-z0-9_.-]+\\s*=\\s*)([^\\r\\n#]+)/gm, '$1"[REDACTED]"'));
   value = value.replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,}|xox[baprs]-[A-Za-z0-9-]{12,}|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{16,})\b/g, '[REDACTED_TOKEN]');
   value = value.replace(/((?:[a-z][a-z0-9+.-]*:\/\/))([^\s/@]+):([^\s/@]+)@/gi, '$1[REDACTED]@');
   value = value.replace(/((?:[?&](?:api_?key|access_?token|auth|authorization|password|secret|token)=))[^&#\s]+/gi, '$1[REDACTED]');
