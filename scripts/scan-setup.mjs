@@ -264,7 +264,7 @@ function addEvidence(type, file, summary) {
   const canonicalSource = sourceRecord ? `${sourceRecord.relative}${sourceFragment}` : rawSource.replaceAll('\\', '/');
   summary = redactSensitiveText(summary, { anonymized: pathPolicy === 'anonymized', roots });
   const id = eid(`${type}:${canonicalSource}:${summary}`);
-  const sensitiveSource = isSensitiveFile(sourceRecord) || (sourcePath && !path.isAbsolute(sourcePath) && sensitiveRelativePath(sourcePath));
+  const sensitiveSource = Boolean(isSensitiveFile(sourceRecord) || (sourcePath && !path.isAbsolute(sourcePath) && sensitiveRelativePath(sourcePath)));
   let contentHash = null;
   if (file && !sensitiveSource) {
     const absolute = path.isAbsolute(sourcePath) ? sourcePath : reportPathIndex.get(sourcePath);
@@ -998,7 +998,10 @@ const redactValue = value => typeof value === 'string' ? redactSensitiveText(val
 const sanitizedDocument = JSON.parse(JSON.stringify(document, (_key, value) => redactValue(value)));
 for (const key of [DESCRIPTION_KEY, EVALUATION_KEY]) {
   const captured = sanitizedDocument.extensions?.[key]?.snapshot;
-  if (captured) captured.id = snapshotId(captured);
+  if (captured) {
+    for (const file of captured.files || []) file.sha256 = crypto.createHash('sha256').update(file.content).digest('hex');
+    captured.id = snapshotId(captured);
+  }
 }
 const serialized = `${JSON.stringify(sanitizedDocument, null, 2)}\n`;
 const temporaryOutput = `${output}.${process.pid}.tmp`;

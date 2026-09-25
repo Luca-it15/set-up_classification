@@ -36,6 +36,11 @@ assert.doesNotMatch(exported.html, /<script|<img|PRIVATE_PATH_EXAMPLE|HIDDEN_SNA
 assert.match(exported.html, /&lt;script&gt;/);
 assert.match(createSetupExport(malicious, PALETTES.light, { includePaths: true }).html, /PRIVATE_PATH_EXAMPLE/);
 assert.match(exported.svg, /<svg/);
+assert.match(exported.svg, /class="node-plate"/);
+assert.match(exported.mapSvg, /class="hotspot"/);
+assert.match(exported.html, /class="map-frame"/);
+assert.doesNotMatch(exported.html, /Inventario della mappa/);
+assert.doesNotMatch(exported.html, /<script/i);
 assert.ok(exported.height > 1000);
 assert.ok(exported.html.includes('Content-Security-Policy'));
 const empty = createSetupExport({ workspace: { name: 'Empty' }, components: [], relationships: [] }, PALETTES.light);

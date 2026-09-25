@@ -19,7 +19,7 @@ export function ExportSetupDialog({ report, palette, language, close, setNotice 
     <p>{t('HTML include mappa, descrizioni e collegamenti, consultabili offline. PNG include la mappa completa e l’elenco degli elementi.')}</p>
     <label className="export-paths"><input type="checkbox" checked={includePaths} disabled={busy} onChange={event => setIncludePaths(event.target.checked)}/>{t('Includi i percorsi dei componenti')}</label>
     <p className="export-note">{t('Nomi e descrizioni rimangono nel file. Controllali prima di condividerlo.')}</p>
-    {artifact ? <div className="export-preview" dangerouslySetInnerHTML={{ __html: artifact.svg }}/> : <p role="alert">{t('Impossibile preparare il setup. Importa un report valido e riprova.')}</p>}
+    {artifact ? <div className="export-preview" dangerouslySetInnerHTML={{ __html: artifact.mapSvg || artifact.svg }}/> : <p role="alert">{t('Impossibile preparare il setup. Importa un report valido e riprova.')}</p>}
     <p role="status" className="export-feedback">{error || (busy ? t('Preparazione del file…') : t('Il file esportato non richiede il sito né una connessione.'))}</p>
     <footer className="feature-actions"><button disabled={busy || !artifact} aria-busy={busy} onClick={() => exportFile('html')}>{t('Esporta HTML')}</button><button disabled={busy || !artifact} aria-busy={busy} onClick={() => exportFile('png')}>{t('Esporta PNG')}</button></footer>
   </Modal>;
