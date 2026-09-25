@@ -10,14 +10,23 @@ export function bindingDirective(line) { return directive(line) !== null; }
 // Extraction grammar only. Quality, contradictions and arbitrary prose require review.
 function directive(line) {
   let value = line.trim().replace(/^(?:[-*]|\d+\.)\s+/, '');
-  if (/\b(?:not|never|don't|unless|except|example|optional|may|could|should|non|mai|salvo|eccetto|esempio|facoltativo|puoi|potresti|if|when|se|quando)\b/i.test(value)) return null;
+  if (/\b(?:not|never|don't|unless|except|example|optional|may|could|should|non|mai|salvo|eccetto|esempio|facoltativo|puoi|potresti)\b/i.test(value)) return null;
   const conditions = [];
   const before = /^(?:before (?:modifying|editing) (?:the )?code|prima di modificare il codice),\s*/i;
   if (before.test(value)) { conditions.push({ type: 'task_kind', value: 'code_modification' }); value = value.replace(before, ''); }
-  const match = value.match(/^(?:(?:always|sempre)\s+|(?:you must|devi|è obbligatorio)\s+)?(read|consult|use|follow|leggi|consulta|usa|segui|leggere|consultare|usare|seguire)\s+/i);
+  const subject = value.match(/^(?:documentation questions|domande sulla documentazione)\s+(?:must|devono)\s+(use|consult|read|search|usare|consultare|leggere|cercare)\s+/i);
+  if (subject) {
+    conditions.push({ type: 'task_kind', value: 'documentation_query' });
+    value = value.slice(subject[0].length);
+  }
+  const match = subject || value.match(/^(?:(?:always|sempre)\s+|(?:you must|devi|è obbligatorio)\s+)?(read|consult|use|follow|search|leggi|consulta|usa|segui|cerca|leggere|consultare|usare|seguire|cercare)\s+/i);
   if (!match) return null;
   const tail = value.replace(/\x60[^\x60]+\x60|\]\([^)]+\)/g, '');
-  if (/\b(?:before|after|prima|dopo|only|solo)\b/i.test(tail)) return { action: match[1], conditions: [{ type: 'unresolved', value: tail }] };
+  if (/\b(?:before answering documentation questions|prima di rispondere a domande sulla documentazione)[.!?]?\s*$/i.test(tail)) conditions.push({ type: 'task_kind', value: 'documentation_query' });
+  else if (/\b(?:before answering|prima di rispondere)[.!?]?\s*$/i.test(tail)) conditions.push({ type: 'task_kind', value: 'answer' });
+  else if (/\bfor project questions[.!?]?\s*$/i.test(tail)) conditions.push({ type: 'task_kind', value: 'project_question' });
+  else if (/\bwhen you need domain information[.!?]?\s*$/i.test(tail)) conditions.push({ type: 'task_kind', value: 'domain_information' });
+  else if (/\b(?:before|after|prima|dopo|only|solo|if|se|when|quando)\b/i.test(tail)) conditions.push({ type: 'unresolved', value: tail });
   return { action: match[1], conditions };
 }
 function linesOf(content) {
@@ -131,10 +140,24 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
       }
     };
     for (const root of applicable) walk(root.file, root);
+    const normalizedTargets = targets.map(target => ({ id: target.id, path: normalize(target.path) })).filter(target => target.path);
+    const referencesByTarget = new Map();
+    for (const instruction of instructions) {
+      let longest = -1, matches = [];
+      for (const target of normalizedTargets) {
+        if (!within(target.path, instruction.resolved.path)) continue;
+        if (target.path.length > longest) { longest = target.path.length; matches = []; }
+        if (target.path.length === longest) matches.push(target.id);
+      }
+      for (const id of matches) {
+        if (!referencesByTarget.has(id)) referencesByTarget.set(id, []);
+        referencesByTarget.get(id).push(instruction);
+      }
+    }
     for (const target of targets) {
       const targetPath = normalize(target.path), candidates = [];
       const workflow = intended.find(item => item.tool_id === toolId && normalize(item.path) === targetPath && within(item.scope || '.', taskPath));
-      const related = instructions.filter(item => targetPath && within(targetPath, item.resolved.path));
+      const related = referencesByTarget.get(target.id) || [];
       const operational = related.filter(item => item.command);
       const conflict = related.some(item => /\b(?:not|never|don't|non|mai)\b/i.test(item.excerpt));
       for (const item of related) references.push({ tool_id: toolId, target_id: target.id, source_path: item.source, line: item.line, excerpt: item.excerpt, binding: !!item.command });

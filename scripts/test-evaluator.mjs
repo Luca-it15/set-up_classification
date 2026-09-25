@@ -65,7 +65,7 @@ test('optional workflow resource does not require a contract',()=>{
  assert.equal(scan('',{intended:[{tool_id:'codex',path:'wiki',required:false}]}).records[0].status,'contract_not_required');
 });
 test('unknown conditions and explicit contradictory uses remain uncertain',()=>{
- assert.equal(scan('Use \x60wiki/\x60 before answering.').records[0].status,'contract_uncertain');
+ assert.equal(scan('Use \x60wiki/\x60 before answering on Tuesdays.').records[0].status,'contract_uncertain');
  assert.equal(scan('Use \x60wiki/\x60.\nNever use \x60wiki/\x60.').records[0].status,'contract_uncertain');
 });
 test('conditions and exceptions need explicit task context',()=>{

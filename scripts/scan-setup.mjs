@@ -453,38 +453,6 @@ for (const file of files.filter(file => /^(?:agents|\.claude\/agents|\.github\/a
   const meta = textDetails(file);
   addComponent('agent', 'custom_agent', path.basename(file.relative, path.extname(file.relative)), file.relative, 'custom_agents', meta.description, meta.details);
 }
-const knowledgeBaseByKey = new Map();
-function addKnowledgeBase(key, name, basePath, subtype, members) {
-  if (knowledgeBaseByKey.has(key)) return knowledgeBaseByKey.get(key);
-  const id = addComponent('folder', 'documentation_collection', name, basePath, 'documentation', `Raccolta di ${members.length} documenti. Il collegamento al setup AI richiede una prescrizione applicabile.`, { properties: { document_count: members.length, knowledge_candidate: subtype, source_root: reportPath(basePath) } });
-  knowledgeBaseByKey.set(key, id);
-  return id;
-}
-const knowledgeFolderPattern = /^(knowledge|knowledge-base|knowledge_base|kb|llm-wiki|gea-wiki|rag)\//i;
-const knowledgeCandidates = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && knowledgeFolderPattern.test(file.localRelative) && /\.(md|mdx|txt|html?|csv|ya?ml|json)$/i.test(file.localRelative));
-const knowledgeGroups = new Map();
-for (const file of knowledgeCandidates) {
-  const folder = file.localRelative.split('/')[0];
-  const key = `${file.workspaceRoot}:${folder}`;
-  if (!knowledgeGroups.has(key)) knowledgeGroups.set(key, []);
-  knowledgeGroups.get(key).push(file);
-}
-for (const [key, members] of knowledgeGroups) {
-  if (members.length < 2) {
-    const file = members[0];
-    const meta = textDetails(file);
-    addComponent('document', 'knowledge_source_document', path.basename(file.relative, path.extname(file.relative)), file.relative, 'documentation', meta.description, meta.details);
-    continue;
-  }
-  const first = members[0];
-  const folder = first.localRelative.split('/')[0];
-  const basePath = roots.length > 1 ? `${rootLabels.get(first.workspaceRoot)}/${folder}` : folder;
-  const parentId = addKnowledgeBase(key, `${workspaceDisplayName(first.workspaceRoot)} · ${folder}`, basePath, ['llm-wiki', 'gea-wiki'].includes(folder.toLowerCase()) ? 'llm_wiki' : 'managed_document_corpus', members);
-  for (const file of members) {
-    const meta = textDetails(file);
-    addComponent('document', 'knowledge_source_document', path.basename(file.relative, path.extname(file.relative)), file.relative, 'documentation', meta.description, { ...meta.details, parent_id: parentId });
-  }
-}
 function skillDetails(file) {
   const text = analysisLevel === 'inventory' ? '' : safeText(file);
   const frontmatter = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---/);
@@ -580,47 +548,67 @@ for (const folder of ['plugins', 'node_repl']) {
   const matches = files.filter(file => file.localRelative.startsWith(`${folder}/`));
   if (matches.length && folder !== 'plugins') addComponent('configuration', `${folder}_collection`, folder, folder, 'tool_integrations', `${matches.length} artefatti non sensibili rilevati in ${folder}/.`);
 }
-const documentationFiles = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && /^docs\/.+\.(md|mdx|txt|html?)$/i.test(file.localRelative));
-const documentationGroups = new Map();
-for (const file of documentationFiles) {
-  const key = `${file.workspaceRoot}:docs`;
-  if (!documentationGroups.has(key)) documentationGroups.set(key, []);
-  documentationGroups.get(key).push(file);
-}
-for (const members of documentationGroups.values()) {
-  const first = members[0];
-  const basePath = roots.length > 1 ? `${rootLabels.get(first.workspaceRoot)}/docs` : 'docs';
-  const parentId = members.length > 1 ? addComponent('folder', 'documentation_collection', `Documentazione · ${workspaceDisplayName(first.workspaceRoot)}`, basePath, 'documentation', `Raccolta documentale di ${members.length} file; non classificata automaticamente come knowledge base.`, { properties: { document_count: members.length } }) : null;
-  for (const file of members) {
-    const meta = textDetails(file);
-    addComponent('document', 'technical_documentation', path.basename(file.relative, path.extname(file.relative)), file.relative, 'documentation', meta.description, { ...meta.details, parent_id: parentId });
+// Document discovery is structural and independent of folder names or scan mode.
+// A collection remains a candidate until an applicable instruction binds a tool to it.
+const instructionFilePaths = new Set(toolAnalysis.artifacts.map(artifact => artifact.file.relative));
+const representedPaths = new Set(components.map(component => rawComponentPaths.get(component.id)).filter(Boolean));
+const documentFiles = files.filter(file =>
+  /\.(?:md|mdx|txt|adoc|rst)$/i.test(file.localRelative) &&
+  file.localRelative.includes('/') &&
+  !/(^|\/)tests?\/fixtures\//i.test(file.localRelative) &&
+  !isSensitiveFile(file) &&
+  !instructionFilePaths.has(file.relative) &&
+  !representedPaths.has(file.relative)
+);
+const documentGroups = new Map();
+for (const file of documentFiles) {
+  let directory = path.posix.dirname(file.localRelative);
+  while (directory !== '.') {
+    const key = `${file.workspaceRoot}:${directory}`;
+    if (!documentGroups.has(key)) documentGroups.set(key, { workspaceRoot: file.workspaceRoot, directory, members: [] });
+    documentGroups.get(key).members.push(file);
+    directory = path.posix.dirname(directory);
   }
 }
-const repositoryDocuments = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && /^(README|CONTRIBUTING|ARCHITECTURE|ADR).*\.(md|mdx)$/i.test(path.basename(file.relative)) && !/^(knowledge|knowledge-base|knowledge_base|kb|llm-wiki|gea-wiki|rag|docs)\//i.test(file.localRelative));
+const collectionIds = new Map();
+for (const [key, group] of [...documentGroups.entries()].filter(([, item]) => item.members.length >= 2)
+  .sort((left, right) => left[1].directory.split('/').length - right[1].directory.split('/').length || left[0].localeCompare(right[0], 'en'))) {
+  const { workspaceRoot, directory, members } = group;
+  const basePath = roots.length > 1 ? `${rootLabels.get(workspaceRoot)}/${directory}` : directory;
+  let ancestor = path.posix.dirname(directory), parentId = null;
+  while (ancestor !== '.') {
+    const candidate = collectionIds.get(`${workspaceRoot}:${ancestor}`);
+    if (candidate) { parentId = candidate; break; }
+    ancestor = path.posix.dirname(ancestor);
+  }
+  const id = addComponent('folder', 'documentation_collection', path.posix.basename(directory), basePath, 'documentation',
+    `Raccolta di ${members.length} documenti; la consultazione da parte di un tool AI richiede una regola applicabile.`, {
+      parent_id: parentId,
+      properties: {
+        document_count: members.length, discovery_status: 'candidate',
+        index_present: members.some(file => /^(?:index|readme)\.(?:md|mdx|adoc|rst)$/i.test(path.posix.basename(file.localRelative))),
+        nested_directory_count: Math.max(0, new Set(members.map(file => path.posix.dirname(file.localRelative))).size - 1),
+        sample_paths: members.slice(0, 20).map(file => reportPath(file.relative))
+      }
+    });
+  collectionIds.set(key, id);
+}
+for (const file of documentFiles) {
+  let directory = path.posix.dirname(file.localRelative), parentId = null;
+  while (directory !== '.') {
+    const candidate = collectionIds.get(`${file.workspaceRoot}:${directory}`);
+    if (candidate) { parentId = candidate; break; }
+    directory = path.posix.dirname(directory);
+  }
+  const meta = textDetails(file);
+  addComponent('document', 'documentation_source', path.posix.basename(file.relative, path.posix.extname(file.relative)), file.relative, 'documentation', meta.description, { ...meta.details, parent_id: parentId });
+}
+const repositoryDocuments = files.filter(file => !file.localRelative.includes('/') && /^(README|CONTRIBUTING|ARCHITECTURE|ADR).*\.(md|mdx)$/i.test(file.localRelative));
 for (const file of repositoryDocuments) {
   const meta = textDetails(file);
   addComponent('document', 'repository_documentation', path.basename(file.relative), file.relative, 'documentation', meta.description, meta.details);
 }
-// Describe additional Markdown collections regardless of folder naming.
 if (descriptionOnly) {
-  const represented = new Map(components.map(component => [rawComponentPaths.get(component.id), component]));
-  const groups = new Map();
-  for (const file of files.filter(file => /\.mdx?$/i.test(file.localRelative) && !isSensitiveFile(file) && !/(^|\/)tests?\/fixtures\//i.test(file.localRelative))) {
-    const existing = represented.get(file.relative);
-    if (existing && (existing.kind !== 'document' || existing.parent_id || existing.properties.setup_category !== 'documentation')) continue;
-    const dir = path.posix.dirname(file.relative);
-    if (!groups.has(dir)) groups.set(dir, []);
-    groups.get(dir).push(file);
-  }
-  for (const [dir, members] of groups) {
-    const parent = members.length > 1 ? addComponent('folder', 'documentation_collection', path.posix.basename(dir) || 'Markdown', dir, 'documentation', 'Raccolta Markdown rilevata; funzione e consultazione da verificare.', { properties: { document_count: members.length, discovery_status: 'candidate', source_paths: members.map(file => reportPath(file.relative)) } }) : null;
-    for (const file of members) {
-      const existing = represented.get(file.relative);
-      if (existing) { if (parent) existing.parent_id = parent; continue; }
-      const details = textDetails(file);
-      addComponent('document', 'markdown_source', path.basename(file.relative), file.relative, 'documentation', details.description, { ...details.details, parent_id: parent });
-    }
-  }
   const peers = files.filter(file => /\.(toml|ini|json|jsonc|ya?ml|cfg)$/i.test(file.localRelative) && !isSensitiveFile(file)).map(file => ({path: file.relative, content: safeText(file)}));
   for (const artifact of toolAnalysis.artifacts.filter(item => item.format === 'codex_project_config')) {
     const configId = instructionComponentIds.get(artifact);
@@ -771,7 +759,7 @@ for (const intended of intendedByRoot.values()) for (const item of intended) {
 }
 const analyses = roots.map(workspaceRoot => analyzeInstructionLinks({
   artifacts: toolAnalysis.artifacts.filter(item => item.file.workspaceRoot === workspaceRoot),
-  targets: components.filter(component => component.subtype !== 'reference_ai_coding_tool' && (!component.parent_id || intendedByRoot.get(workspaceRoot).some(item => item.path === rawComponentPaths.get(component.id))))
+  targets: components.filter(component => component.subtype !== 'reference_ai_coding_tool' && (!component.parent_id || component.subtype === 'documentation_collection' || intendedByRoot.get(workspaceRoot).some(item => item.path === rawComponentPaths.get(component.id))))
     .map(component => ({ id: component.id, path: rawComponentPaths.get(component.id) }))
     .filter(item => roots.length === 1 || item.path === rootLabels.get(workspaceRoot) || item.path?.startsWith(rootLabels.get(workspaceRoot) + '/')),
   toolIds: toolAnalysis.resolution.applicable_tool_ids,
@@ -786,16 +774,26 @@ for (const key of ['bindings', 'gaps', 'references', 'records']) linkAnalysis[ke
 for (const binding of linkAnalysis.bindings) {
   const sourceId = referenceToolComponentIds.get(binding.tool_id);
   const targetComponent = components.find(item => item.id === binding.target_id);
-  if (targetComponent?.subtype === 'documentation_collection' && targetComponent.properties?.document_count >= 2) {
-    targetComponent.kind = 'knowledge_base';
-    targetComponent.subtype = targetComponent.properties.knowledge_candidate || 'managed_document_corpus';
-    targetComponent.description = `Corpus di ${targetComponent.properties.document_count} fonti la cui consultazione è prescritta al tool AI.`;
-    targetComponent.properties = { ...targetComponent.properties, setup_category: 'knowledge_bases', definition_standard: 'managed_retrievable_corpus_v1', knowledge_item_count: targetComponent.properties.document_count, retrieval_mechanism: 'filesystem_collection' };
-    targetComponent.tags = ['knowledge_bases'];
-    for (const child of components.filter(item => item.parent_id === targetComponent.id)) {
-      child.subtype = 'knowledge_document';
-      child.properties.setup_category = 'knowledge_bases';
-      child.tags = ['knowledge_bases'];
+  if (targetComponent?.subtype === 'documentation_collection' && targetComponent.properties?.document_count >= 2
+    && /^(?:read|consult|use|search|leggi|consulta|usa|cerca|leggere|consultare|usare|cercare)$/i.test(binding.action)) {
+    const contract = linkAnalysis.records.find(record => record.tool_id === binding.tool_id && record.target_id === binding.target_id && record.line === binding.line && record.status === 'contract_present');
+    if (contract) {
+      const qualification = { tool_id: binding.tool_id, source_path: reportPath(binding.source_path), line: binding.line,
+        scope: binding.scope, conditions: binding.conditions, contract_id: contract.id };
+      const knowledgeBindings = targetComponent.properties.knowledge_bindings || [];
+      if (!knowledgeBindings.some(item => item.contract_id === contract.id)) knowledgeBindings.push(qualification);
+      targetComponent.kind = 'knowledge_base';
+      targetComponent.subtype = 'managed_document_corpus';
+      targetComponent.description = `Corpus di ${targetComponent.properties.document_count} fonti la cui consultazione è prescritta al tool AI.`;
+      targetComponent.properties = { ...targetComponent.properties, setup_category: 'knowledge_bases', qualification: 'instruction_bound',
+        knowledge_bindings: knowledgeBindings, definition_standard: 'managed_retrievable_corpus_v1',
+        knowledge_item_count: targetComponent.properties.document_count, retrieval_mechanism: 'filesystem_collection' };
+      targetComponent.tags = ['knowledge_bases'];
+      for (const child of components.filter(item => item.parent_id === targetComponent.id && item.kind === 'document')) {
+        child.subtype = 'knowledge_document';
+        child.properties.setup_category = 'knowledge_bases';
+        child.tags = ['knowledge_bases'];
+      }
     }
   }
   if (targetComponent) targetComponent.properties.connection_status = 'binding_declared';
@@ -977,7 +975,7 @@ if (descriptionOnly) {
     configuration_sources: snapshot.files.filter(file => /\.(toml|ini|json|jsonc|ya?ml|cfg)$/i.test(file.path)).map(file => { const artifact = toolAnalysis.artifacts.find(item => reportPath(item.path) === file.path); return { path: file.path, format: artifact?.format || 'unrecognized_configuration_candidate', syntax_status: artifact?.syntaxStatus || 'unverified' }; }),
     knowledge_bases: components.filter(item => item.kind === 'knowledge_base').map(item => ({
       component_id: item.id, path: item.path, description: item.description,
-      source_paths: components.filter(child => child.parent_id === item.id).map(child => child.path),
+      source_paths: components.filter(child => child.kind === 'document' && (item.path ? child.path?.startsWith(item.path + '/') : child.parent_id === item.id)).map(child => child.path),
       bindings: relationships.filter(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual').map(link => link.id),
       status: relationships.some(link => link.target_id === item.id && link.properties?.relation_kind === 'contractual') ? 'consultation_prescribed' : 'collection_only'
     })),

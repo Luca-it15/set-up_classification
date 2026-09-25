@@ -128,7 +128,13 @@ try {
   const geaRoot = path.join(tempRoot, 'gea-rule-workspace');
   fs.mkdirSync(path.join(geaRoot, 'gea-wiki', 'wiki'), { recursive: true });
   fs.mkdirSync(path.join(geaRoot, '.codex'), { recursive: true });
+  fs.mkdirSync(path.join(geaRoot, '.claude'), { recursive: true });
+  fs.mkdirSync(path.join(geaRoot, 'domain-corpus', 'subtopic'), { recursive: true });
   fs.writeFileSync(path.join(geaRoot, '.codex', 'config.toml'), 'model = "fixture"\n');
+  fs.writeFileSync(path.join(geaRoot, '.claude', 'settings.json'), '{}');
+  fs.writeFileSync(path.join(geaRoot, 'CLAUDE.md'), 'Read the repository instructions.\n');
+  fs.writeFileSync(path.join(geaRoot, 'domain-corpus', 'subtopic', 'one.md'), '# Domain one\n');
+  fs.writeFileSync(path.join(geaRoot, 'domain-corpus', 'subtopic', 'two.md'), '# Domain two\n');
   fs.writeFileSync(path.join(geaRoot, 'AGENTS.md'), [
     '## Wiki di riferimento',
     'Per tutta la documentazione GEA, la fonte operativa locale e la wiki [`./gea-wiki/`](./gea-wiki/).',
@@ -136,6 +142,7 @@ try {
     'Per richieste del tipo "secondo la documentazione", "da documentazione GEA", "nella wiki" o equivalenti:',
     '- usare direttamente `./gea-wiki/` come unica fonte documentale primaria',
     '- non usare server MCP, plugin di retrieval o layer basati su embedding come passaggio intermedio',
+    'The old documentation is in `./domain-corpus/subtopic/`.',
     'I file di navigazione e audit principali della wiki sono:',
     '- [`./gea-wiki/index.md`](./gea-wiki/index.md)',
     '- [`./gea-wiki/log.md`](./gea-wiki/log.md)'
@@ -149,7 +156,8 @@ try {
   const geaOutput = path.join(tempRoot, 'gea-rule-report.json');
   fs.writeFileSync(geaSettingsPath, JSON.stringify({
     ...explicitSettings,
-    workspace: { ...explicitSettings.workspace, folders: [geaRoot], reference_tool: 'codex', analysis_level: 'deep', path_policy: 'relative' }
+    workspace: { ...explicitSettings.workspace, folders: [geaRoot], reference_tool: 'auto', analysis_level: 'deep', path_policy: 'relative',
+      tools: [{ id: 'codex', role: 'primary', mode: 'codex-cli', version: null }, { id: 'claude_code', role: 'secondary', mode: 'claude-code', version: null }] }
   }));
   const geaRun = spawnSync(process.execPath, [path.join(root, 'scripts', 'scan-setup.mjs'), geaRoot, geaOutput, geaSettingsPath], { cwd: root, encoding: 'utf8' });
   if (geaRun.status !== 0) throw new Error(geaRun.stderr || geaRun.stdout || 'Scansione della regola GEA non eseguita.');
@@ -161,10 +169,23 @@ try {
   if (!geaReport.components.some(component => component.path === 'gea-wiki/AGENTS_WIKI.md' && component.parent_id === geaWiki.id)) throw new Error('Il contratto AGENTS_WIKI.md non è visibile sotto la wiki.');
   if (!geaReport.extensions?.['org.awdf.contracts']?.records.some(record => record.tool_id === 'codex' && record.target_id === geaWiki.id && record.status === 'contract_present' && record.conditions?.some(condition => condition.type === 'task_kind' && condition.value === 'documentation_query') && record.evidence.some(citation => citation.excerpt.includes('usare direttamente')))) throw new Error('La prescrizione in AGENTS.md non collega Codex alla wiki.');
   if (!geaReport.relationships.some(relation => relation.target_id === geaWiki.id && relation.properties?.relation_kind === 'contractual')) throw new Error('Il collegamento contrattuale tool-wiki manca dal report.');
+  if (geaWiki.properties.knowledge_bindings?.length !== 1 || geaWiki.properties.knowledge_bindings[0].tool_id !== 'codex') throw new Error('La qualifica KB deve conservare il solo binding Codex.');
+  const arbitrary = geaReport.components.find(component => component.path === 'domain-corpus/subtopic');
+  if (arbitrary?.subtype !== 'documentation_collection' || arbitrary.kind === 'knowledge_base') throw new Error('Una raccolta con nome arbitrario e sola menzione deve restare candidata.');
   const geaModel = buildGraphModel(geaReport);
   const geaTool = geaModel.tools.find(component => component.properties?.tool_id === 'codex');
   const geaScope = toolScope(geaModel, geaTool.id);
   if (!discoveredWikis(geaModel).some(component => component.id === geaWiki.id) || !geaScope.connectedIds.has(geaWiki.id) || !geaScope.visibleIds.has(geaReport.components.find(component => component.path === 'gea-wiki/AGENTS_WIKI.md')?.id)) throw new Error('La vista Codex non mostra la wiki e il relativo contratto operativo.');
+  const claudeTool = geaModel.tools.find(component => component.properties?.tool_id === 'claude_code');
+  if (!claudeTool || toolScope(geaModel, claudeTool.id).connectedIds.has(geaWiki.id) || geaScope.connectedIds.has(arbitrary.id)) throw new Error('Le raccolte non devono essere attribuite a tool privi di binding applicabile.');
+  fs.appendFileSync(path.join(geaRoot, 'AGENTS.md'), '\nConsult `./domain-corpus/subtopic/` before answering documentation questions.\n');
+  const boundOutput = path.join(tempRoot, 'arbitrary-bound-report.json');
+  const boundRun = spawnSync(process.execPath, [path.join(root, 'scripts', 'scan-setup.mjs'), geaRoot, boundOutput, geaSettingsPath], { cwd: root, encoding: 'utf8' });
+  if (boundRun.status !== 0) throw new Error(boundRun.stderr || boundRun.stdout || 'Scansione della raccolta arbitraria non eseguita.');
+  const boundReport = JSON.parse(fs.readFileSync(boundOutput, 'utf8'));
+  const boundCollection = boundReport.components.find(component => component.path === 'domain-corpus/subtopic');
+  if (boundReport.components.find(component => component.path === 'domain-corpus')?.kind === 'knowledge_base') throw new Error('Un riferimento alla sottoraccolta non deve qualificare anche il contenitore.');
+  if (boundCollection?.kind !== 'knowledge_base' || boundCollection.properties.knowledge_bindings?.[0]?.tool_id !== 'codex' || boundCollection.properties.knowledge_bindings[0].conditions?.[0]?.value !== 'documentation_query') throw new Error('Una raccolta annidata con nome arbitrario e regola applicabile deve qualificarsi come KB del solo tool.');
   console.log('Scanner workspace/settings/tool glossary tests passed.');
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });

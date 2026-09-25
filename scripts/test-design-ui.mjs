@@ -14,6 +14,7 @@ fs.writeFileSync(path.join(workspace,'CLAUDE.md'),'Before modifying code, consul
 fs.writeFileSync(path.join(workspace,'.codex/config.toml'),'model = "fixture"\n');
 fs.writeFileSync(path.join(workspace,'.claude/settings.json'),'{}');
 fs.writeFileSync(path.join(workspace,'llm-wiki/index.md'),'# Shared project knowledge\n');
+fs.writeFileSync(path.join(workspace,'llm-wiki/guide.md'),'# Shared guide\n');
 const settings={version:'1.0',initialized:true,workspace:{name:'Workspace condiviso',folders:[workspace],excluded:[],type:'project',purpose:'Verificare due tool con contratti distinti.',path_policy:'relative',analysis_level:'deep',tools:[{id:'codex',role:'primary',mode:'codex-cli',version:null},{id:'claude_code',role:'secondary',mode:'claude-code',version:null}],workflow_components:[{tool_id:'codex',path:'llm-wiki',required:true,scope:'.'},{tool_id:'claude_code',path:'llm-wiki',required:true,scope:'.'}]},viewer:{palette:'dark'}};
 fs.writeFileSync(path.join(base,'settings.json'),JSON.stringify(settings));
 const scan=spawnSync(process.execPath,['scripts/scan-setup.mjs',workspace,path.join(base,'report.json'),path.join(base,'settings.json')],{encoding:'utf8'});
@@ -43,7 +44,7 @@ try {
  const center=await page.locator('.atlas-primary-node').evaluate(el=>({x:el.offsetLeft+el.offsetWidth/2,y:el.offsetTop+el.offsetHeight/2}));
  assert.deepEqual(center,{x:610,y:465});
  await page.getByRole('button',{name:'Contratti',exact:true}).click();
- assert.equal(await page.locator('.atlas-edges > path.contractual').count(),4);
+ assert.equal(await page.locator('.atlas-edges > path.contractual').count(),2);
  assert.ok(await page.locator('.atlas-wikis').getByText('llm-wiki').count()>0);
  await page.screenshot({path:path.join(base,'two-tools.png'),fullPage:true});
  await page.getByRole('button',{name:'Codex Tool Collegato al setup',exact:true}).click();
@@ -51,7 +52,7 @@ try {
  await page.getByRole('button',{name:'Mostra tutta la rete',exact:true}).click();
  await page.getByLabel('Seleziona il tool AI da esplorare').selectOption({label:'Claude Code'});
  assert.equal(await page.locator('.atlas-tool-node').count(),1);
- assert.equal(await page.locator('.atlas-edges > path.contractual').count(),2);
+ assert.equal(await page.locator('.atlas-edges > path.contractual').count(),1);
  await page.locator('.atlas-connection-list > button').first().click();
  await page.locator('.atlas-detail blockquote cite').filter({hasText:'CLAUDE.md'}).first().waitFor();
  await page.getByRole('button',{name:'Mostra tutta la rete',exact:true}).click();
