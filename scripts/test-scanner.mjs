@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validateAwdfFile } from './validate-awdf.mjs';
+import { buildGraphModel, discoveredWikis, toolScope } from '../src/utils/graphModel.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'awdf-scanner-'));
@@ -124,6 +125,46 @@ try {
   const explicitReport = JSON.parse(fs.readFileSync(explicitOutput, 'utf8'));
   const explicitClaude = explicitReport.components.find(component => component.properties?.tool_id === 'claude_code');
   if (explicitClaude?.properties.usage_status !== 'mentioned' || explicitClaude.verification_status !== 'inferred') throw new Error('Un override non confermato deve restare mentioned/inferred.');
+  const geaRoot = path.join(tempRoot, 'gea-rule-workspace');
+  fs.mkdirSync(path.join(geaRoot, 'gea-wiki', 'wiki'), { recursive: true });
+  fs.mkdirSync(path.join(geaRoot, '.codex'), { recursive: true });
+  fs.writeFileSync(path.join(geaRoot, '.codex', 'config.toml'), 'model = "fixture"\n');
+  fs.writeFileSync(path.join(geaRoot, 'AGENTS.md'), [
+    '## Wiki di riferimento',
+    'Per tutta la documentazione GEA, la fonte operativa locale e la wiki [`./gea-wiki/`](./gea-wiki/).',
+    'Il contratto operativo da leggere prima di rispondere o aggiornare documentazione e [`./gea-wiki/AGENTS_WIKI.md`](./gea-wiki/AGENTS_WIKI.md).',
+    'Per richieste del tipo "secondo la documentazione", "da documentazione GEA", "nella wiki" o equivalenti:',
+    '- usare direttamente `./gea-wiki/` come unica fonte documentale primaria',
+    '- non usare server MCP, plugin di retrieval o layer basati su embedding come passaggio intermedio',
+    'I file di navigazione e audit principali della wiki sono:',
+    '- [`./gea-wiki/index.md`](./gea-wiki/index.md)',
+    '- [`./gea-wiki/log.md`](./gea-wiki/log.md)'
+  ].join('\n'));
+  for (const relative of ['AGENTS_WIKI.md', 'index.md', 'log.md', 'wiki/topic.md']) {
+    const filename = path.join(geaRoot, 'gea-wiki', relative);
+    fs.mkdirSync(path.dirname(filename), { recursive: true });
+    fs.writeFileSync(filename, '# GEA Wiki\n');
+  }
+  const geaSettingsPath = path.join(tempRoot, 'gea-rule-settings.json');
+  const geaOutput = path.join(tempRoot, 'gea-rule-report.json');
+  fs.writeFileSync(geaSettingsPath, JSON.stringify({
+    ...explicitSettings,
+    workspace: { ...explicitSettings.workspace, folders: [geaRoot], reference_tool: 'codex', analysis_level: 'deep', path_policy: 'relative' }
+  }));
+  const geaRun = spawnSync(process.execPath, [path.join(root, 'scripts', 'scan-setup.mjs'), geaRoot, geaOutput, geaSettingsPath], { cwd: root, encoding: 'utf8' });
+  if (geaRun.status !== 0) throw new Error(geaRun.stderr || geaRun.stdout || 'Scansione della regola GEA non eseguita.');
+  const geaErrors = validateAwdfFile(geaOutput);
+  if (geaErrors.length) throw new Error(geaErrors.join('\n'));
+  const geaReport = JSON.parse(fs.readFileSync(geaOutput, 'utf8'));
+  const geaWiki = geaReport.components.find(component => component.path === 'gea-wiki');
+  if (geaWiki?.kind !== 'knowledge_base' || geaWiki.properties?.retrieval_mechanism !== 'filesystem_collection') throw new Error('La cartella gea-wiki prescritta non è stata riconosciuta come knowledge base locale.');
+  if (!geaReport.components.some(component => component.path === 'gea-wiki/AGENTS_WIKI.md' && component.parent_id === geaWiki.id)) throw new Error('Il contratto AGENTS_WIKI.md non è visibile sotto la wiki.');
+  if (!geaReport.extensions?.['org.awdf.contracts']?.records.some(record => record.tool_id === 'codex' && record.target_id === geaWiki.id && record.status === 'contract_present' && record.evidence.some(citation => citation.excerpt.includes('usare direttamente')))) throw new Error('La prescrizione in AGENTS.md non collega Codex alla wiki.');
+  if (!geaReport.relationships.some(relation => relation.target_id === geaWiki.id && relation.properties?.relation_kind === 'contractual')) throw new Error('Il collegamento contrattuale tool-wiki manca dal report.');
+  const geaModel = buildGraphModel(geaReport);
+  const geaTool = geaModel.tools.find(component => component.properties?.tool_id === 'codex');
+  const geaScope = toolScope(geaModel, geaTool.id);
+  if (!discoveredWikis(geaModel).some(component => component.id === geaWiki.id) || !geaScope.connectedIds.has(geaWiki.id) || !geaScope.visibleIds.has(geaReport.components.find(component => component.path === 'gea-wiki/AGENTS_WIKI.md')?.id)) throw new Error('La vista Codex non mostra la wiki e il relativo contratto operativo.');
   console.log('Scanner workspace/settings/tool glossary tests passed.');
 } finally {
   fs.rmSync(tempRoot, { recursive: true, force: true });
