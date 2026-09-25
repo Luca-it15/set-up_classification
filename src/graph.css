@@ -30,6 +30,15 @@
 .atlas-pagination { display:flex; align-items:center; justify-content:space-between; gap:5px; margin-top:16px; padding-top:14px; border-top:1px solid var(--ui-border); }
 .atlas-pagination button { padding:6px 9px; }
 .atlas-pagination span { font:10px var(--font-data); color:var(--ui-muted); }
+.atlas-wikis { margin-top:20px; border-top:1px solid var(--ui-border); padding-top:15px; }
+.atlas-wikis h3 { display:flex; justify-content:space-between; gap:8px; margin:0 0 7px; color:var(--ui-text); font:600 12px var(--font-display); }
+.atlas-wikis h3 span { color:var(--ui-muted); font:10px var(--font-data); }
+.atlas-wikis p { margin:0 0 10px; color:var(--ui-muted); font-size:10px; line-height:1.5; }
+.atlas-wikis > div { max-height:180px; overflow:auto; scrollbar-gutter:stable; }
+.atlas-wikis button { display:block; width:100%; padding:8px; margin:3px 0; text-align:left; border-color:transparent; background:transparent; }
+.atlas-wikis button strong, .atlas-wikis button small { display:block; overflow-wrap:anywhere; }
+.atlas-wikis button strong { font-size:11px; }
+.atlas-wikis button small { color:var(--ui-muted); font-size:10px; margin-top:3px; }
 .atlas-map { min-width:0; border-inline:1px solid var(--ui-border); }
 .atlas-map-top { min-height:86px; padding:20px 22px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
 .atlas-map-top h2 { font:600 17px var(--font-display); margin:8px 0 0; overflow-wrap:anywhere; }
@@ -44,6 +53,8 @@
 .atlas-line-key.structural { border-top:3px double; }
 .atlas-filters label { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--ui-muted); }
 .atlas-filters select { width:132px; }
+.atlas-tool-context { margin:0; padding:12px 20px; background:var(--ui-raised); border-bottom:1px solid var(--ui-border); color:var(--ui-muted); font-size:11px; line-height:1.5; }
+.atlas-tool-context strong { color:var(--ui-text); }
 .atlas-canvas { height:440px; overflow:auto; position:relative; background-color:var(--canvas); background-image:radial-gradient(var(--grid) .8px,transparent .8px); background-size:22px 22px; cursor:grab; }
 .atlas-canvas:active { cursor:grabbing; }
 .atlas-stage-size { position:relative; overflow:clip; }

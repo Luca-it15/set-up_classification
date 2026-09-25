@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildGraphModel, layoutGraph, projectGroupEdges } from '../src/utils/graphModel.js';
+import { buildGraphModel, layoutGraph, projectGroupEdges, toolScope, discoveredWikis } from '../src/utils/graphModel.js';
 const components = [
  {id:'codex',properties:{tool_id:'codex'}}, {id:'claude',properties:{tool_id:'claude_code'}},
  {id:'wiki'}, {id:'nested',parent_id:'wiki'}
@@ -62,3 +62,50 @@ assert.ok(projected.some(e=>e.target_id==='group:mcp_servers' && e.members.inclu
 assert.ok(projected.some(e=>e.target_id==='group:skills' && e.properties.relation_kind==='available'));
 assert.equal(grouped.relations[0].target_id,'server','Projection never mutates real endpoints');
 console.log('Component aggregation PASS: own categories, real member links, configuration and catalog availability.');
+
+const scopeReport = buildGraphModel({ components: [
+  { id: 'codex-tool', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Codex', properties: { tool_id: 'codex' } },
+  { id: 'copilot-tool', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Copilot', properties: { tool_id: 'copilot' } },
+  { id: 'codex-skill', kind: 'skill', name: 'Codex skill' },
+  { id: 'copilot-skill', kind: 'skill', name: 'Copilot skill' },
+  { id: 'shared', kind: 'mcp_server', name: 'Shared MCP' },
+  { id: 'wiki', kind: 'folder', subtype: 'documentation_collection', name: 'gea-wiki', path: 'gea-wiki', properties: { setup_category: 'documentation' } },
+  { id: 'wiki-page', kind: 'document', parent_id: 'wiki', name: 'Wiki page' },
+  { id: 'other-page', kind: 'document', name: 'Unrelated page' }
+], relationships: [
+  edge('codex-skill-link', 'codex-tool', 'codex-skill', 'configured'),
+  edge('copilot-skill-link', 'copilot-tool', 'copilot-skill', 'configured'),
+  edge('shared-codex', 'codex-tool', 'shared', 'configured'),
+  edge('shared-copilot', 'copilot-tool', 'shared', 'configured'),
+  edge('wiki-link', 'codex-tool', 'wiki', 'configured')
+] });
+const codexScope = toolScope(scopeReport, 'codex-tool');
+const copilotScope = toolScope(scopeReport, 'copilot-tool');
+assert.ok(codexScope.visibleIds.has('codex-skill'));
+assert.ok(codexScope.visibleIds.has('wiki-page'), 'Children of a linked wiki stay available');
+assert.ok(!codexScope.visibleIds.has('copilot-skill'));
+assert.ok(!copilotScope.visibleIds.has('wiki'), 'A scanned wiki is not assigned to an unrelated tool');
+assert.ok(copilotScope.visibleIds.has('shared'), 'A genuinely shared component appears in both scopes');
+assert.ok(!copilotScope.relations.some(item => item.source_id === 'codex-tool'));
+assert.deepEqual(discoveredWikis(scopeReport).map(item => item.id), ['wiki']);
+const citedReport = buildGraphModel({ components: [
+  { id: 'tool', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Codex', properties: { tool_id: 'codex' } },
+  { id: 'wiki', kind: 'folder', subtype: 'documentation_collection', name: 'gea-wiki', path: 'gea-wiki', properties: { setup_category: 'documentation' } },
+  { id: 'page', kind: 'document', parent_id: 'wiki', name: 'Wiki page' }
+], relationships: [], extensions: { 'ai-setup-classifier.instruction-links': { data: { references: [
+  { tool_id: 'codex', target_id: 'wiki', source_path: 'AGENTS.md', binding: true }
+] } } } });
+const citedScope = toolScope(citedReport, 'tool');
+assert.ok(citedScope.visibleIds.has('wiki'));
+assert.ok(citedScope.visibleIds.has('page'));
+assert.ok(citedScope.referencedIds.has('wiki'));
+assert.ok(!citedScope.connectedIds.has('wiki'), 'Instruction reference alone is not an operational contract');
+assert.equal(citedReport.referenceRelations[0].properties.relation_kind, 'structural');
+assert.equal(citedReport.groupFor.get('wiki'), 'group:documentation');
+const mentionedOnly = structuredClone({ components: citedReport.components, relationships: [], extensions: {
+  'ai-setup-classifier.instruction-links': { data: { references: [
+    { tool_id: 'codex', target_id: 'wiki', source_path: 'AGENTS.md', binding: false }
+  ] } }
+} });
+assert.ok(!toolScope(buildGraphModel(mentionedOnly), 'tool').visibleIds.has('wiki'), 'A plain mention does not assign the wiki to a tool');
+console.log('Tool scope PASS: distinct and shared resources, wiki discovery without invented tool ownership.');

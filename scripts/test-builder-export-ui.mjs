@@ -51,7 +51,7 @@ try {
   await offline.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await plate.evaluate(element => getComputedStyle(element).transitionDuration), '0s');
   await hotspot.click();
-  assert.match(new URL(offline.url()).hash, /^#(?:component|group)-/);
+  assert.match(new URL(offline.url()).hash, /^#(?:tool|component|group)-/);
   assert.equal(requests.some(url => /^https?:/.test(url)), false);
   await offline.screenshot({ path: path.join(out, 'offline-html.png'), fullPage: true }); await offline.close();
   await page.getByRole('button', { name: 'Setup builder', exact: true }).click();

@@ -39,10 +39,39 @@ assert.match(exported.svg, /<svg/);
 assert.match(exported.svg, /class="node-plate"/);
 assert.match(exported.mapSvg, /class="hotspot"/);
 assert.match(exported.html, /class="map-frame"/);
+assert.match(exported.html, /id="tool-0"/);
+assert.match(exported.html, /Componenti per tool AI/);
 assert.doesNotMatch(exported.html, /Inventario della mappa/);
 assert.doesNotMatch(exported.html, /<script/i);
 assert.ok(exported.height > 1000);
 assert.ok(exported.html.includes('Content-Security-Policy'));
+const twoToolReport = { workspace: { name: 'Two tools and a wiki' }, components: [
+  { id: 'tool-a', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Codex', properties: { tool_id: 'codex' } },
+  { id: 'tool-b', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Copilot', properties: { tool_id: 'copilot' } },
+  { id: 'skill-a', kind: 'skill', name: 'Only Codex', description: 'A' },
+  { id: 'skill-b', kind: 'skill', name: 'Only Copilot', description: 'B' },
+  { id: 'wiki', kind: 'folder', subtype: 'documentation_collection', name: 'gea-wiki', path: 'gea-wiki', description: 'Scanned wiki' }
+], relationships: [
+  { id: 'a', source_id: 'tool-a', target_id: 'skill-a', type: 'uses', properties: { relation_kind: 'configured' } },
+  { id: 'b', source_id: 'tool-b', target_id: 'skill-b', type: 'uses', properties: { relation_kind: 'configured' } }
+] };
+const twoToolHtml = createSetupExport(twoToolReport, PALETTES.dark).html;
+const codexSection = twoToolHtml.split('id="tool-0"')[1].split('id="tool-1"')[0];
+const copilotSection = twoToolHtml.split('id="tool-1"')[1].split('class="wiki-discovery"')[0];
+assert.match(codexSection, /Only Codex/);
+assert.doesNotMatch(codexSection, /Only Copilot/);
+assert.match(copilotSection, /Only Copilot/);
+assert.doesNotMatch(copilotSection, /Only Codex|gea-wiki/);
+assert.match(twoToolHtml, /class="wiki-discovery"/);
+assert.match(twoToolHtml, /gea-wiki.*Collegamento non rilevato/);
+const citedWikiReport = structuredClone(twoToolReport);
+citedWikiReport.extensions = { 'ai-setup-classifier.instruction-links': { data: { references: [
+  { tool_id: 'codex', target_id: 'wiki', source_path: 'AGENTS.md', binding: true }
+] } } };
+const citedWikiHtml = createSetupExport(citedWikiReport, PALETTES.dark).html;
+assert.match(citedWikiHtml.split('id="tool-0"')[1].split('id="tool-1"')[0], /gea-wiki/);
+assert.doesNotMatch(citedWikiHtml.split('id="tool-1"')[1].split('class="wiki-discovery"')[0], /gea-wiki/);
+assert.match(citedWikiHtml, /Citata nelle istruzioni del tool/);
 const empty = createSetupExport({ workspace: { name: 'Empty' }, components: [], relationships: [] }, PALETTES.light);
 assert.match(empty.svg, /Nessuna componente/);
 await assert.rejects(() => exportSetupPng({ width: 1400, height: 50000 }), /troppo grande/);

@@ -28,7 +28,7 @@ export function createSetupExport(report, palette, { includePaths = false, langu
   const nodes = [...model.tools, ...model.groups];
   model.tools.forEach((tool, index) => positions.set(tool.id, { x: width / 2 - 150, y: mapHeight / 2 - model.tools.length * 70 + index * 140, width: 300, height: 120 }));
   model.groups.forEach((group, index) => { const angle = -Math.PI / 2 + index * Math.PI * 2 / model.groups.length; positions.set(group.id, { x: width / 2 + Math.cos(angle) * (width / 2 - 190) - 125, y: mapHeight / 2 + Math.sin(angle) * (mapHeight / 2 - 190) - 56, width: 250, height: 112 }); });
-  const edgeSources = [...model.relations, ...model.availableRelations, ...model.possibleRelations];
+  const edgeSources = [...model.relations, ...model.availableRelations, ...model.possibleRelations, ...model.referenceRelations];
   const edges = projectGroupEdges(edgeSources, model.groupFor, new Set(nodes.map(node => node.id)));
   const elements = [...model.tools, ...model.elements];
   const lines = [];

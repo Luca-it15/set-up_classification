@@ -18,6 +18,22 @@ export function buildGraphModel(report) {
       && byId.get(item.source_id).properties?.tool_id === contract.tool_id;
   });
   const tools = components.filter(item => item.subtype === 'reference_ai_coding_tool' || (item.properties?.tool_id && (!item.kind || item.kind === 'tool')));
+  const instructionReferences = (report.extensions?.['ai-setup-classifier.instruction-links']?.data?.references || []).filter(item => item.binding === true);
+  const referencedIds = new Set(instructionReferences.map(item => item.target_id).filter(id => byId.has(id)));
+  const referenceRelations = [];
+  const referenceKeys = new Set();
+  for (const reference of instructionReferences) {
+    const tool = tools.find(item => item.properties?.tool_id === reference.tool_id);
+    if (!tool || !byId.has(reference.target_id)) continue;
+    const key = tool.id + ':' + reference.target_id;
+    if (referenceKeys.has(key) || relations.some(edge => edge.source_id === tool.id && edge.target_id === reference.target_id)) continue;
+    referenceKeys.add(key);
+    referenceRelations.push({
+      id: 'instruction_reference_' + key, source_id: tool.id, target_id: reference.target_id,
+      type: 'references', description: 'Risorsa citata nelle istruzioni applicabili al tool; obbligo d’uso da verificare.',
+      properties: { relation_kind: 'structural', instruction_path: reference.source_path, referenced_in_instructions: true }
+    });
+  }
   const possibleRelations = (report.relationships || []).filter(item => relationKind(item) === 'legacy_unverified' && byId.has(item.source_id) && byId.has(item.target_id));
   const availableRelations = [];
   for (const skill of components.filter(item => item.kind === 'skill' && item.subtype !== 'skill_collection')) {
@@ -46,15 +62,64 @@ export function buildGraphModel(report) {
     if (tools.some(tool => tool.id === item.id)) continue;
     // Documentation is visible in the setup map only when an AI-host link
     // reaches the document or its collection. It remains in the AWDF inventory.
-    if ((item.kind === 'document' && item.subtype !== 'behavior_contract' && !linkedIds.has(item.id) && !linkedIds.has(item.parent_id))
-      || (item.subtype === 'documentation_collection' && !linkedIds.has(item.id))) continue;
+    if ((item.kind === 'document' && item.subtype !== 'behavior_contract' && !linkedIds.has(item.id) && !linkedIds.has(item.parent_id) && !referencedIds.has(item.id) && !referencedIds.has(item.parent_id))
+      || (item.subtype === 'documentation_collection' && !linkedIds.has(item.id) && !referencedIds.has(item.id))) continue;
     // A skill definition and its support files describe one element, not additional skills.
-    if (item.subtype === 'agent_skill_artifact' || /_collection$/.test(item.subtype || '') || item.subtype === 'custom_agents') continue;
+    if (item.subtype === 'agent_skill_artifact' || (/_collection$/.test(item.subtype || '') && item.subtype !== 'documentation_collection') || item.subtype === 'custom_agents') continue;
     const category = categoryFor(item), id = 'group:'+category, meta = CATEGORY_META[category] || CATEGORY_META.other;
     if (!groups.has(id)) groups.set(id,{id,name:meta.label,description:meta.description,kind:'group',category,properties:{setup_category:category},items:[]});
     groups.get(id).items.push(item); groupFor.set(item.id,id);
   }
-  return { elements: [...groups.values()].flatMap(group => group.items), components, byId, contracts, byContract, relations, possibleRelations, availableRelations, tools, linkedIds, groups:[...groups.values()], groupFor };
+  return { elements: [...groups.values()].flatMap(group => group.items), components, byId, contracts, byContract, relations, possibleRelations, availableRelations, referenceRelations, instructionReferences, referencedIds, tools, linkedIds, groups:[...groups.values()], groupFor };
+}
+
+// Follow only evidenced, usable links from one AI tool. Parent containers preserve
+// navigation; they do not make unrelated siblings part of the selected tool.
+export function toolScope(model, toolId) {
+  const toolIds = new Set(model.tools.map(item => item.id));
+  if (!toolIds.has(toolId)) return { connectedIds: new Set(), referencedIds: new Set(), visibleIds: new Set(), relations: [] };
+  const operational = [...model.relations, ...model.availableRelations].filter(edge =>
+    ['contractual', 'configured', 'available', 'observed'].includes(relationKind(edge)) &&
+    model.byId.get(edge.target_id)?.properties?.disabled !== true &&
+    model.byId.get(edge.target_id)?.properties?.connection_ready !== false
+  );
+  const connectedIds = new Set([toolId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edge of operational) {
+      if (!connectedIds.has(edge.source_id) || (toolIds.has(edge.target_id) && edge.target_id !== toolId)) continue;
+      if (!connectedIds.has(edge.target_id)) { connectedIds.add(edge.target_id); changed = true; }
+    }
+  }
+  const referencedIds = new Set((model.instructionReferences || []).filter(item => item.tool_id === model.byId.get(toolId)?.properties?.tool_id).map(item => item.target_id).filter(id => model.byId.has(id)));
+  const visibleIds = new Set([...connectedIds, ...referencedIds]);
+  for (const item of model.components) {
+    let parent = item.parent_id;
+    while (parent && model.byId.has(parent)) {
+      if (connectedIds.has(parent) || referencedIds.has(parent)) { visibleIds.add(item.id); break; }
+      parent = model.byId.get(parent)?.parent_id;
+    }
+  }
+  for (const id of [...visibleIds]) {
+    let parent = model.byId.get(id)?.parent_id;
+    while (parent && model.byId.has(parent)) {
+      visibleIds.add(parent);
+      parent = model.byId.get(parent)?.parent_id;
+    }
+  }
+  const relations = [...model.relations, ...model.availableRelations, ...model.possibleRelations, ...model.referenceRelations]
+    .filter(edge => visibleIds.has(edge.source_id) && visibleIds.has(edge.target_id)
+      && (!toolIds.has(edge.source_id) || edge.source_id === toolId)
+      && (!toolIds.has(edge.target_id) || edge.target_id === toolId));
+  return { connectedIds, referencedIds, visibleIds, relations };
+}
+
+export function discoveredWikis(model) {
+  return model.components.filter(item =>
+    (['documentation_collection', 'declared_workflow_resource'].includes(item.subtype) || item.kind === 'knowledge_base') &&
+    /(?:^|[^a-z])wiki(?:$|[^a-z])/i.test([item.name, item.path].join(' '))
+  );
 }
 
 export function layoutGraph(nodes, relations, toolIds, primaryId = null) {
