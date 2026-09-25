@@ -85,4 +85,19 @@ Costruisci senza scansione|Build without scanning|Construir sin escanear|Constru
 Prescritto|Prescribed|Prescrito|Prescrit|Vorgeschrieben|Prescrito
 Configurato|Configured|Configurado|Configuré|Konfiguriert|Configurado
 Osservato|Observed|Observado|Observé|Beobachtet|Observado
+Collegamenti aggregati|Aggregated links|Enlaces agrupados|Liens agrégés|Gebündelte Verbindungen|Ligações agregadas
+Gruppo|Group|Grupo|Groupe|Gruppe|Grupo
+Nodi|Nodes|Nodos|Nœuds|Knoten|Nós
+Verificato|Verified|Verificado|Vérifié|Verifiziert|Verificado
+Parzialmente verificato|Partially verified|Verificado parcialmente|Partiellement vérifié|Teilweise verifiziert|Parcialmente verificado
+Solo dichiarato|Declared only|Solo declarado|Déclaré uniquement|Nur deklariert|Apenas declarado
+Inferito|Inferred|Inferido|Inféré|Abgeleitet|Inferido
+Non verificato|Not verified|No verificado|Non vérifié|Nicht verifiziert|Não verificado
+Vai alla mappa|Go to map|Ir al mapa|Aller à la carte|Zur Karte|Ir para o mapa
+Navigazione del report|Report navigation|Navegación del informe|Navigation du rapport|Berichtsnavigation|Navegação do relatório
+Componenti fuori mappa|Components outside the map|Componentes fuera del mapa|Composants hors carte|Komponenten außerhalb der Karte|Componentes fora do mapa
+Seleziona un nodo per aprire i suoi componenti.|Select a node to open its components.|Selecciona un nodo para abrir sus componentes.|Sélectionnez un nœud pour ouvrir ses composants.|Knoten auswählen, um seine Komponenten zu öffnen.|Selecione um nó para abrir os seus componentes.
+Legenda dei collegamenti|Relationship legend|Leyenda de relaciones|Légende des relations|Legende der Beziehungen|Legenda das relações
+Categorie dei componenti|Component categories|Categorías de componentes|Catégories de composants|Komponentenkategorien|Categorias dos componentes
+Nessun collegamento nel report.|No relationships in the report.|No hay relaciones en el informe.|Aucune relation dans le rapport.|Keine Beziehungen im Bericht.|Sem relações no relatório.
 `.trim().split('\n').map(row => { const [key, ...translations] = row.split('|'); return [key, translations]; }));

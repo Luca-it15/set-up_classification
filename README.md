@@ -161,7 +161,7 @@ Format references: [AWDF specification](specification/AWDF-SPECIFICATION.md), [c
 
 ## Share a setup or build a new one
 
-**Share setup** exports the current report as standalone HTML or PNG. HTML contains an offline diagram, component descriptions and relationship register. PNG contains all map groups and their element names, independently of current zoom, filters or pagination. Structured component paths are optional. Names and descriptions remain visible: review them before sharing. Diagrams exceeding readable PNG limits can still be exported as HTML.
+**Share setup** exports the current report as standalone HTML or PNG. HTML is an offline atlas with a navigable map, grouped component descriptions and a relationship register. PNG contains all map groups and their element names, independently of current zoom, filters or pagination. Structured component paths are optional. Names and descriptions remain visible: review them before sharing. Diagrams exceeding readable PNG limits can still be exported as HTML.
 
 **Setup builder** creates a draft independently of the report. Choose Codex or Claude Code, enter the objective, and add components manually or from the report. Each component has a type, name, path/configured identifier, description and optional usage condition. Components can be edited, removed and restored with Undo.
 

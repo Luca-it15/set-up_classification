@@ -135,3 +135,10 @@ The setup builder is a fourth application view. It preserves the runtime token s
 Sharing uses a native modal and the existing semantic surface/border/text tokens. Offline diagrams inherit the user-owned graph palette through createSetupExport and the existing contrast helper. The complete group map and element inventory are independent of viewport cropping. HTML also carries the full component descriptions and relationship register, with inline styles and SVG and no external scripts, fonts or assets.
 
 No global palette or typography values changed. New forms, preview, modal and feedback consume the documented --ui-*, --font-* and radius tokens.
+
+
+## Offline atlas export — 2026-09-25
+
+The shareable HTML follows the established Archify evidence-console direction as a self-contained read-only artifact: compact navigation, one dominant map canvas, grouped component disclosures and a separate relationship register. The HTML map contains only graph geometry; the complete component inventory appears once in the semantic document. Map nodes link to the corresponding component or group. The PNG retains its complete map-and-inventory board for image sharing. Export styling derives its neutral surfaces from the selected canvas background and contrast ink while category colors remain user-owned. The export contains no scripts, remote assets or configuration snapshots; component paths stay opt-in.
+
+The offline map uses tonal node plates, category-colored rails, semantic edge strokes and a bounded hover/focus response. A static atmosphere marks the AI host; motion is limited to 180 ms state changes and is disabled for reduced-motion readers. The category color never replaces the component name or relationship label.
