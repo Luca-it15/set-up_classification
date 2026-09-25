@@ -5,6 +5,8 @@ const artifact = (path, text, tools = ['codex']) => ({ path, file: { relative:pa
 const scan = (text, extra = {}) => analyzeInstructionLinks({ artifacts:[artifact('AGENTS.md',text)], targets:[{id:'kb',path:'llm-wiki'}], toolIds:['codex'], readText:f=>f.text, ...extra });
 assert.equal(scan('Use `llm-wiki/` before answering.').bindings.length,0);
 assert.equal(scan('Consult llm-wiki.').bindings.length,1,'An explicit unquoted repository path in an imperative is a binding');
+const scopedWiki = scan('Per richieste del tipo \"nella wiki\" o equivalenti:\n- usare direttamente `./llm-wiki/` come fonte primaria\n- non usare server MCP\n');
+assert.deepEqual(scopedWiki.records[0].conditions, [{ type: 'task_kind', value: 'documentation_query' }]);
 assert.equal(scan('Consult llm-wiki/wiki/index.md.').bindings.length,1,'A bare path inside the wiki binds its collection');
 assert.equal(scan('The llm-wiki folder exists.').bindings.length,0,'A bare mention is not a binding');
 assert.equal(scan('Never consult llm-wiki.').bindings.length,0,'A negative instruction is not a binding');
