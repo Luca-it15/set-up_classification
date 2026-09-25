@@ -62,13 +62,13 @@ export function createSetupMap({ report, model, nodes, positions, edges, width, 
     const accent = hub ? hubAccent : safeHex(palette.categories?.[node.category], '#91a6bd');
     const groupIndex = model.groups.findIndex(group => group.id === node.id);
     const componentIndex = report.components.findIndex(item => item.id === node.id);
-    const target = hub ? 'component-' + componentIndex : 'group-' + (groupIndex + 1);
+    const target = hub ? 'tool-' + model.tools.findIndex(tool => tool.id === node.id) : 'group-' + (groupIndex + 1);
     if ((hub && componentIndex < 0) || (!hub && groupIndex < 0)) return;
     const x = box.x, y = box.y, w = box.width, h = box.height;
     const label = hub ? t('Tool AI') : t('Gruppo');
     const title = hub ? node.name : t(node.name);
     const nameLines = wrap(title, hub ? 25 : 21).slice(0, 2);
-    parts.push('<a class="hotspot" href="#' + target + '" aria-label="' + esc(title) + '"><title>' + esc(title) + '</title>');
+    parts.push('<a class="hotspot" href="' + '#' + target + '" aria-label="' + esc(title) + '"><title>' + esc(title) + '</title>');
     parts.push('<g class="node-shell"><rect class="node-halo" x="' + (x - 5) + '" y="' + (y - 5) + '" width="' + (w + 10) + '" height="' + (h + 10) + '" rx="18" fill="' + accent + '" opacity="0"/>');
     parts.push('<rect class="node-plate" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="12" fill="url(#atlas-panel)" stroke="' + border + '" stroke-width="1"' + (hub ? ' filter="url(#atlas-lift)"' : '') + '/>');
     parts.push('<path d="M' + (x + 14) + ' ' + (y + 1) + ' H' + (x + w - 14) + '" stroke="' + accent + '" stroke-width="2.5" stroke-linecap="round"/>');

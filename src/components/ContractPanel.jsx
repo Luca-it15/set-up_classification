@@ -1,13 +1,13 @@
 import { t } from '../i18n/index.js';
 import { CONTRACT_KEY, CONTRACT_LABELS, relationKind } from '../evaluator/contracts.js';
 export const RELATION_LABELS={contractual:'Contrattuale',configured:'Configurata',available:'Disponibile',observed:'Osservata',structural:'Strutturale',legacy_unverified:'Storica non verificata'};
-export function ContractPanel({report,targetId,selectedId}) {
+export function ContractPanel({report,targetId,selectedId,toolId}) {
  const bundle=report.extensions?.[CONTRACT_KEY];
- const records=(bundle?.records||[]).filter(r=>!targetId||r.target_id===targetId||r.source_component_id===targetId||report.components.some(c=>c.id===targetId&&c.properties?.tool_id===r.tool_id));
+ const records=(bundle?.records||[]).filter(r=>(!toolId||r.tool_id===toolId)&&(!targetId||r.target_id===targetId||r.source_component_id===targetId||report.components.some(c=>c.id===targetId&&c.properties?.tool_id===r.tool_id)));
  const name=id=>report.components.find(c=>c.id===id)?.name||id;
  return <section className="contract-panel"><h3>{t("Contratti per tool e ambito")}</h3>{!bundle?<p>{t("Report precedente: i collegamenti storici non dimostrano contratti verificati.")}</p>:!records.length?<p>{t("Nessuna associazione prevista dimostrata. La presenza nel workspace non prova un obbligo d’uso.")}</p>:null}
  {records.map(r=><details className="rule-card" key={r.id} open={selectedId===r.id?true:undefined}><summary><strong>{CONTRACT_LABELS[r.status]}</strong> · {r.tool_id} → {name(r.target_id)}</summary><div className="rule-body"><p>{t("Ambito:")} <code>{r.scope}</code> · {r.required===true?'Necessario':r.required===false?t("Opzionale"):'Necessità da valutare'}</p><p>{t("Azione:")} {r.action||'Non determinata'} · {r.applicability}</p><p>{t("Condizioni:")} {r.conditions.map(c=>c.value || c.values?.join(', ') || c.type).join(' · ')||'Nessuna esplicita'}</p><p>{t("Eccezioni:")} {r.exceptions.map(c=>c.value || c.values?.join(', ') || c.type).join(' · ')||'Nessuna esplicita'}</p><p>{t("Catena:")} {r.reference_chain.join(' → ')||'Non dimostrata'}</p>{r.evidence.map((e,i)=><blockquote key={i}><cite>{e.path}:{e.start_line}–{e.end_line}</cite><p>{e.excerpt}</p></blockquote>)}{[...(r.conflicts||[]),...r.limitations].map((l,i)=><p key={i}>{l}</p>)}<p>{t("Una prescrizione non dimostra esecuzione o successo.")}</p></div></details>)}
- {!targetId&&!!bundle?.unassociated_component_ids?.length&&<details><summary>{bundle.unassociated_component_ids.length} {t("componenti non associate")}</summary><ul>{bundle.unassociated_component_ids.map(id=><li key={id}>{name(id)}</li>)}</ul></details>}</section>;
+ {!targetId&&!toolId&&!!bundle?.unassociated_component_ids?.length&&<details><summary>{bundle.unassociated_component_ids.length} {t("componenti non associate")}</summary><ul>{bundle.unassociated_component_ids.map(id=><li key={id}>{name(id)}</li>)}</ul></details>}</section>;
 }
 export function RelationshipPanel({report,targetId,relationshipId}) {
  const name=id=>report.components.find(c=>c.id===id)?.name||id;

@@ -34,8 +34,13 @@ function linesOf(content) {
     return fenced || exampleDepth || /^\s*(?:>|#)/.test(line) ? [] : [{ line, number: index + 1 }];
   });
 }
-function pathsOf(line) {
-  return [...line.matchAll(/\x60([^\x60\n]+)\x60|\]\(([^)\s]+)\)|(?:^|\s)@([^\s]+\.md)(?=\s|$)/g)].map(match => ({ value: match[1] || match[2] || match[3], imported: !!match[3] }));
+function pathsOf(line, targets = []) {
+  const marked = [...line.matchAll(/\x60([^\x60\n]+)\x60|\]\(([^)\s]+)\)|(?:^|\s)@([^\s]+\.md)(?=\s|$)/g)].map(match => ({ value: match[1] || match[2] || match[3], imported: !!match[3] }));
+  const bare = [...line.matchAll(/(?:^|[\s("'\x60])((?:\.{1,2}\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/?)(?=$|[\s),:;.!?\x60])/g)]
+    .map(match => match[1].replace(/[.,;:!?]+$/, ''))
+    .filter(value => targets.some(target => normalize(value) === target || normalize(value).startsWith(target + '/')))
+    .map(value => ({ value, imported: false }));
+  return [...new Map([...marked, ...bare].map(ref => [ref.value, ref])).values()];
 }
 function resolve(source, value) {
   const local = value.split('#')[0];
@@ -102,6 +107,7 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
   for (const toolId of toolIds) {
     const applicable = applicableInstructions(artifacts, toolId, taskPath, toolModes);
     const instructions = [];
+    const targetPaths = targets.map(item => normalize(item.path)).filter(Boolean);
     const walk = (file, root, chain = [], citations = []) => {
       const source = normalize(file.relative);
       if (chain.includes(source) || chain.length > (toolId === 'claude_code' ? 4 : 16)) return;
@@ -109,7 +115,7 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
       for (const { line, number } of linesOf(content)) {
         const command = directive(line);
         const citation = { path: source, start_line: number, end_line: number, excerpt: line };
-        for (const ref of pathsOf(line)) {
+        for (const ref of pathsOf(line, command ? targetPaths : [])) {
           const resolved = resolve(source, ref.value); if (!resolved) continue;
           instructions.push({ source, line: number, excerpt: line, resolved, command, root, chain: [...chain, source], evidence: [...citations, citation] });
           const targetFile = byPath.get(resolved.path);
