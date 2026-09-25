@@ -61,7 +61,7 @@ The initialized settings determine the authorized roots. The scanner does not ex
 - AI hosts, instructions, skills, agents, configurations, integrations and their evidence.
 - Redacted instruction source blocks with source lines, scope and activation information.
 - Recognized configuration links, including supported MCP/plugin declarations and provider connections.
-- Knowledge collections with multiple documents and an applicable instruction prescribing consultation. The directory name is not a qualification rule; ordinary unbound documentation remains documentation.
+- Document collections are discovered from multiple local documents, including nested collections, independently of folder names. They remain documentation candidates until an applicable instruction explicitly prescribes consultation. The resulting knowledge-base qualification records the tool, instruction source, task conditions and contract; a mention or a binding for another tool does not qualify the collection for the selected tool.
 - Explicitly declared workflow resources, including those that could not be discovered. A missing required resource remains in the contract check instead of becoming inapplicable.
 - Collection limits, exclusions, inaccessible sources and unsupported syntax.
 

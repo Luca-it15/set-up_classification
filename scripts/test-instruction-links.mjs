@@ -3,13 +3,16 @@ import { analyzeInstructionLinks, inspectInstructionReferences } from './lib/ins
 const file = relative => ({ relative });
 const artifact = (path, text, tools = ['codex']) => ({ path, file: { relative:path, text }, category:'behavior_contract', readable:true, syntaxStatus:'valid', recognizedToolIds:tools, recognizedBy:[] });
 const scan = (text, extra = {}) => analyzeInstructionLinks({ artifacts:[artifact('AGENTS.md',text)], targets:[{id:'kb',path:'llm-wiki'}], toolIds:['codex'], readText:f=>f.text, ...extra });
-assert.equal(scan('Use `llm-wiki/` before answering.').bindings.length,0);
+assert.deepEqual(scan('Use `llm-wiki/` before answering.').records[0].conditions, [{ type: 'task_kind', value: 'answer' }]);
+assert.deepEqual(scan('Documentation questions must use `llm-wiki/`.').records[0].conditions, [{ type: 'task_kind', value: 'documentation_query' }]);
+assert.deepEqual(scan('Search `llm-wiki/` when you need domain information.').records[0].conditions, [{ type: 'task_kind', value: 'domain_information' }]);
 assert.equal(scan('Consult llm-wiki.').bindings.length,1,'An explicit unquoted repository path in an imperative is a binding');
 const scopedWiki = scan('Per richieste del tipo \"nella wiki\" o equivalenti:\n- usare direttamente `./llm-wiki/` come fonte primaria\n- non usare server MCP\n');
 assert.deepEqual(scopedWiki.records[0].conditions, [{ type: 'task_kind', value: 'documentation_query' }]);
 assert.equal(scan('Consult llm-wiki/wiki/index.md.').bindings.length,1,'A bare path inside the wiki binds its collection');
 assert.equal(scan('The llm-wiki folder exists.').bindings.length,0,'A bare mention is not a binding');
 assert.equal(scan('Never consult llm-wiki.').bindings.length,0,'A negative instruction is not a binding');
+assert.equal(scan('Use `llm-wiki/` if relevant.').bindings.length,0,'An unknown condition cannot become an unconditional binding');
 for (const text of ['There is a `llm-wiki/`.', 'Do not use `llm-wiki/`.', 'Use `llm-wiki/` unless irrelevant.', 'Example: Use `llm-wiki/`.', '```\nUse `llm-wiki/`.\n```', 'You may consult `llm-wiki/`.', '# Examples\nUse `llm-wiki/`.', 'Use `llm-wiki/`.\nNever use `llm-wiki/`.']) {
   assert.equal(scan(text).bindings.length,0,text);
   assert.equal(scan(text).gaps.length,1);

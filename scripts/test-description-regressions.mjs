@@ -83,6 +83,17 @@ assert.equal(prescribed.description.knowledge_bases[0].path, 'handbook');
 assert.equal(prescribed.description.knowledge_bases[0].source_paths.length, 2);
 assert.equal(prescribed.report.components.filter(item => item.path === 'handbook/architecture.md').length, 1);
 assert.equal(prescribed.description.knowledge_bases[0].status, 'consultation_prescribed');
+const nestedCorpus = await scan('corpus-nested', [{ ...config,
+  'reference/overview.md': '# Overview',
+  'reference/topics/one.md': '# One',
+  'reference/topics/two.md': '# Two',
+  'AGENTS.md': 'Consult `reference/` before answering documentation questions.'
+}]);
+const nestedKb = nestedCorpus.description.knowledge_bases.find(item => item.path === 'reference');
+assert.equal(nestedKb.source_paths.length, 3);
+assert.ok(nestedKb.source_paths.includes('reference/topics/two.md'));
+assert.equal(nestedCorpus.report.components.find(item => item.path === 'reference/topics')?.kind, 'folder');
+
 const optional = await scan('corpus-unbound', [{ ...config, ...corpus, 'AGENTS.md': 'There is a `handbook/`.' }]);
 assert.deepEqual(optional.description.knowledge_bases, []);
 const single = await scan('single-document', [{ ...config, 'handbook/guide.md': '# Guide', 'AGENTS.md': 'Read `handbook/`.' }]);
