@@ -460,7 +460,7 @@ function addKnowledgeBase(key, name, basePath, subtype, members) {
   knowledgeBaseByKey.set(key, id);
   return id;
 }
-const knowledgeFolderPattern = /^(knowledge|knowledge-base|knowledge_base|kb|llm-wiki|rag)\//i;
+const knowledgeFolderPattern = /^(knowledge|knowledge-base|knowledge_base|kb|llm-wiki|gea-wiki|rag)\//i;
 const knowledgeCandidates = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && knowledgeFolderPattern.test(file.localRelative) && /\.(md|mdx|txt|html?|csv|ya?ml|json)$/i.test(file.localRelative));
 const knowledgeGroups = new Map();
 for (const file of knowledgeCandidates) {
@@ -479,7 +479,7 @@ for (const [key, members] of knowledgeGroups) {
   const first = members[0];
   const folder = first.localRelative.split('/')[0];
   const basePath = roots.length > 1 ? `${rootLabels.get(first.workspaceRoot)}/${folder}` : folder;
-  const parentId = addKnowledgeBase(key, `${workspaceDisplayName(first.workspaceRoot)} · ${folder}`, basePath, folder === 'llm-wiki' ? 'llm_wiki' : 'managed_document_corpus', members);
+  const parentId = addKnowledgeBase(key, `${workspaceDisplayName(first.workspaceRoot)} · ${folder}`, basePath, ['llm-wiki', 'gea-wiki'].includes(folder.toLowerCase()) ? 'llm_wiki' : 'managed_document_corpus', members);
   for (const file of members) {
     const meta = textDetails(file);
     addComponent('document', 'knowledge_source_document', path.basename(file.relative, path.extname(file.relative)), file.relative, 'documentation', meta.description, { ...meta.details, parent_id: parentId });
@@ -596,7 +596,7 @@ for (const members of documentationGroups.values()) {
     addComponent('document', 'technical_documentation', path.basename(file.relative, path.extname(file.relative)), file.relative, 'documentation', meta.description, { ...meta.details, parent_id: parentId });
   }
 }
-const repositoryDocuments = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && /^(README|CONTRIBUTING|ARCHITECTURE|ADR).*\.(md|mdx)$/i.test(path.basename(file.relative)) && !/^(knowledge|knowledge-base|knowledge_base|kb|llm-wiki|rag|docs)\//i.test(file.localRelative));
+const repositoryDocuments = files.filter(file => !/(^|\/)tests\/fixtures\//i.test(file.localRelative) && /^(README|CONTRIBUTING|ARCHITECTURE|ADR).*\.(md|mdx)$/i.test(path.basename(file.relative)) && !/^(knowledge|knowledge-base|knowledge_base|kb|llm-wiki|gea-wiki|rag|docs)\//i.test(file.localRelative));
 for (const file of repositoryDocuments) {
   const meta = textDetails(file);
   addComponent('document', 'repository_documentation', path.basename(file.relative), file.relative, 'documentation', meta.description, meta.details);
