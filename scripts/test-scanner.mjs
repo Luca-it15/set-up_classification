@@ -159,7 +159,7 @@ try {
   const geaWiki = geaReport.components.find(component => component.path === 'gea-wiki');
   if (geaWiki?.kind !== 'knowledge_base' || geaWiki.properties?.retrieval_mechanism !== 'filesystem_collection') throw new Error('La cartella gea-wiki prescritta non è stata riconosciuta come knowledge base locale.');
   if (!geaReport.components.some(component => component.path === 'gea-wiki/AGENTS_WIKI.md' && component.parent_id === geaWiki.id)) throw new Error('Il contratto AGENTS_WIKI.md non è visibile sotto la wiki.');
-  if (!geaReport.extensions?.['org.awdf.contracts']?.records.some(record => record.tool_id === 'codex' && record.target_id === geaWiki.id && record.status === 'contract_present' && record.evidence.some(citation => citation.excerpt.includes('usare direttamente')))) throw new Error('La prescrizione in AGENTS.md non collega Codex alla wiki.');
+  if (!geaReport.extensions?.['org.awdf.contracts']?.records.some(record => record.tool_id === 'codex' && record.target_id === geaWiki.id && record.status === 'contract_present' && record.conditions?.some(condition => condition.type === 'task_kind' && condition.value === 'documentation_query') && record.evidence.some(citation => citation.excerpt.includes('usare direttamente')))) throw new Error('La prescrizione in AGENTS.md non collega Codex alla wiki.');
   if (!geaReport.relationships.some(relation => relation.target_id === geaWiki.id && relation.properties?.relation_kind === 'contractual')) throw new Error('Il collegamento contrattuale tool-wiki manca dal report.');
   const geaModel = buildGraphModel(geaReport);
   const geaTool = geaModel.tools.find(component => component.properties?.tool_id === 'codex');

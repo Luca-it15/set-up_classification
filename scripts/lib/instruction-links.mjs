@@ -112,8 +112,15 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
       const source = normalize(file.relative);
       if (chain.includes(source) || chain.length > (toolId === 'claude_code' ? 4 : 16)) return;
       let content; try { content = readText(file); } catch { return; }
+      let listCondition = null;
       for (const { line, number } of linesOf(content)) {
+        if (/^\s*Per richieste del tipo\b/i.test(line) && /:\s*$/.test(line)) {
+          listCondition = { type: 'task_kind', value: 'documentation_query' };
+          continue;
+        }
+        if (!line.trim() || (listCondition && !/^\s*[-*]\s+/.test(line))) listCondition = null;
         const command = directive(line);
+        if (command && listCondition) command.conditions.push(listCondition);
         const citation = { path: source, start_line: number, end_line: number, excerpt: line };
         for (const ref of pathsOf(line, command ? targetPaths : [])) {
           const resolved = resolve(source, ref.value); if (!resolved) continue;
