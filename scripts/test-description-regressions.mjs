@@ -9,6 +9,7 @@ import { validateAwdfDocument } from './validate-awdf.mjs';
 import { validateAwdfAsync } from '../src/utils/appUtils.js';
 import { inspectInstructionReferences } from './lib/instruction-links.mjs';
 
+fs.mkdirSync(path.resolve('.tmp-evidence-checks'), { recursive: true });
 const temp = fs.mkdtempSync(path.join(path.resolve('.tmp-evidence-checks'), 'awdf-logic-regression-'));
 const config = { '.codex/config.toml': 'model="test-model"\n' };
 const corpus = { 'handbook/architecture.md': '# Architecture\nSystem design.', 'handbook/procedures.md': '# Procedures\nSystem procedures.' };

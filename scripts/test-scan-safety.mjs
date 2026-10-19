@@ -32,6 +32,7 @@ for (const sample of ['password: private-value', 'password = private-value']) {
 }
 assert.match(redactSensitiveText('file=' + path.join(root, 'config.toml'), { anonymized: true, roots: [root] }), /\[WORKSPACE_1\]/);
 
+fs.mkdirSync(path.resolve('.tmp-evidence-checks'), { recursive: true });
 const temp = fs.mkdtempSync(path.join(path.resolve('.tmp-evidence-checks'), 'awdf-scan-safety-'));
 const workspace = path.join(temp, 'chats', 'auth-service', 'workspace');
 for (const [relative, content] of Object.entries({
