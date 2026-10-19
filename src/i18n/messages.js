@@ -38,3 +38,5 @@ Object.assign(messages, {
 });
 import { featureMessages } from './featureMessages.js';
 Object.assign(messages, featureMessages);
+import { v2Messages } from './v2Messages.js';
+Object.assign(messages, v2Messages);

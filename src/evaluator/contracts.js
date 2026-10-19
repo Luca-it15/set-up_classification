@@ -1,10 +1,9 @@
-export const CONTRACT_KEY = 'org.awdf.contracts';
 export const CONTRACT_STATES = ['contract_present', 'contract_missing', 'contract_uncertain', 'contract_invalid', 'contract_not_required'];
 export const CONTRACT_LABELS = {contract_present:'Contratto presente',contract_missing:'Contratto mancante',contract_uncertain:'Contratto non verificabile',contract_invalid:'Contratto non valido',contract_not_required:'Contratto non richiesto'};
 
 export function relationKind(relation) {
  if (['contractual','configured','available','observed','structural'].includes(relation.properties?.relation_kind)) return relation.properties.relation_kind;
- return relation.type==='contains'?'structural':'legacy_unverified';
+ throw Error('Relationship requires explicit relation_kind');
 }
 const normalize = value => String(value || '.').replaceAll('\\','/').replace(/^\.\//,'').replace(/\/$/,'') || '.';
 const within = (scope,target) => scope==='.' || scope===target || target.startsWith(scope+'/');
@@ -36,7 +35,7 @@ function referencedPaths(source,excerpt) {
 }
 export function validateContracts(bundle,evaluation,citationValidator) {
  const errors=[],ids=new Set();
- if(bundle?.version!=='1.0.0'||!Array.isArray(bundle.records))return ['Invalid contracts bundle'];
+ if(bundle?.version!=='2.0.0'||!Array.isArray(bundle.records))return ['Invalid contracts bundle'];
  for(const record of bundle.records) {
   if(!record||typeof record!=='object'){errors.push('Invalid contract record');continue;}
   if(!record.id||ids.has(record.id))errors.push('Missing or duplicate contract ID');
@@ -59,18 +58,4 @@ export function validateContracts(bundle,evaluation,citationValidator) {
   }
  }
  return errors;
-}
-export function projectContractRelations(report) {
- const records=report.extensions?.[CONTRACT_KEY]?.records||[];
- report.relationships=(report.relationships||[]).filter(item=>relationKind(item)!=='contractual');
- for(const record of records.filter(item=>item.status==='contract_present')) {
-  const source=report.components.find(item=>item.properties?.tool_id===record.tool_id);if(!source)continue;
-  const evidence_ids=record.evidence.map((citation,index)=>{
-   const id='ev_'+record.id+'_'+index;
-   if(!report.evidence.some(item=>item.id===id))report.evidence.push({id,type:'instruction_file',source_id:null,content_hash:null,observed_at:report.metadata.created_at||null,path:citation.path,location:'line:'+citation.start_line,summary:citation.excerpt,sensitive:false,confidence:0.5});
-   return id;
-  });
-  report.relationships.push({id:'rel_'+record.id,source_id:source.id,target_id:record.target_id,type:'uses',description:'Comportamento prescritto dal contratto; esecuzione non verificata.',verification_status:'declared_only',confidence:0.5,evidence_ids,properties:{relation_kind:'contractual',contract_id:record.id}});
- }
- return report;
 }

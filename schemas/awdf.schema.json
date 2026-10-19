@@ -15,13 +15,9 @@
     "components",
     "relationships",
     "workflows",
-    "assessments",
-    "findings",
-    "recommendations",
     "evidence",
     "limitations",
     "unverified_items",
-    "executive_summary",
     "extensions"
   ],
   "$defs": {
@@ -50,8 +46,7 @@
       "const": "AI Workspace Description Format"
     },
     "format_version": {
-      "type": "string",
-      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+      "const": "2.0.0"
     },
     "metadata": {
       "type": "object",
@@ -117,8 +112,7 @@
         "id",
         "name",
         "type",
-        "purpose",
-        "maturity"
+        "purpose"
       ],
       "properties": {
         "id": {
@@ -142,16 +136,7 @@
             "null"
           ]
         },
-        "maturity": {
-          "enum": [
-            "initial",
-            "emerging",
-            "defined",
-            "managed",
-            "optimized",
-            "unknown"
-          ]
-        }
+        "maturity": false
       },
       "additionalProperties": true
     },
@@ -182,24 +167,6 @@
         "$ref": "workflow.schema.json"
       }
     },
-    "assessments": {
-      "type": "array",
-      "items": {
-        "$ref": "assessment.schema.json"
-      }
-    },
-    "findings": {
-      "type": "array",
-      "items": {
-        "$ref": "finding.schema.json"
-      }
-    },
-    "recommendations": {
-      "type": "array",
-      "items": {
-        "$ref": "recommendation.schema.json"
-      }
-    },
     "evidence": {
       "type": "array",
       "items": {
@@ -218,81 +185,16 @@
         "type": "object"
       }
     },
-    "executive_summary": {
-      "type": "object"
-    },
     "extensions": {
       "type": "object",
       "propertyNames": {
         "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$"
-      }
+      },
+      "required": [
+        "org.awdf.description"
+      ]
     },
     "additionalProperties": true
   },
-  "additionalProperties": true,
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "format_version": {
-            "pattern": "^1\\.1\\."
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "extensions": {
-            "required": [
-              "org.awdf.description"
-            ]
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "extensions": {
-            "required": [
-              "org.awdf.description"
-            ]
-          }
-        }
-      },
-      "then": {
-        "properties": {
-          "assessments": {
-            "maxItems": 0
-          },
-          "findings": {
-            "maxItems": 0
-          },
-          "recommendations": {
-            "maxItems": 0
-          },
-          "workspace": {
-            "properties": {
-              "maturity": {
-                "const": "unknown"
-              }
-            }
-          },
-          "executive_summary": {
-            "required": [
-              "overall_score",
-              "design_score"
-            ],
-            "properties": {
-              "overall_score": {
-                "type": "null"
-              },
-              "design_score": {
-                "type": "null"
-              }
-            }
-          }
-        }
-      }
-    }
-  ]
+  "additionalProperties": true
 }

@@ -1,0 +1,389 @@
+{
+  "version": "1.0.0",
+  "minimum_coverage": 0.7,
+  "dimensions": [
+    "clarity",
+    "consistency",
+    "applicability",
+    "verifiability"
+  ],
+  "policy_origin": "Project rubric derived from source guidance; not vendor ratings.",
+  "criteria": [
+    {
+      "id": "clarity.actions",
+      "dimension": "clarity",
+      "description": "Azioni operative esplicite",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Nessuna azione comprensibile",
+        "25": "Azioni prevalentemente vaghe",
+        "50": "Azioni comprensibili con ambiguità importanti",
+        "75": "Azioni esplicite con poche ambiguità",
+        "100": "Azioni, destinatari e risultati espliciti per il task"
+      }
+    },
+    {
+      "id": "clarity.conditions",
+      "dimension": "clarity",
+      "description": "Condizioni ed eccezioni comprensibili",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Condizioni indecifrabili",
+        "25": "Condizioni ampiamente implicite",
+        "50": "Condizioni parzialmente espresse",
+        "75": "Condizioni quasi tutte esplicite",
+        "100": "Condizioni ed eccezioni esplicite e distinguibili dagli esempi"
+      }
+    },
+    {
+      "id": "consistency.conflicts",
+      "dimension": "consistency",
+      "description": "Prescrizioni non contraddittorie",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Contraddizioni impediscono il task",
+        "25": "Contraddizioni gravi senza risoluzione",
+        "50": "Conflitti circoscritti irrisolti",
+        "75": "Coerenza con ambiguità marginali",
+        "100": "Nessuna contraddizione dimostrata nelle fonti applicabili complete"
+      }
+    },
+    {
+      "id": "consistency.scope",
+      "dimension": "consistency",
+      "description": "Gerarchia e precedenza coerenti con il client",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Precedenze incompatibili col client",
+        "25": "Gerarchia prevalentemente errata",
+        "50": "Gerarchia parzialmente corretta",
+        "75": "Gerarchia corretta con casi marginali incerti",
+        "100": "Gerarchia, override e import coerenti col profilo e task"
+      }
+    },
+    {
+      "id": "applicability.task",
+      "dimension": "applicability",
+      "description": "Istruzioni proporzionate all’obiettivo e task",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Regole impediscono il task",
+        "25": "Regole prevalentemente irrilevanti",
+        "50": "Copertura parziale delle esigenze",
+        "75": "Regole pertinenti con lacune limitate",
+        "100": "Regole pertinenti, proporzionate e sufficienti alle esigenze dichiarate"
+      }
+    },
+    {
+      "id": "applicability.resources",
+      "dimension": "applicability",
+      "description": "Risorse necessarie e condizioni di consultazione",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Risorse obbligatorie incoerenti o irrisolvibili",
+        "25": "Collegamenti obbligatori prevalentemente mancanti",
+        "50": "Collegamenti parziali",
+        "75": "Collegamenti quasi completi",
+        "100": "Risorse necessarie collegate e risorse opzionali correttamente distinte"
+      }
+    },
+    {
+      "id": "verifiability.criteria",
+      "dimension": "verifiability",
+      "description": "Risultati e criteri di completamento verificabili",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Nessun criterio verificabile",
+        "25": "Criteri prevalentemente soggettivi",
+        "50": "Criteri parzialmente verificabili",
+        "75": "Criteri operativi con poche lacune",
+        "100": "Criteri osservabili collegati al task e ai risultati attesi"
+      }
+    },
+    {
+      "id": "verifiability.validation",
+      "dimension": "verifiability",
+      "description": "Verifiche eseguibili e gestione degli errori",
+      "version": "1.0.0",
+      "method": "semantic",
+      "weight": 1,
+      "classification": "project_recommendation",
+      "tools": [
+        "codex",
+        "claude_code",
+        "github_copilot"
+      ],
+      "sources": [
+        {
+          "publisher": "OpenAI",
+          "origin": "official",
+          "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "Anthropic",
+          "origin": "official",
+          "url": "https://code.claude.com/docs/en/memory",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "GitHub",
+          "origin": "official",
+          "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+          "consulted_at": "2026-10-09"
+        },
+        {
+          "publisher": "AGENTS.md",
+          "origin": "community",
+          "url": "https://agents.md/",
+          "consulted_at": "2026-10-09"
+        }
+      ],
+      "rubric": {
+        "0": "Nessuna verifica definita",
+        "25": "Verifiche vaghe o incompatibili",
+        "50": "Verifiche parziali senza gestione errori",
+        "75": "Verifiche adeguate con limiti minori",
+        "100": "Comandi o procedure adeguati con interpretazione di successo e fallimento"
+      }
+    }
+  ]
+}

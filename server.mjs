@@ -13,7 +13,6 @@ const host = process.env.AWDF_HOST || '127.0.0.1';
 const port = Number(process.env.AWDF_PORT || 3000);
 const settingsPath = path.join(root, 'ai-setup-settings.json');
 const reportPath = path.join(root, 'ai-setup.json');
-const exampleReportPath = path.join(root, 'examples', 'codex-workspace.ai-setup.json');
 const schema = JSON.parse(fs.readFileSync(path.join(root, 'schemas', 'setup-settings.schema.json'), 'utf8'));
 const validateSettings = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
 const execFileAsync = promisify(execFile);
@@ -71,8 +70,8 @@ async function api(request, response) {
     return sendJson(response, 200, value);
   }
   if (url.pathname === '/api/report' && request.method === 'GET') {
-    const source = fs.existsSync(reportPath) ? reportPath : exampleReportPath;
-    return sendJson(response, 200, JSON.parse(fs.readFileSync(source, 'utf8')));
+    if (!fs.existsSync(reportPath)) return sendJson(response, 200, null);
+    return sendJson(response, 200, JSON.parse(fs.readFileSync(reportPath, 'utf8')));
   }
   if (url.pathname === '/api/select-folder' && request.method === 'POST') {
     const selectedPath = await selectFolder();

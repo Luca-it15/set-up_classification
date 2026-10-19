@@ -58,6 +58,20 @@ function resolve(source, value) {
   const target = normalize(path.posix.join(path.posix.dirname(source), local));
   return { path: target, outside: target === '..' || target.startsWith('../') };
 }
+// Discovery keeps optional availability separate from contractual obligations.
+export function setupResourceReferences(content, targets = [], { claudeImports = false } = {}) {
+  return linesOf(content).flatMap(({ line, number }) => {
+    const command = directive(line);
+    const optional = /\b(?:may|can|optional|optionally|puoi|facoltativ[oaie])\b/i.test(line);
+    const optionalAction = optional && /\b(?:read|consult|use|follow|search|leggi|consulta|usa|segui|cerca|leggere|consultare|usare)\b/i.test(line);
+    const negated = /\b(?:not|never|don't|non|mai)\b/i.test(line);
+    return pathsOf(line, targets).map(ref => ({
+      value: ref.value, line: number, excerpt: line,
+      operational: !negated && (!!command || optionalAction || (ref.imported && claudeImports)),
+      optional: !!optional, conditions: command?.conditions || [], imported: ref.imported
+    }));
+  });
+}
 export function instructionScope(artifact) {
   const name = normalize(artifact.path);
   const special = name.match(/^(.*?)(?:\.claude\/|\.github\/)/);

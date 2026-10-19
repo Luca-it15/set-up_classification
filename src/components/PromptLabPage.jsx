@@ -1,55 +1,8 @@
+import {PagedList,statusLabel} from './ContentControls.jsx';
 import { t } from '../i18n/index.js';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { simulate } from '../simulator/index.js';
-import { comparePredictedAndObservedTools, evaluateChatExamples } from '../simulator/evaluateChats.js';
-import { download, extractChatExamples, simulationStatus } from '../utils/appUtils.js';
-
-const primaryToolWarningMessages = {
-  PRIMARY_TOOL_NOT_CONFIGURED: 'Nessun tool AI principale è configurato: il simulatore non può scegliere l’orchestratore.',
-  MULTIPLE_PRIMARY_TOOLS_CONFIGURED: 'Sono stati rilevati più tool AI principali: selezionane uno esplicitamente prima di interpretare il routing.',
-  PRIMARY_TOOL_COMPONENT_NOT_FOUND: 'ID e chiave del tool AI principale non corrispondono a un componente reference_ai_coding_tool valido.'
-};
-
-function RoutingTimelineItem({ item, result, report }) {
-  if (item.type === 'gap') return <li className="route-gap"><span className="flow-index">{item.order}</span><div><span className="route-stage">{item.label}</span><strong>{t("Capacità non descritta")}</strong><p>{t("Gap di routing · termine “")}{item.matched_term}”</p><small>{item.reason}</small></div></li>;
-  const step = result.steps.find(candidate => candidate.id === item.step_id);
-  const component = report.components.find(candidate => candidate.id === step?.component_id);
-  if (!step) return null;
-  return <li><span className="flow-index">{item.order}</span><div><span className="route-stage">{step.route_stage?.label || t("Instradamento")}</span><strong>{component?.name || step.component_id}</strong><p>{simulationStatus[step.status] || step.status}{!step.basis?.includes('contractual') && <> {t("· indice")} {step.confidence.toFixed(2)}</>}</p><p>{step.reason}</p><p>{(step.basis || []).map(value=>({contractual:t("Obbligo contrattuale"),configured:t("Disponibile per configurazione"),observed:t("Utilizzo osservato"),inferred_candidate:t("Utilizzo candidato"),declared_orchestrator:t("Tool selezionato")})[value]).join(' · ')}</p><small>{step.matched_capabilities.length ? `Capacità: ${step.matched_capabilities.join(', ')}` : step.action === 'orchestrate_prompt' ? t("Orchestratore principale") : step.action === 'prescribed_by_contract' ? t("Istruzione applicabile") : t("Nome o trigger distintivo")}{step.matched_triggers.length ? ` · Trigger: ${step.matched_triggers.map(trigger => trigger.value).join(', ')}` : ''}</small>{step.predicted_output_types.length > 0 && <small>{t("Output previsti:")} {step.predicted_output_types.join(', ')}</small>}</div></li>;
-}
-
-function SimulationFlow({ result, report }) {
-  const timeline = result.timeline || result.steps.map(step => ({ type: 'route', step_id: step.id, order: step.order }));
-  const primaryToolWarnings = (result.warnings || []).filter(warning => primaryToolWarningMessages[warning]);
-  return <section className="simulation-flow"><div className="flow-heading"><div><p className="eyebrow">{t("FLUSSO PREVISTO")}</p><h3>{t("Routing nel workspace")}</h3></div><button className="ghost" onClick={() => download(result, 'simulation-result.json')}>{t("↓ Esporta risultato")}</button></div><p className="flow-disclaimer">{t("Le fasi seguono l’ordine delle richieste nel prompt; a parità di fase, i candidati sono ordinati per un indice euristico non calibrato. Ambiti e condizioni richiedono un contesto esplicito. È una previsione statica: nessun componente viene eseguito.")}</p>{primaryToolWarnings.length > 0 && <div className="primary-tool-warnings" role="alert" aria-live="polite">{primaryToolWarnings.map(warning => <div className="primary-tool-warning" key={warning}><strong>{warning}</strong><p>{primaryToolWarningMessages[warning]}</p></div>)}</div>}{timeline.length ? <ol>{timeline.map(item => <RoutingTimelineItem item={item} result={result} report={report} key={item.step_id || item.gap_id} />)}</ol> : <p className="flow-empty">{t("Nessuna corrispondenza semantica: il simulatore non prevede l’attivazione di componenti per questo prompt.")}</p>}</section>;
-}
-
-export function PromptLabPage({ prompt, setPrompt, run, result, report, setNotice, setRuntimeEvaluation }) {
-  const defaults = report.extensions?.['ai-setup-classifier.chat-evals']?.data?.examples || [];
-  const [context,setContext]=useState({tool_id:'',task_path:'',task_kind:''});
-  const [chatExamples, setChatExamples] = useState(defaults);
-  const [chatSource, setChatSource] = useState('default_tool_chat_history');
-  const chatInput = useRef();
-  const presets = ['Analizza questo repository, individua i rischi di sicurezza e crea un report PDF.', 'Apri localhost nel browser e verifica il flusso principale.', 'Controlla le pull request GitHub e proponi le priorità.', 'Analizza i keypoint MediaPipe e restituisci JSON.'];
-  useEffect(() => { setChatExamples(defaults); setChatSource('default_tool_chat_history'); }, [report.metadata.report_id]);
-  const analyzed = useMemo(() => chatExamples.map((example, index) => {
-    const simulation = simulate(example.prompt, report);
-    const routedSteps = simulation.steps.filter(step => step.status !== 'required');
-    const top = routedSteps[0]?.confidence || 0;
-    const second = routedSteps[1]?.confidence || 0;
-    const observedTools = example.observed_tools || [];
-    const toolComparison = comparePredictedAndObservedTools(report, routedSteps.map(step => step.component_id), observedTools);
-    const observedMismatch = toolComparison.hasEvidence && toolComparison.agreement < 1;
-    const flags = [top < .75 ? 'routing debole' : null, top && top - second < .15 ? 'routing ambiguo' : null, observedMismatch ? 'tool osservati diversi' : null, routedSteps.length === 0 ? 'nessun componente specifico' : null, simulation.routing_gaps?.length ? `${simulation.routing_gaps.length} gap di copertura` : null].filter(Boolean);
-    return { ...example, id: example.id || `history_${index + 1}`, source: example.source || 'Cronologia del tool principale', simulation, flags, routingConfidence: top, reviewPriority: flags.length * 2 + (1 - top) };
-  }).sort((a, b) => b.reviewPriority - a.reviewPriority), [chatExamples, report]);
-  useEffect(() => { setRuntimeEvaluation(evaluateChatExamples(report, chatExamples, chatSource)); }, [chatExamples, chatSource, report, setRuntimeEvaluation]);
-  const loadChat = event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { const examples = extractChatExamples(String(reader.result || ''), file.name); setChatExamples(examples); setChatSource('chat_import'); setNotice(examples.length ? `${examples.length} prompt estratti e valutati localmente dalla chat.` : 'Nessun prompt utente riconoscibile nella chat.'); };
-    reader.readAsText(file);
-  };
-  return <section className="prompt-lab-page"><header className="evaluation-hero"><div><p className="eyebrow">PROMPT LAB</p><h1>{t("Routing ed esempi reali")}</h1><p>{t("I prompt provenienti dalla cronologia del tool principale sono già disponibili nel report in forma redatta. Puoi aggiungere manualmente altri export senza inviarli fuori dal browser.")}</p></div><button className="ghost" onClick={() => chatInput.current.click()}>{t("Importa altra chat")}</button><input ref={chatInput} hidden type="file" accept=".json,.jsonl,.txt,.md" onChange={loadChat} /></header><div className="prompt-lab-layout"><section className="prompt-console"><label className="prompt-field"><span>{t("Prompt da simulare")}</span><textarea className="resize-none" value={prompt} onChange={event => setPrompt(event.target.value)} placeholder={t("Descrivi un’attività reale del tuo setup…")} rows="6" /></label><div className="preset-row">{presets.map(example => <button key={example} onClick={() => setPrompt(example)}>{example.slice(0, 46)}…</button>)}</div><div className="simulation-context"><div><label htmlFor="simulation-tool">{t("Tool")}</label><select id="simulation-tool" value={context.tool_id} onChange={e=>setContext({...context,tool_id:e.target.value})}><option value="">{t("Principale dichiarato")}</option>{report.components.filter(c=>c.subtype==='reference_ai_coding_tool').map(c=><option key={c.id} value={c.properties.tool_id}>{c.name}</option>)}</select></div><div><label htmlFor="simulation-path">{t("Percorso task")}</label><input id="simulation-path" value={context.task_path} placeholder="src/example.js" onChange={e=>setContext({...context,task_path:e.target.value})}/></div><div><label htmlFor="simulation-kind">{t("Tipo task")}</label><select id="simulation-kind" value={context.task_kind} onChange={e=>setContext({...context,task_kind:e.target.value})}><option value="">{t("Non specificato")}</option><option value="code_modification">{t("Modifica codice")}</option><option value="documentation">{t("Documentazione")}</option><option value="analysis">{t("Analisi")}</option></select></div></div><div className="prompt-actions"><button className="ghost" onClick={() => setPrompt('')}>{t("Pulisci")}</button><button onClick={() => run(undefined,context)}>{t("Simula routing")}</button></div>{result && <SimulationFlow result={result} report={report} />}</section><aside className="history-evals"><div className="flow-heading"><div><p className="eyebrow">CHAT EVAL</p><h2>{analyzed.length} {t("prompt disponibili")}</h2></div></div><p className="flow-disclaimer">{t("In alto trovi i casi più deboli, ambigui o divergenti dai tool osservati.")}</p>{analyzed.length ? <div className="chat-example-list single">{analyzed.map(example => <article key={example.id}><header><span>{example.source}</span><b>{t("Indice")} {example.routingConfidence.toFixed(2)}</b></header><p>{example.prompt}</p><small>{example.flags.length ? example.flags.join(' · ') : 'routing coerente'}</small><button onClick={() => run(example.prompt)}>{t("Analizza")}</button></article>)}</div> : <div className="chat-empty">{t("Il report non contiene ancora esempi di chat. Rigenera la scansione del tool principale.")}</div>}</aside></div></section>;
+export function PromptLabPage({prompt,setPrompt,run,result,report}) {
+  return <section className="simulator-page"><header className="evaluation-hero"><div><p className="eyebrow">Prompt Lab</p><h1>{t('Previsione del flusso')}</h1><p>{t('Simulazione statica: nessun tool viene eseguito.')}</p></div></header>
+    <form noValidate onSubmit={event=>{event.preventDefault();run();}}><label htmlFor="simulation-prompt">{t('Prompt')}</label><textarea className="resize-none" style={{resize: "none",minHeight:160}} id="simulation-prompt" required rows={5} value={prompt} onChange={event=>setPrompt(event.target.value)}/><button disabled={!prompt.trim()} type="submit">{t('Simula prompt')}</button></form>
+    {result&&<>{result.simulation.prompt!==prompt&&<p className="inline-warning" role="status">{t('Il risultato si riferisce al prompt precedente. Ripeti la simulazione per aggiornarlo.')}</p>}<p role="status">{result.warnings.join(' · ')}</p><PagedList items={result.steps} label={t('Cerca passaggi')} empty="Nessun componente candidato." searchText={step=>[report.components.find(item=>item.id===step.component_id)?.name,step.reason].join(' ')}>{steps=><ol className="rule-list">{steps.map(step=><li className="rule-card" key={step.id}><h3>{report.components.find(item=>item.id===step.component_id)?.name}</h3><p>{step.reason}</p><p>{statusLabel(step.status)} · {step.basis.join(' · ')}</p></li>)}</ol>}</PagedList></>}
+  </section>;
 }

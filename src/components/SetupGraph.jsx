@@ -1,143 +1,116 @@
-import { t } from '../i18n/index.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CATEGORY_META } from '../data.js';
-import { categoryFor } from '../utils/appUtils.js';
-import { buildGraphModel, layoutGraph, graphEdgePath, projectGroupEdges, toolScope, discoveredWikis } from '../utils/graphModel.js';
-import { CONTRACT_KEY, relationKind } from '../evaluator/contracts.js';
-import { ContractPanel, RelationshipPanel, RELATION_LABELS } from './ContractPanel.jsx';
-import {useGraphViewport, MIN_ZOOM, MAX_ZOOM} from '../utils/useGraphViewport.js';
-import {componentColor, contrastText} from '../utils/paletteColors.js';
+import { ReactFlow, Background, Controls, Handle, Position, MarkerType } from '@xyflow/react';
+import { siAnthropic, siGithubcopilot } from 'simple-icons';
+import '@xyflow/react/dist/style.css';
 import '../graph.css';
+import { t, getLocale } from '../i18n/index.js';
+import { SearchField, Pagination } from './ContentControls.jsx';
+import { CATEGORY_META } from '../data.js';
+import { buildGraphModel, projectGroupEdges, toolScope } from '../utils/graphModel.js';
+import { componentColor, contrastText } from '../utils/paletteColors.js';
+import { relationKind } from '../evaluator/contracts.js';
+import { ContractPanel, RelationshipPanel, RELATION_LABELS } from './ContractPanel.jsx';
 
-const TYPES = [['all', 'Tutti'], ['legacy_unverified', 'Da verificare'], ['contractual', 'Contratti'], ['configured', 'Configurazioni'], ['available', 'Disponibili'], ['observed', 'Osservazioni'], ['structural', 'Struttura']];
-const PAGE_SIZE = 24;
-const connectionLabel = (item, model, scope) => item.properties?.disabled ? 'Disabilitato' : item.properties?.connection_ready === false ? 'Configurazione incompleta' : scope ? scope.connectedIds.has(item.id) ? 'Collegato al tool selezionato' : scope.referencedIds.has(item.id) ? 'Citata nelle istruzioni del tool · collegamento da verificare' : scope.visibleIds.has(item.id) ? 'Nel perimetro del tool selezionato' : 'Collegamento al tool non rilevato' : model.linkedIds.has(item.id) ? 'Collegato al setup' : model.referencedIds.has(item.id) ? 'Citata nelle istruzioni del tool · collegamento da verificare' : 'Collegamento non rilevato';
-
+const PAGE_SIZE = 12;
+const nodeTypes = { resource: ResourceNode };
+const patterns = { configured: '8 5', available: '2 5', observed: '12 3 2 3', structural: '3 3' };
+function ResourceNode({ data }) {
+  const mark = data.toolId === 'claude_code' ? siAnthropic : data.toolId === 'github_copilot' ? siGithubcopilot : null;
+  return <div className={`awdf-flow-node ${data.isTool ? 'is-tool' : ''}`} style={{ '--node-accent': data.color, '--node-fill': data.color, '--node-ink': contrastText(data.color) }}>
+    <Handle type="target" position={Position.Left} />
+    <div className="awdf-node-kicker"><span className="awdf-node-icon" aria-hidden="true">{mark ? <svg viewBox="0 0 24 24"><path d={mark.path}/></svg> : data.icon}</span><small>{data.type}</small></div>
+    <strong title={data.label}>{data.label}</strong>
+    <span className="awdf-node-description">{data.subtitle}</span>
+    {data.count !== undefined && <div className="awdf-node-footer"><b>{data.count.toLocaleString()}</b> {t('elementi')} <span aria-hidden="true">↗</span></div>}
+    <Handle type="source" position={Position.Right} />
+  </div>;
+}
+function ToolOrigins({item,report}) {
+  if (!item.properties?.tool_id) return null;
+  const signals = item.properties.detection_signals || [];
+  return <section className="atlas-tool-origins"><h3>{t('Come è stato riconosciuto')}</h3><p>{t('I file del workspace indicano un setup; installazione ed esecuzione del client non sono verificate.')}</p>
+    {signals.length ? <ul>{signals.map((signal,index)=><li key={index}><code>{signal.path}</code><p>{signal.kind === 'workspace_directory' ? t('Cartella dedicata') : t('File o configurazione')} · {signal.detail}</p></li>)}</ul> : <p>{t('Dichiarato nelle impostazioni')}</p>}
+    {(item.evidence_ids || []).map(id=>{const evidence=report.evidence.find(record=>record.id===id);return evidence&&<details key={id}><summary>{evidence.path}</summary><p>{evidence.summary}</p>{evidence.content_hash&&<code>{evidence.content_hash}</code>}</details>;})}
+  </section>;
+}
 export function SetupGraph({ report, palette }) {
   const model = useMemo(() => buildGraphModel(report), [report]);
-  const [selected, setSelected] = useState(null);
-  const [openGroup, setOpenGroup] = useState(null);
-  const elementDialog = useRef(null), componentTrigger = useRef(null);
-  const [selectedRelation, setSelectedRelation] = useState(null);
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('all');
-  const [kind, setKind] = useState('all');
-  const [tool, setTool] = useState('all');
-  const [page, setPage] = useState(0);
-  const [mapPage, setMapPage] = useState(0);
-  const primaryIds = report.extensions?.['ai-setup-classifier.reference-tools']?.data?.primary_tool_ids || [];
+  const detailRef = useRef(null);
+  const [query, setQuery] = useState(''), [tool, setTool] = useState('all'), [kind, setKind] = useState('all');
+  const [category, setCategory] = useState('all'), [expanded, setExpanded] = useState(false), [page, setPage] = useState(0);
+  const [selected, setSelected] = useState(null), [relation, setRelation] = useState(null), [bundle, setBundle] = useState([]), [bundlePage, setBundlePage] = useState(0);
+  const [focus, setFocus] = useState(false), [positions, setPositions] = useState(new Map()), [layoutError, setLayoutError] = useState(''), [layoutBusy, setLayoutBusy] = useState(false);
   const scope = useMemo(() => tool === 'all' ? null : toolScope(model, tool), [model, tool]);
-  const mapHubIds = tool === 'all' ? primaryIds : [tool];
-  const mapHubs = model.tools.filter(item => mapHubIds.includes(item.id));
-  const wikis = useMemo(() => discoveredWikis(model), [model]);
-  const visualRelations = [...model.relations, ...model.possibleRelations, ...model.availableRelations, ...model.referenceRelations];
-  const [fullscreen, setFullscreen] = useState(false);
-  const canvas = useRef(null), search = useRef(null), graphRoot = useRef(null), detailHeading = useRef(null);
-  const {view, fit, zoomBy, panBy, handlers} = useGraphViewport(canvas, 1220, 930);
-  const zoom = view.scale;
-  const toolIds = useMemo(() => new Set(model.tools.map(item => item.id)), [model]);
-  const filtered = useMemo(() => [...model.tools, ...model.elements].filter(item =>
-    (!scope || scope.visibleIds.has(item.id)) &&
-    (category === 'all' || categoryFor(item) === category) &&
-    [item.name, item.path, item.description].join(' ').toLocaleLowerCase('it-IT').includes(query.toLocaleLowerCase('it-IT').trim())
-  ), [model, scope, query, category]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount - 1);
-  const inventory = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
-  const relations = (scope ? scope.relations : visualRelations).filter(item => kind === 'all' || relationKind(item) === kind);
-  const matchingIds = new Set(filtered.map(item => item.id));
-  const relevant = relations.filter(item => matchingIds.has(item.source_id) || matchingIds.has(item.target_id));
-  const scopedGroups = scope ? model.groups.map(group => ({ ...group, items: group.items.filter(item => scope.visibleIds.has(item.id)) })).filter(group => group.items.length) : model.groups;
-  const selectedGroup = scopedGroups.find(group => group.id === selected);
-  const dialogGroup = scopedGroups.find(group => group.id === openGroup);
-  const selectedIds = new Set(selectedGroup ? selectedGroup.items.map(item => item.id) : selected ? [selected] : []);
-  const selectionRelations = selected ? relevant.filter(item => selectedIds.has(item.source_id) || selectedIds.has(item.target_id)) : relevant;
-  // Overview is stable: components surround the primary tool, elements live in the inspector.
-  const visibleGroups = scopedGroups.filter(group => group.items.some(item => matchingIds.has(item.id)));
-  const candidates = [...model.tools.filter(item => !mapHubIds.includes(item.id) && (!scope || scope.visibleIds.has(item.id)) && (matchingIds.has(item.id) || relevant.some(edge => edge.source_id === item.id || edge.target_id === item.id))), ...visibleGroups];
-  const mapPageCount = Math.max(1, Math.ceil(candidates.length / 12)), mapCurrent = Math.min(mapPage, mapPageCount - 1);
-  const nodes = candidates.slice(mapCurrent * 12, (mapCurrent + 1) * 12);
-  for (const item of [...mapHubs].reverse()) if (candidates.length || matchingIds.has(item.id) || scope) nodes.unshift(item);
-  const shownIds = new Set(nodes.map(item => item.id));
-  const edges = projectGroupEdges(selectionRelations, model.groupFor, shownIds);
-  const layout = layoutGraph(nodes, edges, toolIds, mapHubIds);
-  const edgeColor = edge => {
-    const target = nodes.find(item => item.id === edge.target_id);
-    const source = nodes.find(item => item.id === edge.source_id);
-    return componentColor(target?.kind === 'group' ? target : source?.kind === 'group' ? source : target || source, palette);
-  };
-  const detail = selectedGroup || model.byId.get(selected);
-  const contained = selectedGroup ? selectedGroup.items : model.components.filter(item => item.parent_id === detail?.id);
-  const detailReport = {...report, relationships: scope ? scope.relations : visualRelations};
-  const selectedEdge = visualRelations.find(item => item.id === selectedRelation);
-  const contractCount = model.contracts.filter(item => item.status === 'contract_present').length;
-  const categories = Object.entries(CATEGORY_META).filter(([id]) => model.elements.some(item => categoryFor(item) === id) || model.tools.some(item => categoryFor(item) === id));
-  const legacy = !report.extensions?.[CONTRACT_KEY];
-
-  useEffect(() => { setOpenGroup(null); setSelected(null); setSelectedRelation(null); setQuery(''); setCategory('all'); setTool('all'); setPage(0); setMapPage(0); }, [report]);
-  useEffect(() => { setPage(0); }, [query, category]);
-  useEffect(() => { setMapPage(0); }, [selected, kind, tool, query, category]);
-  useEffect(() => { setSelected(null); setSelectedRelation(null); setOpenGroup(null); setPage(0); }, [tool]);
+  const visible = useMemo(() => model.elements.filter(item => (!scope || scope.visibleIds.has(item.id)) && [item.name, item.description, item.path].join(' ').toLowerCase().includes(query.toLowerCase())), [model, scope, query]);
+  const ids = new Set(visible.map(item => item.id));
+  const groups = model.groups.map(group => ({ ...group, items: group.items.filter(item => ids.has(item.id)) })).filter(group => group.items.length);
+  const tools = model.tools.filter(item => tool === 'all' || item.id === tool);
+  const matching = category === 'all' ? visible : groups.find(group => group.id === category)?.items || [];
+  const pageItems = matching.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const allRelations = useMemo(() => (scope ? scope.relations : [...model.relations, ...model.availableRelations, ...model.referenceRelations]).filter(edge => kind === 'all' || relationKind(edge) === kind), [scope, model, kind]);
+  const relationsById = useMemo(() => new Map(allRelations.map(edge => [edge.id, edge])), [allRelations]);
+  const primary = tool === 'all' ? report.extensions['ai-setup-classifier.reference-tools']?.data?.primary_tool_ids || [] : [tool];
+  // A detail page exposes twelve real components. Others remain reachable through search and pages.
+  const nodes = expanded ? [...tools, ...pageItems] : [...tools, ...groups];
+  const nodeIds = new Set(nodes.map(item => item.id));
+  const edges = expanded ? allRelations.filter(edge => nodeIds.has(edge.source_id) && nodeIds.has(edge.target_id)) : projectGroupEdges(allRelations, model.groupFor, nodeIds);
+  const signature = JSON.stringify({ expanded, nodes: nodes.map(item => item.id), edges: edges.map(edge => [edge.id, edge.source_id, edge.target_id]) });
   useEffect(() => {
-    const element = graphRoot.current;
-    const change = () => setFullscreen(document.fullscreenElement === element);
-    document.addEventListener('fullscreenchange', change);
-    return () => document.removeEventListener('fullscreenchange', change);
-  }, []);
-  useEffect(() => {
-    const dialog = elementDialog.current;
-    if (dialogGroup && dialog && !dialog.open) dialog.showModal();
-    else if (!dialogGroup && dialog?.open) dialog.close();
-  }, [dialogGroup]);
-  const closeElements = () => { elementDialog.current?.close(); setOpenGroup(null); componentTrigger.current?.focus({preventScroll:true}); };
-  const openElements = (item, event) => {
-    componentTrigger.current = event.currentTarget;
-    setOpenGroup(item.id);
-    setSelected(item.id);
-    setSelectedRelation(null);
+    let active = true;
+    setLayoutError('');
+    if (!expanded) { setPositions(new Map()); setLayoutBusy(false); return () => { active = false; }; }
+    setLayoutBusy(true);
+    import('elkjs/lib/elk.bundled.js').then(({ default: ELK }) => new ELK().layout({ id: 'root', layoutOptions: { 'elk.algorithm': 'layered', 'elk.direction': 'RIGHT', 'elk.aspectRatio': '1.5', 'elk.spacing.nodeNode': '36', 'elk.layered.spacing.nodeNodeBetweenLayers': '100' }, children: nodes.map(item => ({ id: item.id, width: 260, height: 160 })), edges: edges.map(edge => ({ id: edge.id, sources: [edge.source_id], targets: [edge.target_id] })) })).then(graph => { if (active) { setPositions(new Map(graph.children.map(node => [node.id, { x: node.x, y: node.y }]))); setLayoutBusy(false); } }).catch(error => { if (active) { setLayoutError(error.message); setLayoutBusy(false); } });
+    return () => { active = false; };
+  }, [signature]);
+  useEffect(() => { setSelected(null); setRelation(null); setBundle([]); setQuery(''); setTool('all'); setKind('all'); setCategory('all'); setExpanded(false); setPage(0); setFocus(false); }, [report]);
+  const clearSelection = () => { setSelected(null); setRelation(null); setBundle([]); setBundlePage(0); };
+  const resetFilters = () => { setQuery(''); setTool('all'); setKind('all'); setCategory('all'); setExpanded(false); setPage(0); setFocus(false); clearSelection(); };
+  const openCategory = id => { setCategory(id); setExpanded(true); setPage(0); clearSelection(); };
+  const chooseItem = item => { setSelected(item.id); setRelation(null); setBundle([]); };
+  const chooseEdge = edge => {
+    setBundle(edge.members || edge.data?.members || [edge.id]); setBundlePage(0);
+    setRelation((edge.members || edge.data?.members || [edge.id])[0]); setSelected(null);
+    requestAnimationFrame(() => { detailRef.current?.focus({ preventScroll: true }); detailRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' }); });
   };
-  const inspectElement = id => {
-    closeElements();
-    setSelected(id);
-    setSelectedRelation(null);
-    requestAnimationFrame(() => { detailHeading.current?.scrollIntoView({block:'start',behavior:'instant'}); detailHeading.current?.focus({preventScroll:true}); });
-  };
-  const choose = id => { setSelected(id); setSelectedRelation(null); };
-  const reveal = edge => { setSelected(edge.target_id); setSelectedRelation(edge.id); requestAnimationFrame(() => detailHeading.current?.focus({ preventScroll: true })); };
-
-
-  return <section className="atlas" ref={graphRoot}>
-    <dialog ref={elementDialog} className="atlas-elements-dialog" style={{"--node": dialogGroup ? componentColor(dialogGroup, palette) : undefined}} aria-labelledby="atlas-elements-title" onCancel={event => { event.preventDefault(); closeElements(); }} onClose={() => setOpenGroup(null)} onClick={event => { if (event.target !== event.currentTarget) return; const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeElements(); }}>
-      <header><div><p className="eyebrow">{t("ELEMENTI DELLA COMPONENTE")}</p><h2 id="atlas-elements-title">{dialogGroup?.name}</h2><p>{dialogGroup?.items.length || 0} {t("elementi")}</p></div><button autoFocus aria-label={t("Chiudi lista elementi")} onClick={closeElements}>×</button></header>
-      <div className="atlas-elements-list">{dialogGroup?.items.length ? <ul>{dialogGroup.items.map(item => <li key={item.id}><button onClick={() => inspectElement(item.id)}><strong>{item.name}<span aria-hidden="true">↗</span></strong><span>{item.description || 'Descrizione non disponibile.'}</span><small>{connectionLabel(item, model, scope)}</small></button></li>)}</ul> : <p>{t("Questa componente non contiene elementi.")}</p>}</div>
-    </dialog>
-    <header className="atlas-heading"><div><p className="eyebrow">{t("WORKSPACE / MAPPA DEL SETUP")}</p><h1>{t("Ogni connessione ha una fonte.")}</h1><p>{t(primaryIds.length > 1 ? "I tool AI principali al centro, le componenti intorno e i singoli elementi al loro interno." : "Il tool AI al centro, le componenti intorno e i singoli elementi al loro interno.")}</p></div><div className="atlas-summary"><span><b>{model.tools.length}</b> {t("tool AI")}</span><span><b>{contractCount}</b> {t("contratti presenti")}</span><span><b>{model.groups.length}</b> {t("componenti")}</span><span><b>{model.elements.length}</b> {t("elementi")}</span></div></header>
-    <div className="atlas-layout">
-      <aside className="atlas-inventory" aria-label={t("Inventario elementi")}>
-        <div className="atlas-section-label">{t("Elementi")} <span>{model.elements.length}</span></div>
-        <div className="atlas-search"><span aria-hidden="true">⌕</span><input ref={search} type="search" aria-label={t("Cerca elementi")} placeholder={t("Cerca nome o percorso…")} value={query} onChange={event => setQuery(event.target.value)} />{query && <button aria-label={t("Cancella ricerca")} onClick={() => { setQuery(''); search.current?.focus(); }}>×</button>}</div>
-        <label className="atlas-filter-label" htmlFor="atlas-category">{t("Componente")}</label><select id="atlas-category" value={category} onChange={event => setCategory(event.target.value)}><option value="all">{t("Tutte le componenti")}</option>{categories.map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}</select>
-        <div className="atlas-inventory-list">{inventory.map(item => <button key={item.id} aria-pressed={selected === item.id} onClick={() => choose(item.id)} style={{ '--node': palette.categories[categoryFor(item)] || 'var(--ui-muted)' }}><i aria-hidden="true">{CATEGORY_META[categoryFor(item)]?.icon || '◇'}</i><span><strong>{item.name}</strong><small>{CATEGORY_META[categoryFor(item)]?.label || item.kind}{item.parent_id ? ' · contenuto' : ''}</small></span><span className={(scope ? scope.connectedIds.has(item.id) : model.linkedIds.has(item.id)) ? 'atlas-connected' : 'atlas-unlinked'} aria-label={connectionLabel(item, model, scope)}>{(scope ? scope.connectedIds.has(item.id) : model.linkedIds.has(item.id)) ? '↗' : '○'}</span></button>)}{!inventory.length && <div className="atlas-empty"><strong>{t("Nessun elemento trovato")}</strong><p>{t("Prova un altro nome o cambia componente.")}</p></div>}</div>
-        <div className="atlas-pagination"><button aria-label={t("Pagina precedente")} disabled={!currentPage} onClick={() => setPage(currentPage - 1)}>←</button><span aria-live="polite">{filtered.length} {t("risultati ·")} {currentPage + 1}/{pageCount}</span><button aria-label={t("Pagina successiva")} disabled={currentPage + 1 >= pageCount} onClick={() => setPage(currentPage + 1)}>→</button></div>
-        {wikis.length > 0 && <section className="atlas-wikis" aria-label={t("Wiki rilevate nella scansione")}><h3>{t("Wiki rilevate nella scansione")} <span>{wikis.length}</span></h3><p>{t("La presenza della wiki non dimostra un collegamento al tool selezionato.")}</p><div>{wikis.map(item => <button key={item.id} onClick={() => choose(item.id)} aria-pressed={selected === item.id}><strong>{item.name}</strong><small>{scope?.connectedIds.has(item.id) ? t("Collegato al tool selezionato") : scope?.referencedIds.has(item.id) ? t("Citata nelle istruzioni del tool · collegamento da verificare") : !scope && model.referencedIds.has(item.id) ? t("Citata nelle istruzioni del tool · collegamento da verificare") : t("Collegamento al tool non rilevato")}</small></button>)}</div></section>}
-      </aside>
-      <section className="atlas-map" aria-label={t("Collegamenti del setup")}>
-        <div className="atlas-map-top"><div><p className="eyebrow">{t("RETE DELLE RELAZIONI")}</p><h2>{detail ? detail.name : 'Come lavora il tuo setup'}</h2></div>{selected && <button onClick={() => choose(null)}>{t("Mostra tutta la rete")}</button>}</div>
-        <div className="atlas-filters"><div className="atlas-kind-filter" aria-label={t("Tipo di collegamento")}>{TYPES.map(([id, label]) => <button key={id} aria-pressed={kind === id} onClick={() => { setKind(id); setSelectedRelation(null); }}><i className={'atlas-line-key ' + id} aria-hidden="true" />{label}</button>)}</div><label>{t("Tool AI")} <select aria-label={t("Seleziona il tool AI da esplorare")} value={tool} onChange={event => setTool(event.target.value)}><option value="all">{t("Vista d’insieme")}</option>{model.tools.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
-        {scope && <p className="atlas-tool-context" role="status">{t("Componenti collegate a")} <strong>{model.byId.get(tool)?.name}</strong> · {scopedGroups.length} {t("componenti")} · {filtered.filter(item => item.id !== tool).length} {t("elementi")}. {t("Le risorse scansionate senza collegamento restano nella sezione Wiki rilevate.")}</p>}
-        <p className="atlas-navigation-help">{t("Rotella o pizzico per zoomare · trascina per spostarti · Adatta per ritrovare tutto il grafico")}</p><div className="atlas-map-note">{legacy ? "Report precedente: i collegamenti tratteggiati sono possibili relazioni da verificare nei contratti." : t("Tool o tool principali al centro e componenti intorno. Ogni linea riassume collegamenti reali ai singoli elementi, definiti da istruzioni, configurazioni o cataloghi del tool.")}</div>
-        <div className="atlas-canvas" ref={canvas} tabIndex={0} role="region" aria-label={t("Mappa interattiva. Trascina per spostarti, usa la rotella per zoomare. Tastiera: frecce, più, meno e zero per adattare.")} {...handlers}>
-          {nodes.length ? <div className="atlas-stage-size" style={{ width: "100%", height: "100%" }}><div className="atlas-stage" style={{ width: layout.width, height: layout.height, transform: 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + zoom + ')' }}>
-            <svg className="atlas-edges" width={layout.width} height={layout.height} aria-hidden="true"><defs>{edges.map((edge,index) => <marker key={edge.id} id={'atlas-arrow-'+index} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9" style={{'--edge':edgeColor(edge)}} /></marker>)}</defs>{edges.map((edge,index) => <path key={edge.id} style={{'--edge':edgeColor(edge)}} className={relationKind(edge) + ((selectedRelation === edge.id || edge.members?.includes(selectedRelation)) ? ' is-selected' : '')} d={graphEdgePath(layout.positions.get(edge.source_id), layout.positions.get(edge.target_id))} markerEnd={'url(#atlas-arrow-'+index+')'} />)}</svg>
-            {!mapHubIds.length && <div className="atlas-center-placeholder" style={{left:470,top:385}}>{t("Tool principale non determinato")}<small>{t("Il report non identifica un unico tool principale.")}</small></div>}
-            {nodes.map(item => { const position = layout.positions.get(item.id), isTool = toolIds.has(item.id); return <button key={item.id} className={'atlas-node ' + (isTool ? 'atlas-tool-node' : 'atlas-group-node') + (primaryIds.includes(item.id) ? ' atlas-primary-node' : '')} aria-pressed={selected === item.id || (item.kind === 'group' && item.items.some(element => element.id === selected))} style={{ left: position.x, top: position.y, width: position.width, height: position.height, '--node': componentColor(item, palette), '--node-ink': contrastText(componentColor(item, palette)) }} aria-haspopup={item.kind === 'group' ? 'dialog' : undefined} onClick={event => item.kind === 'group' ? openElements(item, event) : choose(item.id)}><span className="atlas-node-type">{primaryIds.includes(item.id) ? 'TOOL AI PRINCIPALE' : isTool ? 'TOOL AI' : t("COMPONENTE")}<span aria-hidden="true">↗</span></span><strong>{item.name}</strong><small>{primaryIds.includes(item.id) ? 'Tool principale del setup' : isTool ? item.properties?.tool_id : item.items.length + ' elementi · ' + item.items.filter(element => scope ? scope.connectedIds.has(element.id) : model.linkedIds.has(element.id)).length + ' collegati'}</small></button>; })}
-          </div></div> : <div className="atlas-map-empty"><div className="atlas-empty-symbol" aria-hidden="true">⌁</div><h3>{legacy && kind === 'contractual' ? 'Le connessioni attendono una fonte' : 'Nessuna relazione in questa vista'}</h3><p>{legacy ? 'Questo report precede i contratti. Importa una nuova scansione delle istruzioni, configurazioni e cataloghi del tool per ricostruire i collegamenti.' : 'Cambia tipo, tool o selezione. Le risorse restano disponibili nell’inventario.'}</p>{(selected || query || category !== 'all' || tool !== 'all') && <button onClick={() => { choose(null); setQuery(''); setCategory('all'); setTool('all'); }}>{t("Azzera i filtri")}</button>}</div>}
-        </div>
-        <div className="atlas-toolbar"><span>{nodes.length} {t("nodi ·")} {edges.length} {t("collegamenti")}{mapPageCount > 1 ? ' · gruppo ' + (mapCurrent + 1) + '/' + mapPageCount : ''}</span><div>{mapPageCount > 1 && <><button aria-label={t("Componenti precedenti nella mappa")} disabled={!mapCurrent} onClick={() => setMapPage(mapCurrent - 1)}>←</button><button aria-label={t("Componenti successivi nella mappa")} disabled={mapCurrent + 1 >= mapPageCount} onClick={() => setMapPage(mapCurrent + 1)}>→</button></>}<button disabled={zoom <= MIN_ZOOM} aria-label={t("Riduci zoom")} onClick={() => zoomBy(1/1.2)}>−</button><button onClick={fit} aria-label={t("Adatta mappa")}>{Math.round(zoom * 100)}%</button><button disabled={zoom >= MAX_ZOOM} aria-label={t("Aumenta zoom")} onClick={() => zoomBy(1.2)}>+</button><button onClick={fit}>{t("Adatta")}</button><button aria-label={t("Sposta vista a sinistra")} onClick={() => panBy(100,0)}>←</button><button aria-label={t("Sposta vista in alto")} onClick={() => panBy(0,100)}>↑</button><button aria-label={t("Sposta vista in basso")} onClick={() => panBy(0,-100)}>↓</button><button aria-label={t("Sposta vista a destra")} onClick={() => panBy(-100,0)}>→</button>{document.fullscreenEnabled && <button onClick={async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else await graphRoot.current.requestFullscreen(); } catch { setFullscreen(false); } }}>{fullscreen ? 'Esci' : 'Schermo intero'}</button>}</div></div>
-        <section className="atlas-connection-list"><div className="atlas-section-label">{kind === 'all' ? t("Collegamenti del setup") : RELATION_LABELS[kind]} <span>{selectionRelations.length} {t("relazioni")}</span></div>{selectionRelations.slice(0, PAGE_SIZE).map(edge => { const contract = model.byContract.get(edge.properties?.contract_id); return <button key={edge.id} aria-pressed={(selectedRelation === edge.id || edge.members?.includes(selectedRelation))} onClick={() => reveal(edge)}><span><strong>{model.byId.get(edge.source_id)?.name}</strong><i aria-hidden="true">→</i><strong>{model.byId.get(edge.target_id)?.name}</strong></span><small>{contract ? contract.reference_chain.join(' → ') + ' · ambito ' + contract.scope : RELATION_LABELS[relationKind(edge)] + ' · ' + (edge.description || '')}</small><b aria-hidden="true">↗</b></button>; })}{selectionRelations.length > PAGE_SIZE && <p>{t("Seleziona un elemento per restringere le relazioni; il registro completo è disponibile sotto la mappa.")}</p>}{!selectionRelations.length && <p>{t("La presenza nel workspace non dimostra un obbligo d’uso.")}</p>}</section>
+  const neighbors = new Set([selected]);
+  edges.forEach(edge => { if (edge.source_id === selected || edge.target_id === selected) { neighbors.add(edge.source_id); neighbors.add(edge.target_id); } });
+  const hub = tools.find(item => primary.includes(item.id)) || tools[0];
+  const hubs = hub ? [hub] : [];
+  const orbit = nodes.filter(item => !hubs.includes(item));
+  const overview = new Map();
+  hubs.forEach((item, i) => overview.set(item.id, { x: 440, y: 280 + (i - (hubs.length - 1) / 2) * 178 }));
+  orbit.forEach((item, i) => { const angle = -Math.PI / 2 + i * Math.PI * 2 / Math.max(1, orbit.length); overview.set(item.id, { x: 440 + Math.cos(angle) * Math.max(390, orbit.length * 50), y: 280 + Math.sin(angle) * Math.max(265, orbit.length * 36) }); });
+  const flowNodes = nodes.map(item => ({ id: item.id, type: 'resource', position: expanded ? positions.get(item.id) || { x: 0, y: 0 } : overview.get(item.id), data: { label: item.name, color: tools.includes(item) ? palette.centralTool.background : componentColor(item, palette), type: item.kind === 'group' ? t('Categoria') : item.properties?.tool_id || item.kind, toolId: item.properties?.tool_id, isTool: tools.includes(item), icon: tools.includes(item) ? '>_' : CATEGORY_META[item.category]?.icon || '◇', count: item.items?.length, subtitle: item.kind === 'group' ? t(item.description) : tools.includes(item) ? item.properties?.detection_basis === 'workspace_directory' ? t('Dedotto dalle cartelle') : item.properties?.detection_signals?.length ? t('Rilevato nel workspace') : t('Dichiarato nelle impostazioni') : item.path || item.description }, style: { opacity: focus && selected && !neighbors.has(item.id) ? 0.25 : 1 }, selected: selected === item.id, draggable: false, ariaLabel: item.name }));
+  const flowEdges = edges.map(edge => {
+    const active = edge.source_id === selected || edge.target_id === selected || edge.id === relation || edge.members?.includes(relation);
+    const color = active ? 'var(--map-line-active)' : 'var(--map-line)';
+    return { id: edge.id, source: edge.source_id, target: edge.target_id, type: 'smoothstep', data: { members: edge.members || [edge.id] }, label: active ? `${t(RELATION_LABELS[relationKind(edge)])}${edge.members?.length > 1 ? ` · ${edge.members.length}` : ''}` : undefined, labelStyle: { fill: 'var(--ui-text)', fontSize: 13 }, labelBgStyle: { fill: 'var(--ui-surface)' }, style: { stroke: color, strokeWidth: active ? 5 : 3, opacity: focus && selected && !active ? 0.15 : 1, strokeDasharray: patterns[relationKind(edge)] }, markerEnd: { type: MarkerType.ArrowClosed, color, width: 22, height: 22 }, selected: active, interactionWidth: 40, ariaLabel: `${t(RELATION_LABELS[relationKind(edge)])}: ${nodes.find(item => item.id === edge.source_id)?.name || edge.source_id} → ${nodes.find(item => item.id === edge.target_id)?.name || edge.target_id}` };
+  });
+  const detail = model.byId.get(selected), group = groups.find(item => item.id === selected);
+  const related = detail ? allRelations.filter(edge => edge.source_id === detail.id || edge.target_id === detail.id) : [];
+  return <section className="atlas" data-report-id={report.metadata.report_id}>
+    <header className="atlas-heading"><div><p className="eyebrow">AWDF 2.0 · {t('Mappa setup')}</p><h1>{t('Il tuo setup, a colpo d’occhio.')}</h1><p>{report.workspace.name} · {new Date(report.metadata.created_at).toLocaleString(getLocale())} · {report.metadata.generator.name}</p></div><div className="atlas-summary"><span><b>{model.tools.length}</b>{t('Tool AI')}</span><span><b>{model.elements.length.toLocaleString()}</b>{t('elementi')}</span><span><b>{model.groups.length}</b>{t('Categorie')}</span></div></header>
+    <div className="atlas-layout"><aside className="atlas-inventory">
+      <SearchField id="map-search" label={t('Cerca elementi')} placeholder={t('Nome, percorso o istruzione')} value={query} onChange={value=>{setQuery(value);setPage(0);clearSelection();}}/>
+      <label htmlFor="map-tool">{t('Tool AI')}</label><select id="map-tool" value={tool} onChange={event => { setTool(event.target.value); setPage(0); clearSelection(); }}><option value="all">{t('Tutti')}</option>{model.tools.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+      <label htmlFor="map-kind">{t('Relazioni')}</label><select id="map-kind" value={kind} onChange={event => { setKind(event.target.value); clearSelection(); }}><option value="all">{t('Tutte')}</option>{Object.entries(RELATION_LABELS).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}</select>
+      <div className="atlas-section-label">{t('Categorie')}<button onClick={resetFilters}>{t('Reset')}</button></div>
+      <div className="atlas-category-list"><button aria-pressed={category === 'all'} onClick={() => { setCategory('all'); setPage(0); clearSelection(); }}>{t('Tutti gli elementi')}<b>{visible.length.toLocaleString()}</b></button>{groups.map(group => <button key={group.id} aria-pressed={category === group.id} onClick={() => openCategory(group.id)}><span>{t(group.name)}</span><b>{group.items.length.toLocaleString()}</b></button>)}</div>
+      <div className="atlas-section-label">{t('Elementi')}<span>{matching.length ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, matching.length)} / ${matching.length}` : '0'}</span></div>
+      <div className="atlas-inventory-list">{pageItems.map(item => <button key={item.id} aria-pressed={selected === item.id} onClick={() => chooseItem(item)}><strong>{item.name}</strong><small title={item.path}>{item.path || item.kind}</small></button>)}{!matching.length && <p>{t('Nessun elemento corrisponde ai filtri.')}</p>}</div>
+      <Pagination page={page} total={matching.length} onChange={value => { setPage(value); clearSelection(); }}/>
+    </aside><div className="atlas-map">
+      <header className="atlas-map-top"><div><p className="eyebrow">{expanded ? t('ESPLORA') : t('PANORAMICA')}</p><h2>{expanded ? t(groups.find(group => group.id === category)?.name || 'Tutti gli elementi') : t('Tool e capacità del setup')}</h2></div><button aria-pressed={expanded} onClick={() => { setExpanded(value => !value); clearSelection(); }}>{expanded ? t('Panoramica') : t('Espandi elementi')}</button></header>
+      <div className="atlas-map-context"><p>{expanded ? t('Una pagina alla volta. Seleziona un elemento per leggere istruzioni e prove.') : t('Seleziona una categoria, poi esplora i suoi elementi.')}</p><button aria-pressed={focus} disabled={!selected} onClick={() => setFocus(value => !value)}>{t('Focus collegamenti')}</button></div>
+      <section className="awdf-flow-panel" style={{ '--map-line': contrastText(palette.canvas.background) === '#ffffff' ? '#94a3b8' : '#475569', '--map-line-active': contrastText(palette.canvas.background) === '#ffffff' ? '#22d3ee' : '#0e7490' }} aria-label={t('Collegamenti del setup')}>
+        {layoutBusy ? <p className="atlas-map-state" role="status">{t('Organizzazione dei collegamenti…')}</p> : layoutError ? <p className="atlas-map-state" role="alert">{t('Layout non disponibile')}: {layoutError}</p> : <ReactFlow key={signature + positions.size} nodes={flowNodes} edges={flowEdges} nodeTypes={nodeTypes} fitView fitViewOptions={{ padding: 0.08, minZoom: expanded ? 0.65 : 0.25, maxZoom: 1 }} minZoom={0.2} maxZoom={2} nodesConnectable={false} nodesDraggable={false} onNodeClick={(_, node) => { setSelected(node.id); setRelation(null); setBundle([]); }} onEdgeClick={(_, edge) => chooseEdge(edge)}><Background color={palette.canvas.grid} gap={28} size={0.65}/><Controls showInteractive={false}/></ReactFlow>}
       </section>
-      <aside className="atlas-detail" aria-label={t("Dettaglio selezione")}><div className="atlas-section-label">{selectedGroup ? 'COMPONENTE / ELEMENTI' : detail ? 'ELEMENTO / FONTI' : 'LEGGERE LA MAPPA'}{detail && <button aria-label={t("Chiudi dettaglio")} onClick={() => choose(null)}>×</button>}</div><h2 ref={detailHeading} tabIndex={-1}>{detail?.name || 'Dal tool al singolo elemento.'}</h2>{detail ? <><p>{detail.description}</p>{!selectedGroup && <p>{connectionLabel(detail, model, scope)}</p>}{detail.path && <code className="atlas-path">{detail.path}</code>}<p className="atlas-detail-kind">{CATEGORY_META[categoryFor(detail)]?.label || detail.kind}</p>{detail.parent_id && <button onClick={() => choose(detail.parent_id)}>↑ {model.byId.get(detail.parent_id)?.name || 'Componente contenitore'}</button>}{!selectedGroup && <><ContractPanel report={report} targetId={detail.id} selectedId={selectedEdge?.properties?.contract_id} toolId={scope ? model.byId.get(tool)?.properties?.tool_id : undefined} /><RelationshipPanel report={detailReport} targetId={detail.id} /></>}<details className="atlas-contained" open={selectedGroup ? true : undefined}><summary>{t("Elementi contenuti (")}{contained.length})</summary>{contained.map(item => <button key={item.id} onClick={() => choose(item.id)}><strong>{item.name} ↗</strong><small>{item.description}</small><small>{connectionLabel(item, model, scope)}</small></button>)}</details>{selectedEdge && <RelationshipPanel report={detailReport} relationshipId={selectedEdge.id} />}</> : <><p>{t("Apri una componente per esplorare gli elementi. Seleziona un elemento o un collegamento per leggerne descrizione e fonti.")}</p><ol className="atlas-reading-guide"><li><b>{t("Tool AI principale")}</b><span>{t("Il centro del setup che può utilizzare gli elementi.")}</span></li><li><b>{t("Componente")}</b><span>{t("Un insieme di elementi dello stesso tipo, come Skill o MCP server.")}</span></li><li><b>{t("Elemento")}</b><span>{t("Una singola unità con nome e descrizione, per esempio Skill evaluator.")}</span></li></ol><div className="atlas-guidance"><strong>{t("Collegamento e utilizzo")}</strong><p>{t("Un elemento può essere collegato anche dalla configurazione o dal catalogo del tool, senza un obbligo nelle istruzioni. La verifica dell’esecuzione resta distinta.")}</p></div><p className="atlas-muted">{report.workspace.name}</p></>}</aside>
-    </div>
-    <details className="atlas-register"><summary>{t("Registro completo · contratti e relazioni")}</summary><ContractPanel report={report} toolId={scope ? model.byId.get(tool)?.properties?.tool_id : undefined} /><RelationshipPanel report={detailReport} /></details>
+      <footer className="atlas-map-legend">{Object.entries(RELATION_LABELS).map(([value, label]) => <span key={value}><i className={value}/>{t(label)}</span>)}<p>{expanded ? `${pageItems.length} / ${matching.length} ${t('elementi')} · ${edges.length} ${t('collegamenti visibili')}` : `${edges.length} ${t('collegamenti tra gruppi')}`} · {t('Trascina per spostarti · rotella per lo zoom')}</p></footer>
+      <details className="atlas-visible-connections"><summary>{t('Collegamenti mostrati')} · {edges.length}</summary><div>{edges.map(edge => <button key={edge.id} onClick={() => chooseEdge(edge)}><strong>{nodes.find(node => node.id === edge.source_id)?.name} → {nodes.find(node => node.id === edge.target_id)?.name}</strong><span>{t(RELATION_LABELS[relationKind(edge)])} · {edge.members?.length || 1} · {t('Mostra origine')}</span></button>)}</div></details>
+    </div><aside ref={detailRef} tabIndex={-1} className="atlas-detail" aria-label={t('Dettagli')}>
+      <p className="eyebrow">{t('DETTAGLI E PROVE')}</p>
+      {bundle.length ? <><h2>{t('Collegamenti del gruppo')}</h2><p>{bundle.length} {t('relazioni originali, ognuna con le proprie prove.')}</p><div className="atlas-relation-list">{bundle.slice(bundlePage * PAGE_SIZE, (bundlePage + 1) * PAGE_SIZE).map(id => { const edge = relationsById.get(id); return edge && <button key={id} aria-pressed={relation === id} onClick={() => setRelation(id)}><small>{t(RELATION_LABELS[relationKind(edge)])}</small><strong>{model.byId.get(edge.source_id)?.name} → {model.byId.get(edge.target_id)?.name}</strong></button>; })}</div><Pagination page={bundlePage} total={bundle.length} onChange={setBundlePage}/><RelationshipPanel report={{ ...report, relationships: allRelations }} relationshipId={relation}/></> : group ? <><h2>{t(group.name)}</h2><p>{t(group.description)}</p><p className="atlas-detail-count"><b>{group.items.length.toLocaleString()}</b> {t('elementi')}</p><button className="atlas-explore" onClick={() => openCategory(group.id)}>{t('Esplora categoria')} →</button></> : detail ? <><h2>{detail.name}</h2><p>{detail.description}</p>{detail.path && <code className="atlas-path">{detail.path}</code>}<ToolOrigins item={detail} report={report}/><ContractPanel report={report} targetId={detail.id}/><RelationshipPanel report={{ ...report, relationships: related }} targetId={detail.id}/></> : <><h2>{t('Da dove vuoi partire?')}</h2><ol className="atlas-reading-guide"><li><b>{t('Scegli il tool')}</b><span>{t('Filtra le capacità collegate al tuo assistente.')}</span></li><li><b>{t('Apri una categoria')}</b><span>{t('Skills, regole, plugin e server restano separati.')}</span></li><li><b>{t('Leggi le prove')}</b><span>{t('Seleziona un elemento o una linea per risalire alla fonte.')}</span></li></ol><p className="atlas-guidance">{t('Disponibile non significa eseguito. La mappa descrive il setup; le esecuzioni osservate hanno una vista dedicata.')}</p></>}
+    </aside></div>
   </section>;
 }

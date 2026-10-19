@@ -1,170 +1,100 @@
-# AI Setup Classifier · AWDF
+# AI Setup Classifier · AWDF 2.0
 
-AI Setup Classifier describes authorized AI development workspaces and displays their components, instructions and evidence in a local interface.
-
-The current workflow separates collection from classification:
+Il classificatore descrive workspace AI autorizzati e distingue descrizione, checklist software, valutazione contestuale e comportamento osservato.
 
 ```text
-Authorized workspaces → Descriptor skill/scanner → Descriptive AWDF
-                                                        ↓
-                                         Local viewer → Static checklist
+awdf-describe → ai-setup.json → mappa React Flow
+                      ↓
+awdf-assess → setup-evaluation.json + Markdown
+                      ↓
+awdf-prompt-evaluate → prompt-run.json + Markdown + timeline
 ```
 
-The skill produces an AWDF 1.1 description without AI scores, findings, recommendations or reviewer subagents. On import, the software computes its own versioned static checklist. The checklist is deliberately narrow; the overall setup quality score remains null. See [description format, rule sources and limitations](docs/SETUP-DESCRIPTION.md).
+## Avvio
 
-## Quick start
-
-Node.js and npm are required:
-
-```bash
-git clone https://github.com/Luca-it15/set-up_classification.git
-cd set-up_classification
-npm install
-npm start
-```
-
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000). One Node process serves the React interface and local settings/report APIs. Use `npm start` on subsequent runs.
-
-To change the address or port in PowerShell:
+Richiede Node.js 22.20+ (serie 22) oppure Node.js 24+ e npm. Dal checkout, prepara dipendenze e skill del client scelto:
 
 ```powershell
-$env:AWDF_HOST='0.0.0.0'
-$env:AWDF_PORT='3100'
+npm run setup:codex
+npm run doctor -- codex
 npm start
 ```
 
-## Authorize folders and describe a setup
+Per Claude Code usa `npm run setup:claude_code`; per Copilot CLI `npm run setup:github_copilot`. Questi comandi eseguono `npm ci` e installano le tre skill a livello progetto. Non installano il client AI e non avviano sessioni. Aprire http://127.0.0.1:3000: senza descrizione l’app mostra uno stato vuoto. Gli esempi richiedono un’azione esplicita.
 
-1. Open **Settings → Workspace** and authorize at least one folder using the folder picker or an absolute path.
-2. Set the workspace name, purpose, analysis depth, exclusions and path policy.
-3. Keep chat history disabled unless explicitly needed. Redaction is best-effort.
-4. Save the settings to `ai-setup-settings.json`.
-5. Run the descriptor in another terminal, then refresh the page:
+La [guida di installazione ed esecuzione](docs/INSTALLATION.md) include installazione dei client, scope personale, workspace esterni, hook e comandi completi del flusso.
 
-```bash
+Nelle impostazioni autorizzare cartelle assolute, selezionare tool principale, scope del task e policy dei percorsi. Salvare `ai-setup-settings.json`, quindi eseguire `npm run describe:setup`. In alternativa, per la prima configurazione da terminale:
+
+```powershell
+npm run workspace:init -- codex "D:/progetti/mio-progetto"
 npm run describe:setup
 ```
 
-`npm run scan:setup` is an alias for the same descriptive workflow. For explicit output/settings paths:
+`workspace:init` autorizza esclusivamente la cartella indicata e non sovrascrive impostazioni esistenti. Per percorsi espliciti:
 
-```bash
-node scripts/describe-setup.mjs /authorized/workspace description.json settings.json
-node scripts/validate-awdf.mjs description.json
+```sh
+node scripts/describe-setup.mjs /workspace ai-setup.json ai-setup-settings.json
+node scripts/validate-awdf.mjs ai-setup.json
 ```
 
-The initialized settings determine the authorized roots. The scanner does not execute discovered programs or contact provider endpoints. It validates the generated report before replacing the output file.
+Il collector legge solo le cartelle autorizzate; non esegue il codice trovato. Gli snapshot contengono estratti redatti, citazioni e hash, non garantiscono una cattura atomica dell'intero filesystem. Cronologia chat esclusa salvo opt-in. La redazione è best effort: revisionare gli export prima di condividerli.
 
-`workspace.task_path` and the paths/scopes in `workspace.workflow_components` are relative to each authorized root. With several roots, each is analyzed in its own scope; the report prefixes paths to distinguish roots. Nested instructions apply only when the selected task falls within their scope.
+## Esplorare il setup
 
-## What the description preserves
+Le sezioni separano mappa, descrizione, checklist, valutazione, simulazione statica ed esecuzioni osservate. La ricerca si può azzerare con ×; i filtri della mappa restano attivi cambiando sezione. Le liste di istruzioni, criteri e prove mostrano dodici elementi per pagina. Le frecce della tastiera, Home ed End permettono di cambiare sezione.
 
-- AI hosts, instructions, skills, agents, configurations, integrations and their evidence.
-- Redacted instruction source blocks with source lines, scope and activation information.
-- Recognized configuration links, including supported MCP/plugin declarations and provider connections.
-- Document collections are discovered from multiple local documents, including nested collections, independently of folder names. They remain documentation candidates until an applicable instruction explicitly prescribes consultation. The resulting knowledge-base qualification records the tool, instruction source, task conditions and contract; a mention or a binding for another tool does not qualify the collection for the selected tool.
-- Explicitly declared workflow resources, including those that could not be discovered. A missing required resource remains in the contract check instead of becoming inapplicable.
-- Collection limits, exclusions, inaccessible sources and unsupported syntax.
+Le impostazioni si possono chiudere senza salvare: la bozza resta disponibile nella sessione. Il salvataggio controlla i percorsi assoluti e mostra gli errori vicino al campo. Se il caricamento locale fallisce, puoi riprovare o importare un JSON; un’importazione rifiutata conserva il risultato precedente.
 
-Configuration does not prove installation, successful activation or execution. `configured` records configuration evidence, `mentioned` records textual mentions, and `used` requires a structured invocation event.
+## Tre skill
 
-## Explore the report
+Gli installer distribuiscono esclusivamente `awdf-describe`, `awdf-assess` e `awdf-prompt-evaluate`.
 
-### Setup map
-
-![Setup map](docs/screenshots/setup-map.png)
-
-The reference AI tool appears at the center, with components grouped by category. A component groups elements of the same type; an element is an individual skill, plugin, MCP server or other resource. Expand groups, inspect elements and their metadata, drag the canvas, zoom or recenter it. Layout connections are distinguished from relationships supported by AWDF evidence. Unrelated documentation is kept out of the setup map.
-
-### Static checklist
-
-For descriptive imports, the software checks:
-
-- resolution of local Markdown references in applicable instructions;
-- a recognized explicit test command;
-- the documented CLAUDE.md line-budget target;
-- bindings for explicitly required resources.
-
-Excluded or inaccessible references yield insufficient evidence. Ordinary navigation links do not recursively load instructions or create import-cycle failures. Recognized instruction directives and imports are traversed and checked for cycles.
-
-Coverage and pass/fail counts are separate from overall quality; the descriptive import has no numeric checklist or quality score. Unsupported wording remains uncertain. These checks do not assess semantic adequacy or verify runtime behavior. Legacy reports may still expose their historical assessments and roadmap; those are not generated by the current skill.
-
-### Prompt Lab
-
-Prompt Lab statically predicts routing without executing agents or tools. Enter a prompt, select an example or import a chat to inspect candidate components, expected steps, routing gaps and tool-resolution warnings. Export the result to `simulation-result.json` if needed.
-
-### Settings and import/export
-
-Settings manage authorized folders, exclusions, analysis depth, declared AI hosts, manual components and palettes. The top bar imports AWDF descriptions and exports the displayed report; computed evaluation extensions are removed when exporting a descriptive artifact. Settings backups can be imported and exported separately.
-
-## Install the descriptor skill
-
-The portable skill is in [skills/setup-evaluator/SKILL.md](skills/setup-evaluator/SKILL.md). Its invocation name, `awdf-evaluator`, is retained for compatibility.
-
-```bash
-npm run skill:install -- all
+```powershell
+npm run skill:install:codex -- --scope=user
+npm run skill:install:claude_code -- --scope=project
+npm run skill:install:github_copilot -- --scope=project
+npm run skill:install:all -- --scope=project --workspace="D:/progetti/mio-progetto"
 ```
 
-For a single client:
+Per vedere le destinazioni aggiungi `--dry-run`. Le copie installate registrano il percorso assoluto degli script del runtime e funzionano anche da un workspace esterno; mantenere questo checkout e `node_modules` disponibili. Se sposti il runtime, ripeti l’installazione. Una destinazione con skill estranee viene rifiutata prima di copiare qualsiasi file. Le copie gestite dall’installer possono essere aggiornate ripetendo il comando. Dettagli nel [README delle skill](skills/README.md).
 
-```bash
-npm run skill:install -- codex
-npm run skill:install -- claude
-npm run skill:install -- copilot
-```
+- [awdf-describe](skills/awdf-describe/SKILL.md): produce la descrizione AWDF 2.0.
+- [awdf-assess](skills/awdf-assess/SKILL.md): raccoglie obiettivo, task, percorso e tool, giudica ogni criterio con citazioni esatte e produce un draft. `node scripts/assess-setup.mjs ai-setup.json draft.json setup-evaluation.json` valida e calcola i risultati. Per più tool produrre file separati.
+- [awdf-prompt-evaluate](skills/awdf-prompt-evaluate/SKILL.md): esegue il prompt nella sessione corrente, mantenendone i permessi, e documenta gli eventi osservati. Non avvia sessioni AI dall'app.
 
-Add `--scope=project` to install in this repository. With `all`, Codex and Copilot share `.agents/skills`; Claude uses `.claude/skills`. For a Copilot-only installation, the installer uses `.copilot/skills` at user scope or `.github/skills` at project scope.
+## Valutazione
 
-The skill depends on this repository's scripts and schemas, so start the client from the clone root. Example request:
+Quattro dimensioni: chiarezza, coerenza, applicabilità e verificabilità. Livelli ammessi 0/25/50/75/100, medie aritmetiche con pesi uguali. Gli sconosciuti diminuiscono la copertura; non sono voti zero. Il totale richiede copertura almeno 70% e un criterio valutato in ogni dimensione. Un giudizio basso richiede un consiglio e un criterio di completamento verificabile.
 
-```text
-Use awdf-evaluator to describe the authorized folders and generate a validated descriptive ai-setup.json without AI assessment.
-```
+Il catalogo distingue raccomandazioni del progetto e requisiti dei client, con fonti ufficiali OpenAI, Anthropic, GitHub e fonti community separate. Non è una certificazione dei fornitori. `npm run catalog:candidate -- candidato.json` esporta una versione da revisionare. Dopo la revisione delle fonti, impostare una nuova versione e `update_status: sources_reviewed`, quindi `npm run catalog:adopt -- candidato.json`. Le versioni salvate sono immutabili; l'app conserva e ricalcola le valutazioni delle versioni precedenti.
 
-## Commands
+## Recorder
 
-| Command | Purpose |
-| --- | --- |
-| `npm start` | Start the local interface and APIs |
-| `npm run describe:setup` / `npm run scan:setup` | Generate a descriptive AWDF from authorized folders |
-| `npm run validate:awdf` | Validate the local AWDF report |
-| `npm run validate:settings` | Validate workspace settings |
-| `npm run validate:simulation` | Validate a simulation against the local report |
-| `npm test` | Run descriptor regressions, validators, scanner, simulator, evaluator, graph tests and build |
-| `npm run test:ui` | Run the separate browser UI test suite |
-| `npm run build` | Build the interface in `dist/` |
-| `npm run skill:install -- <target>` | Install the descriptor skill |
+Preparazione separata: `npm run recorder:prepare -- codex /workspace` (oppure `claude_code`, `github_copilot`). Mantiene gli hook preesistenti e crea backup quando modifica la configurazione. Riavviare il client e verificare supporto, trust ed eventi reali. Non cambia le permission policy.
 
-The legacy `scan-setup.mjs` and `evaluate-setup.mjs` review workflows remain for compatibility and historical tests. They are not the descriptor skill workflow. See [legacy evidence evaluation](docs/EVIDENCE-EVALUATION.md) for that separate format.
+La skill prepara il contesto con session ID e versione reali, avvia `prompt:run begin`, esegue il task e passa alla fase `evaluation`. Stop/agentStop finalizza dopo la risposta. Una finalizzazione manuale senza evento terminale produce stato parziale. L'assenza di eventi non dimostra violazioni; una lettura osservata non prova uso corretto del contenuto. Le review semantiche richiedono citazioni ed eventi positivi. Non viene assegnato un voto all'output.
 
-## Files and privacy
+## Interfaccia ed export
 
-Local reports and settings can contain private paths and setup material. The scanner excludes sensitive paths and redacts recognized credentials, but exports still require review before sharing. Choose relative or anonymized paths before sharing; redaction remains best-effort.
+Panoramica radiale con tool principale al centro, espansione dei dettagli con ELK, ricerca, filtri, tastiera, palette e pannello prove. Le relazioni distinguono structural/configured/available/contractual/observed e conservano gli ID originali anche nei gruppi. Importare descrizioni, valutazioni ed esecuzioni dallo stesso pulsante; associazioni con report, snapshot, tool o task incompatibili vengono rifiutate senza sostituire il risultato accettato.
 
-```text
-schemas/         AWDF, settings and simulation schemas
-scripts/         Descriptor/scanner, validators, installer and tests
-skills/          Descriptor skill and references
-specification/   Format, classification and tool rules
-src/             Viewer, static classifier and simulator
-examples/        Sample reports and configurations
-tests/           Fixtures and conformance cases
-server.mjs       Local HTTP server and Vite middleware
-```
+HTML offline e PNG includono il registro completo. I percorsi strutturati sono opt-in; il testo libero può contenere percorsi. Esportazioni troppo grandi falliscono esplicitamente. La simulazione statica rimane distinta dalle esecuzioni osservate. L'app non avvia scansioni né sessioni AI.
 
-Local APIs: `GET /api/settings`, `PUT /api/settings`, `GET /api/report` and `POST /api/select-folder`.
+## Verifica
 
-Format references: [AWDF specification](specification/AWDF-SPECIFICATION.md), [classification standard](specification/CLASSIFICATION-STANDARD.md), [tool rules](specification/AI-TOOL-RULES.md), [versioning](specification/VERSIONING.md). AWDF 1.1 defines the [descriptive producer profile](skills/setup-evaluator/references/description-format.md); AWDF 1.0 review reports remain historical compatibility documents.
+`npm test` esegue test del modello, scope, isolamento, hash, citazioni, condizioni, scoring, recorder, concorrenza, interruzioni, redazione ed export e poi la build. `npm run test:ui` richiede Playwright (`AWDF_NODE_MODULES` può indicare il runtime disponibile) e verifica mappa, ELK, tastiera, importazioni e mobile.
 
-## License
+I test degli adattatori usano fixture dichiarate, non prove di esecuzione reale dei client. La verifica reale richiede ogni client installato e una sessione con hook autorizzati. Nessuna traccia sintetica viene presentata come runtime reale.
 
-[MIT](LICENSE)
+AWDF 1.x e report storici vengono rifiutati: rigenerare con `awdf-describe`. Non sono disponibili conversioni, vecchi alias, scoring 0–5 o orchestrazioni analisti/reviewer.
 
-## Share a setup or build a new one
+Riferimenti: [formato](specification/AWDF-SPECIFICATION.md), [architettura](docs/ARCHITETTURA-E-MIGLIORAMENTI.md), [regole dei tool](specification/AI-TOOL-RULES.md).
 
-**Share setup** exports the current report as standalone HTML or PNG. HTML is an offline atlas with a navigable map, grouped component descriptions and a relationship register. PNG contains all map groups and their element names, independently of current zoom, filters or pagination. Structured component paths are optional. Names and descriptions remain visible: review them before sharing. Diagrams exceeding readable PNG limits can still be exported as HTML.
+## Esplorare la mappa
 
-**Setup builder** creates a draft independently of the report. Choose Codex or Claude Code, enter the objective, and add components manually or from the report. Each component has a type, name, path/configured identifier, description and optional usage condition. Components can be edited, removed and restored with Undo.
+La panoramica radiale mostra tool e categorie con conteggi. Seleziona una categoria nella barra laterale (oppure un nodo e **Esplora categoria**) per aprire gli elementi. La vista di dettaglio mostra 12 elementi per pagina: ricerca e frecce permettono di raggiungere tutto il catalogo senza sovraccaricare il grafico. **Focus collegamenti** evidenzia il vicinato dell’elemento selezionato. Selezionando una linea raggruppata puoi consultare tutte le relazioni originali e le loro prove. La legenda distingue configurazione, disponibilità, prescrizione, osservazione e struttura.
 
-The preview generates AGENTS.md for Codex or CLAUDE.md for Claude Code in the selected interface language. Save it at the project root and review it before merging with existing instructions. These files prescribe usage; they do not install plugins, configure MCP or switch runtime models. The draft survives refresh in the current browser tab when session storage is available. No scan folders are needed to use the builder.
+Il riferimento è [Archify 3.0.1](https://github.com/tt-a1i/archify), che usa un renderer SVG/JavaScript interno. Qui le interazioni sono implementate con React Flow 12.8.6 ed ELK 0.10.0; Simple Icons 16.28.0, usato anche da Archify, identifica Anthropic e GitHub Copilot. I colori della palette riempiono le componenti; il testo nero o bianco viene scelto in base al contrasto. I collegamenti hanno tratti più spessi e un’area cliccabile ampia. **Collegamenti mostrati** elenca anche pulsanti accessibili da tastiera: la selezione apre origine, identificatore, fonte, citazioni e hash disponibili. HTML e PNG continuano a esportare il setup completo, indipendentemente dalla pagina della mappa.
 
-Tests: npm run test:builder-export and npm run test:builder-export:ui. The browser test uses Playwright, installed locally or supplied through AWDF_NODE_MODULES.
+Il riconoscimento dei tool considera file/configurazioni e cartelle dedicate `.codex`, `.claude`, `.copilot`, anche vuote, esclusivamente nelle radici autorizzate. Un generico `.github` o `.agents` non identifica un client. I dettagli mostrano i percorsi che motivano il riconoscimento: cartella presente, configurazione e dichiarazione manuale rimangono distinte da installazione ed esecuzione. Le cartelle temporanee `.tmp-evidence-checks` sono escluse per evitare di classificare i setup generati dai test. Dopo un aggiornamento dello scanner rigenera `ai-setup.json` con `npm run describe:setup`.

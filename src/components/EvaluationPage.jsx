@@ -1,39 +1,11 @@
-import { t } from '../i18n/index.js';
+import {statusLabel} from './ContentControls.jsx';
+import { useMemo } from 'react';
+import { classifyDescription } from '../evaluator/static-classifier.js';
 import { ContractPanel } from './ContractPanel.jsx';
-import { RuntimeProofPanel } from './RuntimeProofPanel.jsx';
-import { useState } from 'react';
-const labels = { pass: 'Conforme', fail: 'Da migliorare', not_applicable: 'Non applicabile', insufficient_evidence: 'Evidenze insufficienti', not_evaluated: 'Non valutato' };
-const number = value => Number.isFinite(value) ? value.toLocaleString('it-IT', { maximumFractionDigits: 1 }) : '—';
-export function EvaluationPage({ report, runtimeEvaluation, openSimulator }) {
-  const [filter, setFilter] = useState('all');
-  const evaluation = report.extensions?.['org.awdf.evaluation'];
-  const summary = evaluation?.summary;
-  const isStatic = evaluation?.provenance?.mode === 'static_classifier';
-  const outcomes = evaluation?.outcomes || [];
-  const rules = evaluation?.rules || [];
-  const visible = outcomes.filter(item => filter === 'all' || item.outcome === filter);
-  const recommendations = report.recommendations || [];
-  const legacyScore = report.executive_summary?.design_score ?? report.executive_summary?.overall_score;
-  return <section className="evaluation-page evidence-evaluation">
-    <header className="evaluation-hero"><div><p className="eyebrow">{t("LE EVIDENZE, PRIMA DEL VOTO")}</p><h1>{t("Quanto regge il tuo setup?")}</h1><p>{t("Esplora le regole applicabili, le prove disponibili e i punti ancora da verificare.")}</p></div><button onClick={openSimulator}>{t("Apri laboratorio prompt ↗")}</button></header>
-    {!evaluation && <div className="evaluation-callout"><strong>{t("Report precedente")}</strong><p>{t("Questo report usa i criteri storici. Il voto")} {number(legacyScore)} {t("non include le nuove garanzie sulle evidenze. Esegui una nuova valutazione per vedere copertura e controlli tracciabili.")}</p></div>}
-    <div className="evidence-metrics">
-      <article><span>{isStatic ? t("Checklist verificata") : t("Qualità valutata")}</span>{isStatic ? <strong>{summary?.evaluated ?? outcomes.filter(item => item.outcome === "pass" || item.outcome === "fail").length}<small>/{summary?.applicable ?? outcomes.filter(item => item.outcome !== "not_applicable").length}</small></strong> : <strong>{number(summary?.quality_score)}<small>/5</small></strong>}<p>{t("Solo regole con un esito dimostrato.")}</p></article>
-      <article><span>{t("Copertura")}</span><strong>{summary ? number(summary.coverage * 100) : '—'}<small>%</small></strong><div className="coverage-track"><i style={{ width: `${Math.max(0, Math.min(100, (summary?.coverage || 0) * 100))}%` }} /></div><p>{t("Quanto della valutazione è stato completato.")}</p></article>
-      <article><span>{t("Risultato complessivo")}</span><strong>{summary?.overall_score == null ? (isStatic ? t("Non attribuito") : t("Parziale")) : `${number(summary.overall_score)}/5`}</strong><p>{summary?.overall_score == null ? (isStatic ? t("La checklist non misura la qualità complessiva del setup.") : t("Il voto resta sospeso finché la copertura non è sufficiente.")) : t("Calcolato con regole e pesi fissati nel report.")}</p></article>
-    </div>
-    <div className="evaluation-layout"><section className="dimensions-section">
-      <div className="section-heading"><div><p className="eyebrow">{t("CONFIGURAZIONE STATICA")}</p><h2>{t("Regole e riscontri")}</h2></div><span>{outcomes.length} {t("controlli")}</span></div>
-      {evaluation && <div className="outcome-filters" aria-label={t("Filtra controlli")}>{[['all', t("Tutti")], ['pass', t("Cosa funziona")], ['fail', t("Da migliorare")], ['insufficient_evidence', t("Evidenze mancanti")], ['not_evaluated', t("Da valutare")], ['not_applicable', t("Non applicabili")]].map(([value, label]) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>)}</div>}
-      <div className="rule-list">{visible.map((item, index) => {
-        const rule = rules.find(entry => entry.id === item.rule_id) || {};
-        const findings = (evaluation.analysts || []).flatMap(analyst => analyst.findings || []).filter(finding => item.finding_ids?.includes(finding.id));
-        return <details className={`rule-card ${item.outcome}`} key={`${item.rule_id}-${index}`}><summary><span className="rule-state">{labels[item.outcome] || item.outcome}</span><strong>{rule.description || item.rule_id}</strong><span aria-hidden="true">＋</span></summary><div className="rule-body"><p>{item.rationale}</p><dl><dt>{t("Perché si applica")}</dt><dd>{typeof rule.applicability === 'string' ? rule.applicability : 'Secondo il profilo e l’ambito fissati per questa valutazione.'}</dd><dt>{t("Metodo")}</dt><dd>{rule.method || item.method} {t("· versione")} {rule.version || item.rule_version}</dd></dl>{rule.sources?.length > 0 && <p>{t("Fonti:")} {rule.sources.map((source, index) => <span key={source.url}>{index > 0 ? ' · ' : ''}<a href={source.url} target="_blank" rel="noreferrer">{source.publisher}</a></span>)}</p>}<div className="evidence-list">{(item.evidence || []).map((evidence, cursor) => <blockquote key={cursor}><cite>{evidence.path} {t("· righe")} {evidence.start_line}–{evidence.end_line}</cite><p>{evidence.excerpt}</p></blockquote>)}</div>{findings.map(finding => <div key={finding.id}><p><b>{t("Azione suggerita:")}</b> {finding.suggested_improvement}</p><p><b>{t("Completato quando:")}</b> {finding.completion_criterion}</p><p>{Array.isArray(finding.limitations) ? finding.limitations.join(' · ') : finding.limitations}</p></div>)}</div></details>;
-      })}</div>
-      {!visible.length && <div className="evaluation-empty"><strong>{evaluation ? t("Nessun controllo in questa vista") : t("La nuova valutazione non è ancora disponibile")}</strong><p>{evaluation ? t("Seleziona un altro filtro per consultare gli altri esiti.") : t("L’inventario e le valutazioni storiche restano consultabili nel report.")}</p></div>}
-      {!!evaluation?.disagreements?.length && <section className="evaluation-callout"><h3>{t("Disaccordi aperti")}</h3>{evaluation.disagreements.map((item, index) => <p key={index}>{typeof item === 'string' ? item : item.reason || item.rationale || [item.rule_id, ...(item.finding_ids || [])].join(' · ')}</p>)}</section>}
-      <ContractPanel report={report}/><RuntimeProofPanel report={report}/><section className="runtime-separation"><p className="eyebrow">{t("OSSERVAZIONI E PROVE")}</p><h2>{t("Il comportamento va verificato")}</h2><p>{runtimeEvaluation?.sampleCount || 0} {t("conversazioni disponibili. Una risposta o una chiamata a un tool non dimostrano il successo del task.")}</p><p>{t("Le prove runtime richiedono criteri attesi, risultati osservati e un metodo di verifica. Le previsioni del laboratorio restano simulazioni.")}</p><button onClick={openSimulator}>{t("Esplora le osservazioni ↗")}</button></section>
-      {evaluation && <details className="evaluation-provenance"><summary>{t("Metodo e limiti della valutazione")}</summary><p>{t("Versione")} {evaluation.version} · {evaluation.status}</p><p>{t("Orchestrazione:")} {evaluation.provenance?.orchestration_mode || evaluation.provenance?.mode || 'Scansione statica'}</p><p>{evaluation.provenance?.mode === 'static_classifier' ? t("Il software applica regole statiche alla descrizione importata. I pesi sono scelte del classificatore; le fonti non assegnano voti. I controlli non misurano la qualità complessiva del setup.") : t("Report storico: i controlli semantici non eseguiti restano non valutati.")}</p>{evaluation.limitations?.map((item, index) => <p key={index}>{item}</p>)}</details>}
-    </section><aside className="roadmap-section"><div className="section-heading"><div><p className="eyebrow">{t("PROSSIMI PASSI")}</p><h2>{t("Dove intervenire")}</h2></div></div>{recommendations.length ? <div className="roadmap-grid">{recommendations.map(item => <article className="recommendation-card" key={item.id}><header><span>{item.priority?.replaceAll('_', ' ')}</span></header><h3>{item.title}</h3><p>{item.description}</p><footer><span>{t("Impegno")}</span><strong>{item.effort}</strong></footer></article>)}</div> : <div className="evaluation-empty"><strong>{t("Nessun intervento documentato")}</strong><p>{t("Questo non implica che tutti i controlli siano stati eseguiti.")}</p></div>}</aside></div>
+import { t } from '../i18n/index.js';
+export function EvaluationPage({report}) {
+  const checklist=useMemo(()=>classifyDescription(report),[report]);
+  return <section className="evaluation-page"><header className="evaluation-hero"><div><p className="eyebrow">{t('Checklist statica')}</p><h1>{t('Controlli sulla descrizione')}</h1><p>{checklist.summary.evaluated}/{checklist.summary.applicable} · {Math.round(checklist.summary.coverage*100)}% {t('Copertura')}</p><p>{t('La checklist non misura la qualità complessiva del setup.')}</p></div></header>
+    <div className="rule-list">{checklist.outcomes.map(item=><details className="rule-card" key={item.rule_id}><summary><strong>{t(checklist.rules.find(rule=>rule.id===item.rule_id).description)}</strong> · {statusLabel(item.outcome)}</summary><p>{item.rationale}</p>{item.evidence.map((citation,index)=><blockquote key={index}><cite>{citation.path}:{citation.start_line}</cite><p>{citation.excerpt}</p></blockquote>)}</details>)}</div><ContractPanel report={report}/>
   </section>;
 }

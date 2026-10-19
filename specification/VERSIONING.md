@@ -1,5 +1,5 @@
-# AWDF Versioning
+# Versionamento
 
-AWDF follows Semantic Versioning. Patch releases fix defects without incompatible changes. Minor releases add backwards-compatible optional fields or capabilities. Major releases introduce incompatible changes.
+AWDF 2.0.0 è il solo formato descrittivo supportato. Ogni variazione incompatibile richiede una nuova versione e un validatore aggiornato; un documento sconosciuto viene rifiutato.
 
-An AWDF 1.x consumer must accept documents with major version 1, ignore unknown optional fields, reject unsupported major versions, and never assume array order is meaningful.
+Valutazioni e run hanno versioni autonome 1.0.0. I cataloghi hanno versioni immutabili: l'adozione esplicita aggiunge un file nuovo e conserva quelli precedenti. I risultati salvati non vengono ricalcolati con il catalogo attivo ma con quello registrato nell'artefatto e verificato nel registro.

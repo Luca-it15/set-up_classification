@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prompt-run.schema.json",
+  "type": "object",
+  "required": [
+    "format_version",
+    "report_id",
+    "snapshot_id",
+    "tool_id",
+    "objective",
+    "task",
+    "task_path",
+    "format",
+    "run_id",
+    "session_id",
+    "client_version",
+    "prompt",
+    "started_at",
+    "status",
+    "events",
+    "coverage",
+    "comparisons",
+    "instruction_reviews",
+    "limitations"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0.0"
+    },
+    "report_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "const": "awdf-run"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "client_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "partial",
+        "completed",
+        "interrupted"
+      ]
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "timestamp",
+          "session_id",
+          "tool_id",
+          "provenance",
+          "phase"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "enum": [
+              "tool_start",
+              "tool_result",
+              "tool_error",
+              "prompt",
+              "turn_end",
+              "session_end",
+              "interrupted",
+              "agent_start",
+              "agent_end"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provenance": {
+            "enum": [
+              "native_hook",
+              "skill_declaration",
+              "inference",
+              "recorder"
+            ]
+          },
+          "phase": {
+            "enum": [
+              "task",
+              "evaluation"
+            ]
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": [
+        "status",
+        "native_events",
+        "limitations"
+      ]
+    },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "contract_id",
+          "outcome",
+          "event_ids",
+          "rationale"
+        ],
+        "properties": {
+          "outcome": {
+            "enum": [
+              "respected",
+              "violated",
+              "not_applicable",
+              "not_verifiable"
+            ]
+          }
+        }
+      }
+    },
+    "instruction_reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "outcome",
+          "event_ids",
+          "rationale",
+          "evidence",
+          "provenance"
+        ],
+        "properties": {
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "start_line",
+                "end_line",
+                "excerpt"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "start_line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "end_line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "excerpt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

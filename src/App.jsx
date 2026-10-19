@@ -3,16 +3,19 @@ import { useLanguage, setLanguage, LANGUAGES } from './i18n/index.js';
 import { validateAwdfAsync } from './utils/appUtils.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORY_META, PALETTES } from './data.js';
-import reportFile from '../examples/codex-workspace.ai-setup.json';
 import { DEFAULT_SETTINGS } from './defaultSettings.js';
 import { simulate } from './simulator/index.js';
-import { evaluateChatExamples } from './simulator/evaluateChats.js';
+import { validateAssessment } from './evaluator/assessment.js';
+import { validateRunReport } from './runtime/report.js';
+import { ArtifactsPage } from './components/ArtifactsPage.jsx';
+import { DescriptionPage } from './components/DescriptionPage.jsx';
 import { EvaluationPage } from './components/EvaluationPage.jsx';
 import { PromptLabPage } from './components/PromptLabPage.jsx';
 import { SettingsEditor } from './components/SettingsEditor.jsx';
 import { SetupGraph } from './components/SetupGraph.jsx';
 import { SetupBuilder } from './components/SetupBuilder.jsx';
 import { ExportSetupDialog } from './components/ExportSetupDialog.jsx';
+import {fetchJson} from './utils/http.js';
 import { readBuilderDraft } from './utils/setupBuilder.js';
 import {
   categoryFor,
@@ -20,8 +23,6 @@ import {
   download,
   loadPaletteConfigs,
   loadSettings,
-  reportChatExamples,
-  validateAwdf
 } from './utils/appUtils.js';
 
 const normalizeManualComponents = components => components.map(component => ({
@@ -33,16 +34,21 @@ const normalizeManualComponents = components => components.map(component => ({
 }));
 
 const hasUnnamedManualComponent = components => components.some(component => !component.name.trim() || hasUnnamedManualComponent(component.elements || []));
+const views=[['setup','Mappa setup'],['description','Descrizione'],['checklist','Checklist statica'],['assessment','Valutazione'],['simulator','Prompt Lab'],['runs','Esecuzioni'],['builder','Setup builder']];
+const settingsSignature = settings => JSON.stringify({...settings,viewer:{...settings.viewer,palettes:loadPaletteConfigs(settings)}});
 
 export default function App() {
-  const [report, setReport] = useState(() => validateAwdf(reportFile));
+  const [report, setReport] = useState(null);
+  const [assessment,setAssessment]=useState(null), [runReport,setRunReport]=useState(null), [importing,setImporting]=useState(false);
   const [appSettings, setAppSettings] = useState(() => loadSettings(DEFAULT_SETTINGS));
   const language = useLanguage();
   useEffect(() => { setLanguage(appSettings.viewer?.language); }, [appSettings.viewer?.language]);
   useEffect(() => { document.documentElement.lang = language; }, [language]);
   const [paletteId, setPaletteId] = useState(() => appSettings.viewer?.palette || 'dark');
   const [paletteConfigs, setPaletteConfigs] = useState(() => loadPaletteConfigs(appSettings));
-  const [settingsOpen, setSettingsOpen] = useState(() => !appSettings.initialized || !appSettings.workspace?.folders?.length);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [loading,setLoading]=useState(true),[loadAttempt,setLoadAttempt]=useState(0),[loadError,setLoadError]=useState('');
+  const [savedSettings,setSavedSettings]=useState(()=>loadSettings(DEFAULT_SETTINGS));
   const [settingsSection, setSettingsSection] = useState('workspace');
   const [activeView, setActiveView] = useState('setup');
   const [exportOpen, setExportOpen] = useState(false);
@@ -60,10 +66,11 @@ export default function App() {
   }, [builderStored, builderDraft]);
   const [prompt, setPrompt] = useState('');
   const [result, setResult] = useState(null);
-  const [runtimeEvaluation, setRuntimeEvaluation] = useState(() => evaluateChatExamples(reportFile, reportChatExamples(reportFile)));
+
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
+  const importLock = useRef(false);
   const reportInput = useRef();
   const settingsInput = useRef();
   const palette = paletteConfigs[paletteId];
@@ -71,34 +78,40 @@ export default function App() {
   const settingsGroups = useMemo(() => Object.entries(CATEGORY_META).map(([id, meta]) => ({
     ...meta,
     id,
-    items: report.components.filter(component => categoryFor(component) === id)
-  })).filter(group => group.items.length), [report]);
+    items: (report?.components || []).filter(component => categoryFor(component) === id)
+  })), [report]);
 
   useEffect(() => {
-    const next = { ...appSettings, viewer: { ...appSettings.viewer, palette: paletteId, palettes: paletteConfigs } };
-    try { localStorage.setItem('ai-setup-classifier-settings', JSON.stringify(next)); } catch { /* Keep in-memory settings. */ }
-  }, [appSettings, paletteConfigs, paletteId]);
+    try { localStorage.setItem('ai-setup-classifier-settings', JSON.stringify(savedSettings)); } catch { /* Keep in-memory settings. */ }
+  }, [savedSettings]);
+  const settingsDirty=settingsSignature({...appSettings,viewer:{...appSettings.viewer,palette:paletteId,palettes:paletteConfigs}})!==settingsSignature(savedSettings);
+  useEffect(()=>{
+    if(!settingsDirty)return;
+    const guard=event=>{event.preventDefault();event.returnValue='';};
+    window.addEventListener('beforeunload',guard);return()=>window.removeEventListener('beforeunload',guard);
+  },[settingsDirty]);
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      fetch('/api/settings', { cache: 'no-store' }).then(response => response.ok ? response.json() : Promise.reject(Error('Settings locali non leggibili.'))),
-      fetch('/api/report', { cache: 'no-store' }).then(response => response.ok ? response.json() : Promise.reject(Error('Report locale non leggibile.')))
-    ]).then(async ([settings, currentReport]) => {
+    setLoading(true);setLoadError('');
+    Promise.allSettled([
+      fetchJson('/api/settings',{cache:'no-store'}),
+      fetchJson('/api/report',{cache:'no-store'}).then(value=>value?validateAwdfAsync(value):null)
+    ]).then(([settingsResult,reportResult]) => {
       if (!active) return;
-      const validatedReport = await validateAwdfAsync(currentReport);
-      if(!active)return;
-      setAppSettings(settings);
-      setPaletteId(settings.viewer?.palette || 'dark');
-      setPaletteConfigs(loadPaletteConfigs(settings));
-      setSettingsOpen(!settings.initialized || !settings.workspace?.folders?.length);
-      setReport(validatedReport);
-      setRuntimeEvaluation(evaluateChatExamples(validatedReport, reportChatExamples(validatedReport)));
-    }).catch(error => { if (active) setNotice(`${error.message} Avvia l'app con npm start.`); });
+      if(settingsResult.status==='fulfilled'&&!settingsDirty){
+        const settings=settingsResult.value;setAppSettings(settings);setSavedSettings(settings);
+        setPaletteId(settings.viewer?.palette||'dark');setPaletteConfigs(loadPaletteConfigs(settings));
+      }
+      if(reportResult.status==='fulfilled'&&(reportResult.value||!report))setReport(reportResult.value);
+      const errors=[settingsResult,reportResult].filter(result=>result.status==='rejected').map(result=>result.reason.message);
+      if(errors.length)setLoadError(errors.join(' · '));
+      setLoading(false);
+    });
     return () => { active = false; };
-  }, []);
+  }, [loadAttempt]);
 
-  useEffect(() => { document.title = t(({setup:t("Mappa setup"),assessment:t("Valutazione e roadmap"),simulator:'Prompt Lab',builder:t('Setup builder')})[activeView]) + ' · AI Setup Atlas'; }, [activeView, language]);
+  useEffect(() => { document.title = t(({setup:t('Mappa setup'),description:t('Descrizione'),checklist:t('Checklist statica'),assessment:t('Valutazione'),runs:t('Esecuzioni'),simulator:'Prompt Lab',builder:t('Setup builder')})[activeView]) + ' · AI Setup Atlas'; }, [activeView, language]);
 
   const updatePaletteColor = (section, key, value) => setPaletteConfigs(configs => ({ ...configs, [paletteId]: { ...configs[paletteId], [section]: { ...configs[paletteId][section], [key]: value } } }));
   const resetPalette = () => setPaletteConfigs(configs => ({ ...configs, [paletteId]: clonePalette(PALETTES[paletteId]) }));
@@ -111,10 +124,9 @@ export default function App() {
     const next = { ...appSettings, initialized: true, workspace: { ...nextWorkspace, folders }, manual_components: normalizeManualComponents(appSettings.manual_components || []), viewer: { ...appSettings.viewer, palette: paletteId, palettes: paletteConfigs } };
     saveLock.current = true; setSaving(true);
     try {
-      const response = await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) });
-      const saved = await response.json();
-      if (!response.ok) throw Error(saved.error || t("Salvataggio non riuscito."));
+      const saved = await fetchJson('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) });
       setAppSettings(saved);
+      setSavedSettings(saved);
       setSettingsOpen(false);
       setNotice(t("Settings salvati direttamente in ai-setup-settings.json."));
     } catch (error) { setNotice(`${error.message} Verifica che l'app sia stata avviata con npm start.`); } finally { saveLock.current = false; setSaving(false); }
@@ -155,21 +167,21 @@ export default function App() {
     download(value, 'ai-setup-settings.json');
   };
 
-  const uploadReport = event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const nextReport = await validateAwdfAsync(JSON.parse(reader.result));
-        setReport(nextReport);
-        setResult(null);
-        setRuntimeEvaluation(evaluateChatExamples(nextReport, reportChatExamples(nextReport)));
-        setNotice('Documento AWDF caricato.');
-      } catch (error) { setNotice(error.message); }
-    };
-    reader.readAsText(file);
+  const acceptFile = async value => {
+    if(value.format==='awdf') { const next=await validateAwdfAsync(value); setReport(next);setAssessment(null);setRunReport(null);setResult(null);setActiveView('setup'); }
+    else if(!report) throw Error('Importa prima la descrizione AWDF 2.0.');
+    else if(value.format==='awdf-evaluation') { setAssessment(validateAssessment(value,report));setActiveView('assessment'); }
+    else if(value.format==='awdf-run') { setRunReport(validateRunReport(value,report));setActiveView('runs'); }
+    else throw Error('Formato non supportato.');
   };
+  const uploadReport = async event => {
+    const file=event.target.files?.[0];if(!file||importLock.current||loading)return;
+    importLock.current=true;
+    setImporting(true);
+    try { if(!/\.json$/i.test(file.name))throw Error(t('Scegli un file JSON.'));await acceptFile(JSON.parse(await file.text()));setNotice(t('Documento importato.')); }
+    catch(error){setNotice(error instanceof SyntaxError?t('Il file non contiene JSON valido. Controllalo e riprova.'):t(error.message));}finally{importLock.current=false;setImporting(false);event.target.value='';}
+  };
+  const loadExample=async()=>{setImporting(true);try{await acceptFile((await import('../examples/codex-workspace.ai-setup.json')).default);setNotice('Esempio dimostrativo caricato.');}catch(error){setNotice(error.message);}finally{setImporting(false);}};
 
   const runSimulation = (candidate, context) => {
     const value = typeof candidate === 'string' ? candidate : prompt;
@@ -180,11 +192,22 @@ export default function App() {
   };
 
   return <main className={`app ${palette.mode}`} style={{ '--canvas': palette.canvas.background, '--grid': palette.canvas.grid, '--ink': palette.centralTool.text, '--central': palette.centralTool.background, '--central-border': palette.centralTool.border }}>
-    <header className="app-header"><div className="brand"><div className="logo">⌘</div><div><strong>AI Setup <em>Atlas</em></strong><span>{report.workspace.name}</span></div></div><div className="header-actions"><button onClick={() => reportInput.current.click()}>{t("↑ Importa AWDF")}</button><input ref={reportInput} hidden type="file" accept=".json" onChange={uploadReport} /><button className="ghost" onClick={() => download(report, 'ai-setup.json')}>{t("↓ Esporta AWDF")}</button><button className="ghost" onClick={() => setExportOpen(true)}>{t("Condividi setup")}</button><button className="ghost" onClick={() => { setSettingsSection('workspace'); setSettingsOpen(true); }}>{t("⚙ Impostazioni")}</button><input ref={settingsInput} hidden type="file" accept=".json" onChange={importSettings} /><button className="ghost" onClick={() => setActiveView('simulator')}>▷ Prompt Lab</button></div></header>
-    <nav className="view-tabs" aria-label={t("Sezioni del report")}><button aria-current={activeView === 'setup' ? 'page' : undefined} className={activeView === 'setup' ? 'active' : ''} onClick={() => setActiveView('setup')}>{t("Mappa setup")}</button><button aria-current={activeView === 'assessment' ? 'page' : undefined} className={activeView === 'assessment' ? 'active' : ''} onClick={() => setActiveView('assessment')}>{t("Valutazione e roadmap")}</button><button aria-current={activeView === 'simulator' ? 'page' : undefined} className={activeView === 'simulator' ? 'active' : ''} onClick={() => setActiveView('simulator')}>Prompt Lab</button><button aria-current={activeView === 'builder' ? 'page' : undefined} className={activeView === 'builder' ? 'active' : ''} onClick={() => setActiveView('builder')}>{t('Setup builder')}</button></nav>
-    {notice && !settingsOpen && <div className="notice" role="status" aria-live="polite">{notice}<button aria-label={t("Chiudi messaggio")} onClick={() => setNotice('')}>×</button></div>}
-    {activeView === 'builder' ? <SetupBuilder draft={builderDraft} setDraft={setBuilderDraft} stored={builderStored} report={report} setNotice={setNotice}/> : activeView === 'setup' ? <SetupGraph report={report} palette={palette} /> : activeView === 'assessment' ? <EvaluationPage report={report} runtimeEvaluation={runtimeEvaluation} openSimulator={() => setActiveView('simulator')} /> : <PromptLabPage prompt={prompt} setPrompt={setPrompt} run={runSimulation} result={result} report={report} setNotice={setNotice} setRuntimeEvaluation={setRuntimeEvaluation} />}
+    <a className="skip-link" href="#active-panel">{t('Vai al contenuto')}</a>
+    <header className="app-header"><div className="brand"><div className="logo">⌘</div><div><strong>AI Setup <em>Atlas</em></strong><span>{report?.workspace.name || t('Nessun setup caricato')}</span></div></div><div className="header-actions"><button disabled={importing||loading} aria-busy={importing} onClick={() => reportInput.current.click()}>{t("↑ Importa AWDF")}</button><input ref={reportInput} hidden type="file" accept=".json" onChange={uploadReport} /><button className="ghost" disabled={!report} onClick={() => download(report, 'ai-setup.json')}>{t("↓ Esporta AWDF")}</button><button className="ghost" disabled={!report} onClick={() => setExportOpen(true)}>{t("Condividi setup")}</button><button className="ghost" disabled={loading} onClick={() => { setSettingsSection('workspace'); setSettingsOpen(true); }}>{t("⚙ Impostazioni")}</button><input ref={settingsInput} hidden type="file" accept=".json" onChange={importSettings} /></div></header>
+    <nav className="view-tabs" role="tablist" aria-label={t('Sezioni del report')} onKeyDown={event=>{
+      if(event.nativeEvent.isComposing)return;
+      const index=views.findIndex(([id])=>id===activeView);
+      const target=event.key==='ArrowRight'?(index+1)%views.length:event.key==='ArrowLeft'?(index+views.length-1)%views.length:event.key==='Home'?0:event.key==='End'?views.length-1:null;
+      if(target===null)return;event.preventDefault();setActiveView(views[target][0]);document.getElementById('tab-'+views[target][0])?.focus();
+    }}>{views.map(([id,label])=><button role="tab" id={'tab-'+id} aria-selected={activeView===id} aria-controls="active-panel" tabIndex={activeView===id?0:-1} key={id} className={activeView===id?'active':''} onClick={()=>setActiveView(id)}>{t(label)}</button>)}</nav>
+    {loadError&&<div className="load-error" role="alert"><p>{t('Impossibile caricare i dati locali. Puoi importare un file o riprovare.')} {loadError}</p><button disabled={loading} onClick={()=>setLoadAttempt(value=>value+1)}>{t('Riprova')}</button></div>}
+    <div id="active-panel" role="tabpanel" aria-labelledby={'tab-'+activeView} tabIndex={-1} aria-busy={loading||importing}>
+    {notice && !settingsOpen && <div className="notice" role="status" aria-live="polite">{t(notice)}<button aria-label={t("Chiudi messaggio")} onClick={() => setNotice('')}>×</button></div>}
+    <div className="app-progress" role="status" aria-live="polite">{loading?t('Caricamento del setup…'):importing?t('Validazione del documento…'):''}</div>
+    {report&&<div hidden={activeView!=='setup'}><SetupGraph report={report} palette={palette}/></div>}
+    {activeView==='builder'?<SetupBuilder draft={builderDraft} setDraft={setBuilderDraft} stored={builderStored} report={report || {components:[]}} setNotice={setNotice}/>:!report&&!loading?<section className="evaluation-page"><div className="evaluation-empty"><h1>{t('Descrivi il tuo setup AI')}</h1><p>{t('Genera AWDF 2.0 con awdf-describe e importa la descrizione.')}</p><button disabled={importing||loading} onClick={()=>reportInput.current.click()}>{t('Importa AWDF')}</button><button disabled={importing} onClick={loadExample}>{t('Carica esempio')}</button></div></section>:!report||activeView==='setup'?null:activeView==='description'?<DescriptionPage report={report}/>:activeView==='checklist'?<EvaluationPage report={report}/>:activeView==='assessment'||activeView==='runs'?<ArtifactsPage type={activeView} artifact={activeView==='assessment'?assessment:runReport} onImport={()=>reportInput.current.click()}/>:<PromptLabPage prompt={prompt} setPrompt={setPrompt} run={runSimulation} result={result} report={report}/>}
+    </div>
     {exportOpen && <ExportSetupDialog report={report} palette={palette} language={language} close={() => setExportOpen(false)} setNotice={setNotice}/>}
-    {settingsOpen && <SettingsEditor openBuilder={() => { setSettingsOpen(false); setActiveView('builder'); }} settings={appSettings} setSettings={setAppSettings} section={settingsSection} setSection={setSettingsSection} paletteId={paletteId} setPaletteId={setPaletteId} palette={palette} groups={settingsGroups} updateColor={updatePaletteColor} reset={resetPalette} importSettings={() => settingsInput.current.click()} exportSettings={exportSettings} notice={notice} saving={saving} save={saveSettings} close={() => setSettingsOpen(false)} setNotice={setNotice} />}
+    {settingsOpen && <SettingsEditor openBuilder={() => { setSettingsOpen(false); setActiveView('builder'); }} settings={appSettings} setSettings={setAppSettings} section={settingsSection} setSection={setSettingsSection} paletteId={paletteId} setPaletteId={setPaletteId} palette={palette} groups={settingsGroups} updateColor={updatePaletteColor} reset={resetPalette} importSettings={() => settingsInput.current.click()} exportSettings={exportSettings} notice={notice} saving={saving} save={saveSettings} close={() => setSettingsOpen(false)} setNotice={setNotice} dirty={settingsDirty} />}
   </main>;
 }

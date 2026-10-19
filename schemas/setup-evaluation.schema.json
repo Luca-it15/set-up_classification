@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "setup-evaluation.schema.json",
+  "type": "object",
+  "required": [
+    "format_version",
+    "report_id",
+    "snapshot_id",
+    "tool_id",
+    "objective",
+    "task",
+    "task_path",
+    "format",
+    "catalog",
+    "outcomes",
+    "summary",
+    "created_at",
+    "limitations"
+  ],
+  "properties": {
+    "format_version": {
+      "const": "1.0.0"
+    },
+    "report_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "snapshot_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "format": {
+      "const": "awdf-evaluation"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "catalog": {
+      "type": "object",
+      "required": [
+        "version",
+        "criteria",
+        "minimum_coverage",
+        "dimensions"
+      ]
+    },
+    "outcomes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "criterion_id",
+          "status",
+          "score",
+          "rationale",
+          "evidence",
+          "rule_version",
+          "method"
+        ],
+        "properties": {
+          "criterion_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "evaluated",
+              "not_applicable",
+              "insufficient_evidence"
+            ]
+          },
+          "score": {
+            "enum": [
+              null,
+              0,
+              25,
+              50,
+              75,
+              100
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "start_line",
+                "end_line",
+                "excerpt"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "start_line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "end_line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "excerpt": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "dimensions",
+        "total",
+        "coverage"
+      ],
+      "properties": {
+        "total": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

@@ -865,7 +865,15 @@ function candidateFromSharedArtifacts(artifacts, toolId) {
   return { tool_id: toolId, confidence: Math.max(...matches.map(item => item.confidence)), evidence_paths: [...new Set(matches.map(item => item.path))].sort(), reason: 'shared_compatibility_only' };
 }
 
-export function analyzeAiToolSetup(files, { readText, explicitTool = 'auto' } = {}) {
+// Description entrypoints deliberately exclude independently discovered skills,
+// agents, workflows and alternate Markdown instruction formats.
+export function isSetupDescriptionSeed(file) {
+  if (/^(?:AGENTS|CLAUDE)\.md$/i.test(path.basename(file.localRelative))) return true;
+  const definition = artifactDefinitions.find(candidate => candidate.matches(file));
+  return definition?.kind === 'configuration' && definition.id !== 'claude_extension' && !/\.(md|mdx)$/i.test(file.localRelative) && !['skills', 'custom_agents'].includes(definition.category);
+}
+
+export function analyzeAiToolSetup(files, { readText, explicitTool = 'auto', directories = [] } = {}) {
   if (typeof readText !== 'function') throw new TypeError('analyzeAiToolSetup richiede readText(file).');
   const diagnostics = caseNearMisses(files);
   const artifacts = [];
@@ -969,6 +977,11 @@ export function analyzeAiToolSetup(files, { readText, explicitTool = 'auto' } = 
   }
 
   const signals = [
+    ...directories.flatMap(directory => {
+      const name = path.basename(directory.absolute);
+      const toolId = { '.codex': 'codex', '.claude': 'claude_code', '.copilot': 'github_copilot' }[name];
+      return toolId ? [{ id: 'directory:' + directory.relative, toolId, path: directory.absolute, confidence: .5, kind: 'workspace_directory', detail: `Cartella dedicata ${name}: indizio del setup, installazione ed esecuzione non verificate.` }] : [];
+    }),
     ...artifacts.filter(artifact => artifact.attributionMode === 'exclusive' && artifact.canonicalToolId && artifact.syntaxStatus !== 'invalid').map(artifact => ({ id: `artifact:${artifact.format}`, toolId: artifact.canonicalToolId, path: artifact.path, confidence: artifact.confidence, kind: 'exclusive_artifact', detail: artifact.format })),
     ...packageSignals(files, readText, diagnostics)
   ].sort((left, right) => `${left.toolId}:${left.path}:${left.id}`.localeCompare(`${right.toolId}:${right.path}:${right.id}`, 'en'));
@@ -1013,10 +1026,10 @@ export function analyzeAiToolSetup(files, { readText, explicitTool = 'auto' } = 
       applicable_tool_ids: applicableToolIds,
       detected_tool_ids: detected.map(item => item.tool_id),
       candidates: [
-        ...detected.map(item => ({ tool_id: item.tool_id, confidence: item.confidence, evidence_paths: [...new Set(item.signals.map(signal => signal.path))].sort(), reason: 'exclusive_evidence' })),
+        ...detected.map(item => ({ tool_id: item.tool_id, confidence: item.confidence, evidence_paths: [...new Set(item.signals.map(signal => signal.path))].sort(), reason: item.signals.every(signal => signal.kind === 'workspace_directory') ? 'dedicated_directory_only' : 'exclusive_evidence' })),
         ...sharedCandidates.filter(candidate => !detected.some(item => item.tool_id === candidate.tool_id))
       ],
-      rule: 'Solo firme esclusive corroborate attivano un profilo; owner canonico e runtime attivo restano distinti; gli artefatti condivisi conservano tutti i candidati senza scegliere un primary.'
+      rule: 'File/configurazioni specifici o cartelle dedicate identificano il setup; la sola cartella è un indizio. Installazione e runtime non verificati; gli artefatti condivisi conservano i candidati senza scegliere un primary.'
     }
   };
 }

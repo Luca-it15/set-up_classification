@@ -1,1 +1,2276 @@
-{"format":"awdf","format_name":"AI Workspace Description Format","format_version":"1.0.0","metadata":{"report_id":"invalid_reference_tool","title":"Invalid reference tool","created_at":"2026-08-17T00:00:00Z","updated_at":null,"language":"en","generator":{"name":"Test","version":"1.0.0"},"analysis_level":"inventory"},"workspace":{"id":"workspace_test","name":"Test","type":"project","purpose":null,"maturity":"unknown"},"scope":{},"methodology":{},"inventory":{},"components":[{"id":"cmp_pdf","kind":"tool","subtype":"configured_ai_tool","name":"PDF","description":null,"path":null,"parent_id":null,"properties":{"usage_status":"configured","usage_standard":"tool_usage_evidence_v1"},"tags":[],"confidence":0.5,"verification_status":"declared_only","evidence_ids":["ev_pdf"]}],"relationships":[],"workflows":[],"assessments":[],"findings":[],"recommendations":[],"evidence":[{"id":"ev_pdf","type":"configuration","source_id":"cmp_pdf","path":null,"location":null,"summary":"Configured PDF tool.","content_hash":null,"observed_at":"2026-08-17T00:00:00Z","confidence":0.5,"sensitive":false}],"limitations":[],"unverified_items":[],"executive_summary":{},"extensions":{"ai-setup-classifier.reference-tools":{"version":"2.0","data":{"status":"single","primary_tool_ids":["cmp_pdf"],"primary_tool_keys":["codex"],"applicable_tool_ids":["cmp_pdf"],"applicable_tool_keys":["codex"],"detected_tool_keys":["codex"]}}}}
+{
+  "$schema": "./schemas/awdf.schema.json",
+  "format": "awdf",
+  "format_name": "AI Workspace Description Format",
+  "format_version": "2.0.0",
+  "metadata": {
+    "report_id": "awdf_35ed93491f9a4a9e",
+    "title": "Esempio dimostrativo · AWDF 2.0",
+    "created_at": "2026-10-09T22:06:06.307Z",
+    "updated_at": null,
+    "language": "it",
+    "generator": {
+      "name": "AI Setup Classifier",
+      "version": "2.0.0"
+    },
+    "analysis_level": "deep"
+  },
+  "workspace": {
+    "id": "workspace",
+    "name": "Example codex",
+    "type": "project",
+    "purpose": "Maintain application architecture and tests"
+  },
+  "scope": {
+    "authorized_folders": [
+      "."
+    ],
+    "excluded": [
+      "node_modules",
+      "dist",
+      ".git",
+      ".vite",
+      "coverage",
+      ".cache",
+      ".pytest_cache",
+      "__pycache__",
+      "venv",
+      ".venv",
+      "site-packages",
+      ".tools",
+      "target",
+      "vendor",
+      ".sandbox",
+      ".sandbox-bin",
+      ".sandbox-secrets",
+      ".tmp",
+      "tmp",
+      "cache",
+      "sessions",
+      "archived_sessions",
+      "sqlite",
+      "logs",
+      "memories",
+      "attachments",
+      "browser",
+      "computer-use",
+      "mcp-oauth-locks",
+      "process_manager",
+      "thread-writer-locks",
+      "visualizations",
+      "vendor_imports",
+      ".env*"
+    ],
+    "path_representation": "relative",
+    "chat_source_policy": {
+      "opted_in": false,
+      "eligible_analysis_level": true,
+      "samples_included": false,
+      "directories": [
+        "sessions",
+        "chats",
+        "conversations"
+      ],
+      "max_examples": 30,
+      "full_responses_included": false,
+      "redaction": "best_effort",
+      "secrets_redacted": false
+    }
+  },
+  "methodology": {
+    "mode": "read_only",
+    "analysis_depth": "deep",
+    "quality_over_quantity": true,
+    "behavior_contract_evaluated_separately": false,
+    "component_descriptions_and_triggers_extracted": true,
+    "executed_discovered_code": false,
+    "sensitive_file_contents_excluded": true,
+    "chat_redaction": "best_effort",
+    "reference_tool_resolution": {
+      "standard": "reference_tool_resolution_v2",
+      "declared_tools": [
+        {
+          "id": "codex",
+          "role": "primary",
+          "mode": "codex_cli",
+          "version": null
+        }
+      ],
+      "requested": "auto",
+      "status": "declared",
+      "primary_tool_ids": [
+        "cmp_b1c0475b6a"
+      ],
+      "primary_tool_keys": [
+        "codex"
+      ],
+      "applicable_tool_ids": [
+        "cmp_b1c0475b6a"
+      ],
+      "applicable_tool_keys": [
+        "codex"
+      ],
+      "detected_tool_keys": [
+        "codex"
+      ],
+      "candidates": [
+        {
+          "tool_id": "codex",
+          "confidence": 0.99,
+          "evidence_paths": [
+            ".codex/config.toml"
+          ],
+          "reason": "exclusive_evidence"
+        },
+        {
+          "tool_id": "github_copilot",
+          "confidence": 0.55,
+          "evidence_paths": [
+            "AGENTS.md"
+          ],
+          "reason": "shared_compatibility_only"
+        }
+      ],
+      "rule": "Explicit tool roles; signatures corroborate configuration only. Declared runtime versions remain unverified."
+    },
+    "ai_tool_rule_standard": {
+      "version": "vendor_rule_profiles_v2",
+      "common_core": [
+        "exact_path_signatures",
+        "canonicalOwner",
+        "recognizedBy",
+        "surface",
+        "scope",
+        "enforcement",
+        "validity",
+        "lifecycle",
+        "static_vs_runtime"
+      ],
+      "overlays_applied": [
+        "codex"
+      ],
+      "multiple_profiles_are_additive": true
+    },
+    "knowledge_base_standard": {
+      "version": "managed_retrievable_corpus_v1",
+      "rule": "Corpus gestito di più fonti o record con scopo e recupero definiti; un README o documento singolo non basta."
+    },
+    "tool_usage_standard": {
+      "version": "tool_usage_evidence_v1",
+      "used": "Invocazione strutturata osservata in log o sessione autorizzata.",
+      "configured": "Dipendenza o configurazione presente; prova disponibilità, non uso.",
+      "mentioned": "Nome nel testo di un prompt; non prova installazione né uso."
+    },
+    "output_role": "description_only"
+  },
+  "inventory": {
+    "file_count": 6,
+    "directory_count": 4,
+    "workspace_folder_count": 1,
+    "manual_component_count": 0
+  },
+  "components": [
+    {
+      "id": "cmp_b1c0475b6a",
+      "kind": "tool",
+      "subtype": "reference_ai_coding_tool",
+      "name": "Codex",
+      "description": "Codex (OpenAI) rilevato tramite firme esclusive e analizzato con le regole ufficiali del vendor.",
+      "path": ".codex/config.toml",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "tool_integrations",
+        "lifecycle": {
+          "declared": true,
+          "configured": true,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "tool_id": "codex",
+        "vendor": "OpenAI",
+        "usage_status": "configured",
+        "usage_standard": "tool_usage_evidence_v1",
+        "reference_role": "primary",
+        "detection_signals": [
+          {
+            "kind": "exclusive_artifact",
+            "path": ".codex/config.toml",
+            "detail": "codex_project_config"
+          }
+        ],
+        "official_documentation": [
+          "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+          "https://learn.chatgpt.com/docs/agent-configuration/rules",
+          "https://learn.chatgpt.com/docs/config-file/config-basic",
+          "https://learn.chatgpt.com/docs/enterprise/managed-configuration"
+        ],
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "tool_integrations"
+      ],
+      "confidence": 0.99,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_345ed6a1b7"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "component_presence",
+            "value": "codex",
+            "weight": 0.99
+          }
+        ]
+      },
+      "usage_status": "configured"
+    },
+    {
+      "id": "cmp_13f2bb218e",
+      "kind": "configuration",
+      "subtype": "codex_configuration",
+      "name": "config.toml",
+      "description": "Configurazione Codex; 2 binding surface-specific, stato sintattico unverified.",
+      "path": ".codex/config.toml",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "tool_integrations",
+        "lifecycle": {
+          "declared": true,
+          "configured": true,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "artifactPath": ".codex/config.toml",
+        "format": "codex_project_config",
+        "ruleKind": "codex_configuration",
+        "canonicalOwner": "openai_codex",
+        "recognizedBy": [
+          {
+            "tool": "codex",
+            "surface": "codex_cli",
+            "mode": "native",
+            "enforcement": {
+              "class": "client_policy",
+              "mechanism": "client_interpreter",
+              "guarantee": "client_scoped"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "exact_path",
+              "subject": "config-layer",
+              "temporalActivation": "startup_or_request"
+            },
+            "validity": {
+              "syntax": "unverified",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "detected",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:.codex/config.toml"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "active_config_layers_runtime_dependent",
+            "officialSource": "https://learn.chatgpt.com/docs/config-file/config-basic"
+          },
+          {
+            "tool": "codex",
+            "surface": "codex_ide",
+            "mode": "native",
+            "enforcement": {
+              "class": "client_policy",
+              "mechanism": "client_interpreter",
+              "guarantee": "client_scoped"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "exact_path",
+              "subject": "config-layer",
+              "temporalActivation": "startup_or_request"
+            },
+            "validity": {
+              "syntax": "unverified",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "detected",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:.codex/config.toml"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "active_config_layers_runtime_dependent",
+            "officialSource": "https://learn.chatgpt.com/docs/config-file/config-basic"
+          }
+        ],
+        "selector": null,
+        "activationStatus": "conditional_target",
+        "evidenceStrength": "strong",
+        "verificationDate": "2026-08-17",
+        "attributionMode": "exclusive",
+        "conflictsWith": [],
+        "activationRequirements": [],
+        "failureMode": null,
+        "importsAgentsMd": false,
+        "importedBy": [],
+        "symbolicLink": null,
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "tool_integrations"
+      ],
+      "confidence": 0.99,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_dc231f86d2"
+      ]
+    },
+    {
+      "id": "cmp_ea61f4c70f",
+      "kind": "document",
+      "subtype": "shared_agent_instructions",
+      "name": "AGENTS.md",
+      "description": "Regola agents_md; 11 binding surface-specific, stato sintattico valid.",
+      "path": "AGENTS.md",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "behavior_contract",
+        "lifecycle": {
+          "declared": true,
+          "configured": false,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "artifactPath": "AGENTS.md",
+        "format": "agents_instructions",
+        "ruleKind": "shared_agent_instructions",
+        "canonicalOwner": "agents_md",
+        "recognizedBy": [
+          {
+            "tool": "codex",
+            "surface": "codex_cli",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "codex_root_to_target_or_copilot_surface_dependent",
+            "officialSource": "https://learn.chatgpt.com/docs/agent-configuration/agents-md"
+          },
+          {
+            "tool": "codex",
+            "surface": "codex_ide",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "codex_root_to_target_or_copilot_surface_dependent",
+            "officialSource": "https://learn.chatgpt.com/docs/agent-configuration/agents-md"
+          },
+          {
+            "tool": "codex",
+            "surface": "codex_cloud",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "codex_root_to_target_or_copilot_surface_dependent",
+            "officialSource": "https://learn.chatgpt.com/docs/agent-configuration/agents-md"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_cloud_agent_github_com",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_code_review_github_com",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_chat_vscode",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_cloud_agent_vscode",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_cloud_agent_jetbrains",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_cloud_agent_eclipse",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_cloud_agent_xcode",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "surface_specific_personal_then_path_then_repository_then_agent_then_organization_where_supported",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          },
+          {
+            "tool": "github_copilot",
+            "surface": "copilot_cli",
+            "mode": "native",
+            "enforcement": {
+              "class": "advisory_context",
+              "mechanism": "model_context",
+              "guarantee": "non_deterministic"
+            },
+            "scope": {
+              "sourceLayer": "repository",
+              "filesystemSelector": "ancestor_descendant_chain",
+              "subject": "directory_subtree",
+              "temporalActivation": "on_target_access"
+            },
+            "validity": {
+              "syntax": "valid",
+              "support": "supported",
+              "applicability": "conditional",
+              "reasons": [
+                "target_trust_branch_or_runtime_state_unresolved"
+              ]
+            },
+            "lifecycle": {
+              "highestEvidencedStage": "surface_supported",
+              "stages": [
+                {
+                  "stage": "detected",
+                  "status": "observed",
+                  "evidence": [
+                    "path:AGENTS.md"
+                  ]
+                },
+                {
+                  "stage": "syntax_valid",
+                  "status": "observed",
+                  "evidence": [
+                    "static_validator"
+                  ]
+                },
+                {
+                  "stage": "surface_supported",
+                  "status": "observed",
+                  "evidence": [
+                    "official_documentation"
+                  ]
+                }
+              ],
+              "loaded": "unverified",
+              "matched": "unverified",
+              "decisionEnforced": "unverified",
+              "advisoryFollowed": "unverified"
+            },
+            "precedence": "combine_applicable_sources_no_general_precedence_duplicates_removed_disabled_files_excluded",
+            "officialSource": "https://docs.github.com/en/copilot/reference/custom-instructions-support"
+          }
+        ],
+        "selector": null,
+        "activationStatus": "conditional_target",
+        "evidenceStrength": "strong",
+        "verificationDate": "2026-08-17",
+        "attributionMode": "shared",
+        "conflictsWith": [],
+        "activationRequirements": [],
+        "failureMode": null,
+        "importsAgentsMd": false,
+        "importedBy": [],
+        "symbolicLink": null,
+        "extracted_from": "AGENTS.md",
+        "rule_count": 0,
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "behavior_contract"
+      ],
+      "confidence": 0.55,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_f8009a0425"
+      ],
+      "capabilities": [
+        "validation"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "regole",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "read",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "handbook",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "test",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "committing",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "pubblicare",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "senza",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_82037872ce",
+      "kind": "configuration",
+      "subtype": "codex_configuration",
+      "name": ".codex",
+      "description": "1 file rilevati in una directory convenzionale.",
+      "path": ".codex",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "tool_integrations",
+        "lifecycle": {
+          "declared": true,
+          "configured": true,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "tool_integrations"
+      ],
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_36aad5c32a"
+      ]
+    },
+    {
+      "id": "cmp_2d485b0e47",
+      "kind": "skill",
+      "subtype": "custom_skill",
+      "name": "example",
+      "description": "Document architecture on request.",
+      "path": ".agents/skills/example/SKILL.md",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "skills",
+        "lifecycle": {
+          "declared": true,
+          "configured": false,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "extracted_from": "SKILL.md",
+        "trigger_source": "Document architecture on request.",
+        "owner_tool_id": "codex",
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "skills"
+      ],
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_5e31f1e795"
+      ],
+      "capabilities": [
+        "documentation_generation"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "document",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "architecture",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "request",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_f93530a084",
+      "kind": "knowledge_base",
+      "subtype": "managed_document_corpus",
+      "name": "handbook",
+      "description": "Corpus di 2 fonti la cui consultazione è prescritta al tool AI.",
+      "path": "handbook",
+      "parent_id": null,
+      "properties": {
+        "setup_category": "knowledge_bases",
+        "lifecycle": {
+          "declared": true,
+          "configured": false,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "document_count": 2,
+        "discovery_status": "candidate",
+        "index_present": false,
+        "nested_directory_count": 0,
+        "sample_paths": [
+          "handbook/architecture.md",
+          "handbook/testing.md"
+        ],
+        "qualification": "instruction_bound",
+        "knowledge_bindings": [
+          {
+            "tool_id": "codex",
+            "source_path": "AGENTS.md",
+            "line": 3,
+            "scope": ".",
+            "conditions": [],
+            "contract_id": "contract_9c809da9eeea517b"
+          }
+        ],
+        "definition_standard": "managed_retrievable_corpus_v1",
+        "knowledge_item_count": 2,
+        "retrieval_mechanism": "filesystem_collection",
+        "connection_status": "binding_declared",
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "knowledge_bases"
+      ],
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_0ef3ae7e68"
+      ]
+    },
+    {
+      "id": "cmp_9cac348ec7",
+      "kind": "document",
+      "subtype": "knowledge_document",
+      "name": "architecture",
+      "description": "Architecture\nExample system design.",
+      "path": "handbook/architecture.md",
+      "parent_id": "cmp_f93530a084",
+      "properties": {
+        "setup_category": "knowledge_bases",
+        "lifecycle": {
+          "declared": true,
+          "configured": false,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "extracted_from": "handbook/architecture.md",
+        "heading": "Architecture",
+        "sensitive_content_excluded": false,
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "knowledge_bases"
+      ],
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_647551e190"
+      ],
+      "capabilities": [],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "architecture",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "example",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "system",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "design",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    },
+    {
+      "id": "cmp_9c4c14ca45",
+      "kind": "document",
+      "subtype": "knowledge_document",
+      "name": "testing",
+      "description": "Tests\nUse npm test to verify changes.",
+      "path": "handbook/testing.md",
+      "parent_id": "cmp_f93530a084",
+      "properties": {
+        "setup_category": "knowledge_bases",
+        "lifecycle": {
+          "declared": true,
+          "configured": false,
+          "availability_verified": false,
+          "invocation_observed": false,
+          "outcome_verified": false
+        },
+        "extracted_from": "handbook/testing.md",
+        "heading": "Tests",
+        "sensitive_content_excluded": false,
+        "confidence_interpretation": "Heuristic weight, not a calibrated probability"
+      },
+      "tags": [
+        "knowledge_bases"
+      ],
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_f9751a54d5"
+      ],
+      "capabilities": [
+        "validation"
+      ],
+      "activation": {
+        "mode": "conditional",
+        "triggers": [
+          {
+            "type": "keyword",
+            "value": "tests",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "test",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "verify",
+            "weight": 0.55
+          },
+          {
+            "type": "keyword",
+            "value": "changes",
+            "weight": 0.55
+          }
+        ]
+      },
+      "outputs": []
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_available_cmp_b1c0475b6a_cmp_2d485b0e47",
+      "source_id": "cmp_b1c0475b6a",
+      "target_id": "cmp_2d485b0e47",
+      "type": "uses",
+      "description": "Skill presente nel catalogo del tool e disponibile in base al task; esecuzione non verificata.",
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_5e31f1e795"
+      ],
+      "properties": {
+        "relation_kind": "available"
+      }
+    },
+    {
+      "id": "rel_f5d6458af9",
+      "source_id": "cmp_f93530a084",
+      "target_id": "cmp_9cac348ec7",
+      "type": "contains",
+      "description": "Il componente padre aggrega questo elemento osservato.",
+      "confidence": 0.98,
+      "verification_status": "verified",
+      "evidence_ids": [
+        "ev_647551e190"
+      ],
+      "properties": {
+        "relation_kind": "structural"
+      }
+    },
+    {
+      "id": "rel_ae1bbb57bb",
+      "source_id": "cmp_f93530a084",
+      "target_id": "cmp_9c4c14ca45",
+      "type": "contains",
+      "description": "Il componente padre aggrega questo elemento osservato.",
+      "confidence": 0.98,
+      "verification_status": "verified",
+      "evidence_ids": [
+        "ev_f9751a54d5"
+      ],
+      "properties": {
+        "relation_kind": "structural"
+      }
+    },
+    {
+      "id": "rel_25dc346dac",
+      "source_id": "cmp_b1c0475b6a",
+      "target_id": "cmp_13f2bb218e",
+      "type": "configured_by",
+      "description": "Codex riconosce questo artefatto sulla superficie dichiarata; l'efficacia runtime resta dipendente da target, trust e configurazioni esterne.",
+      "confidence": 0.99,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_dc231f86d2"
+      ],
+      "properties": {
+        "relation_kind": "configured"
+      }
+    },
+    {
+      "id": "rel_dac8aceb4b",
+      "source_id": "cmp_b1c0475b6a",
+      "target_id": "cmp_ea61f4c70f",
+      "type": "configured_by",
+      "description": "Codex riconosce questo artefatto sulla superficie dichiarata; l'efficacia runtime resta dipendente da target, trust e configurazioni esterne.",
+      "confidence": 0.55,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_f8009a0425"
+      ],
+      "properties": {
+        "relation_kind": "configured"
+      }
+    },
+    {
+      "id": "rel_instruction_cmp_ea61f4c70f_cmp_f93530a084_3",
+      "source_id": "cmp_ea61f4c70f",
+      "target_id": "cmp_f93530a084",
+      "type": "references",
+      "description": "Risorsa la cui consultazione è prescritta dal testo delle istruzioni.",
+      "confidence": 0.5,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_f695880fc8"
+      ],
+      "properties": {
+        "relation_kind": "structural",
+        "mechanism": "instruction_file",
+        "line": 3,
+        "tool_id": "codex"
+      }
+    },
+    {
+      "id": "rel_0667b9ece0",
+      "source_id": "cmp_b1c0475b6a",
+      "target_id": "cmp_f93530a084",
+      "type": "reads_from",
+      "description": "Consultazione prescritta da una regola esplicita applicabile; rispetto runtime non osservato.",
+      "confidence": 1,
+      "verification_status": "declared_only",
+      "evidence_ids": [
+        "ev_b160fd653c"
+      ],
+      "properties": {
+        "relation_kind": "contractual",
+        "contract_id": "contract_9c809da9eeea517b",
+        "binding_method": "explicit_imperative_v1",
+        "instruction_path": "AGENTS.md",
+        "line": 3,
+        "declared_obligation": true
+      }
+    }
+  ],
+  "workflows": [],
+  "evidence": [
+    {
+      "id": "ev_345ed6a1b7",
+      "type": "vendor_signature",
+      "source_id": null,
+      "path": ".codex/config.toml",
+      "location": null,
+      "summary": "Firme canoniche di Codex rilevate nel workspace.",
+      "content_hash": "sha256:9d2cf15c60573e42ff80c698224c71005a5a17b84fd417ffe93e721a6de7f005",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_dc231f86d2",
+      "type": "configuration",
+      "source_id": null,
+      "path": ".codex/config.toml",
+      "location": null,
+      "summary": "codex_project_config riconosciuto tramite path esatto e validato secondo il profilo Codex.",
+      "content_hash": "sha256:9d2cf15c60573e42ff80c698224c71005a5a17b84fd417ffe93e721a6de7f005",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_f8009a0425",
+      "type": "instruction_file",
+      "source_id": null,
+      "path": "AGENTS.md",
+      "location": null,
+      "summary": "agents_instructions riconosciuto tramite path esatto e validato secondo il profilo agents_md.",
+      "content_hash": "sha256:89e26e5652a5ef16dc38b0b7ceb426ca44d1ab04bca50b1e5ea356f42cd98fe2",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_36aad5c32a",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": ".codex",
+      "location": null,
+      "summary": "Elemento codex configuration rilevato automaticamente.",
+      "content_hash": null,
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_5e31f1e795",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": ".agents/skills/example/SKILL.md",
+      "location": null,
+      "summary": "Elemento custom skill rilevato automaticamente.",
+      "content_hash": "sha256:e2e4e182aa6dae891917a348cd75c3163884342b87b8be54dd788063587b3153",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_0ef3ae7e68",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "handbook",
+      "location": null,
+      "summary": "Elemento documentation collection rilevato automaticamente.",
+      "content_hash": null,
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_647551e190",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "handbook/architecture.md",
+      "location": null,
+      "summary": "Elemento documentation source rilevato automaticamente.",
+      "content_hash": "sha256:38f935c420dd0e5dea485ffabb092e3807162079ed6aa83254ceeee624431547",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_f9751a54d5",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "handbook/testing.md",
+      "location": null,
+      "summary": "Elemento documentation source rilevato automaticamente.",
+      "content_hash": "sha256:c922b9ea7fcc20c906b808fddfeb553ef80be4a320fd721a4ec85b575835c131",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_f695880fc8",
+      "type": "instruction_file",
+      "source_id": null,
+      "path": "AGENTS.md",
+      "location": null,
+      "summary": "Read `handbook/`.",
+      "content_hash": "sha256:89e26e5652a5ef16dc38b0b7ceb426ca44d1ab04bca50b1e5ea356f42cd98fe2",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    },
+    {
+      "id": "ev_b160fd653c",
+      "type": "repository_scan",
+      "source_id": null,
+      "path": "AGENTS.md",
+      "location": "line:3",
+      "summary": "Read `handbook/`.",
+      "content_hash": "sha256:89e26e5652a5ef16dc38b0b7ceb426ca44d1ab04bca50b1e5ea356f42cd98fe2",
+      "observed_at": "2026-10-09T22:06:06.307Z",
+      "confidence": 0.5,
+      "confidence_kind": "legacy_weight_not_probability",
+      "sensitive": false
+    }
+  ],
+  "limitations": [
+    {
+      "id": "lim_runtime",
+      "description": "Configurazioni e menzioni non provano l’uso di un tool; in assenza di invocazioni strutturate lo stato resta configured o mentioned."
+    },
+    {
+      "id": "lim_vendor_runtime",
+      "description": "La scansione statica non vede policy gestite, flag CLI, trust, branch di default o toggle remoti; repository-effective e runtime-effective restano distinti."
+    },
+    {
+      "id": "lim_vendor_parsers",
+      "description": "Quando non viene eseguito il parser ufficiale del client (per esempio Codex execpolicy o un parser YAML completo), la sintassi resta unverified anche se i campi strutturali osservabili sono coerenti."
+    }
+  ],
+  "unverified_items": [],
+  "extensions": {
+    "ai-setup-classifier.instruction-references": {
+      "version": "1.0.0",
+      "data": {
+        "references": [],
+        "issues": []
+      }
+    },
+    "ai-setup-classifier.instruction-links": {
+      "version": "1.0.0",
+      "data": {
+        "gaps": [
+          {
+            "tool_id": "codex",
+            "target_id": "cmp_13f2bb218e",
+            "status": "not_evaluated",
+            "reason": "no_demonstrated_binding",
+            "suggested_action": "Nel file di istruzioni applicabile, specificare quando e come consultare la risorsa se necessaria; far revisionare condizioni ed eccezioni."
+          },
+          {
+            "tool_id": "codex",
+            "target_id": "cmp_ea61f4c70f",
+            "status": "not_evaluated",
+            "reason": "no_demonstrated_binding",
+            "suggested_action": "Nel file di istruzioni applicabile, specificare quando e come consultare la risorsa se necessaria; far revisionare condizioni ed eccezioni."
+          },
+          {
+            "tool_id": "codex",
+            "target_id": "cmp_82037872ce",
+            "status": "not_evaluated",
+            "reason": "no_demonstrated_binding",
+            "suggested_action": "Nel file di istruzioni applicabile, specificare quando e come consultare la risorsa se necessaria; far revisionare condizioni ed eccezioni."
+          },
+          {
+            "tool_id": "codex",
+            "target_id": "cmp_2d485b0e47",
+            "status": "not_evaluated",
+            "reason": "no_demonstrated_binding",
+            "suggested_action": "Nel file di istruzioni applicabile, specificare quando e come consultare la risorsa se necessaria; far revisionare condizioni ed eccezioni."
+          }
+        ],
+        "task_path": ".",
+        "limitations": [
+          "Static grammar recognizes a subset of explicit imperatives. Arbitrary conditions, exceptions, conflicts and missing contracts require semantic review.",
+          "Availability and observed use do not establish contractual obligation."
+        ],
+        "bindings": [
+          {
+            "tool_id": "codex",
+            "target_id": "cmp_f93530a084",
+            "source_path": "AGENTS.md",
+            "line": 3,
+            "excerpt": "Read `handbook/`.",
+            "method": "explicit_imperative_v1",
+            "scope": ".",
+            "conditions": [],
+            "exceptions": [],
+            "action": "Read",
+            "reference_chain": [
+              "AGENTS.md"
+            ],
+            "evidence": [
+              {
+                "path": "AGENTS.md",
+                "start_line": 3,
+                "end_line": 3,
+                "excerpt": "Read `handbook/`."
+              }
+            ],
+            "resolved_path": "handbook",
+            "applicability": "applicable",
+            "limitations": [
+              "Static grammar extraction; semantic consistency not reviewed. Prescribed behavior is not runtime execution."
+            ]
+          }
+        ],
+        "references": [
+          {
+            "tool_id": "codex",
+            "target_id": "cmp_f93530a084",
+            "source_path": "AGENTS.md",
+            "line": 3,
+            "excerpt": "Read `handbook/`.",
+            "binding": true
+          }
+        ]
+      }
+    },
+    "ai-setup-classifier.report": {
+      "version": "2.0",
+      "data": {
+        "quality_over_quantity": true,
+        "semantic_scan": false
+      }
+    },
+    "ai-setup-classifier.reference-tools": {
+      "version": "2.0",
+      "data": {
+        "standard": "reference_tool_resolution_v2",
+        "declared_tools": [
+          {
+            "id": "codex",
+            "role": "primary",
+            "mode": "codex_cli",
+            "version": null
+          }
+        ],
+        "requested": "auto",
+        "status": "declared",
+        "primary_tool_ids": [
+          "missing"
+        ],
+        "primary_tool_keys": [
+          "codex"
+        ],
+        "applicable_tool_ids": [
+          "cmp_b1c0475b6a"
+        ],
+        "applicable_tool_keys": [
+          "codex"
+        ],
+        "detected_tool_keys": [
+          "codex"
+        ],
+        "candidates": [
+          {
+            "tool_id": "codex",
+            "confidence": 0.99,
+            "evidence_paths": [
+              ".codex/config.toml"
+            ],
+            "reason": "exclusive_evidence"
+          },
+          {
+            "tool_id": "github_copilot",
+            "confidence": 0.55,
+            "evidence_paths": [
+              "AGENTS.md"
+            ],
+            "reason": "shared_compatibility_only"
+          }
+        ],
+        "rule": "Explicit tool roles; signatures corroborate configuration only. Declared runtime versions remain unverified."
+      }
+    },
+    "ai-setup-classifier.chat-evals": {
+      "version": "1.0",
+      "data": {
+        "source": "authorized_local_history_opt_in",
+        "opted_in": false,
+        "privacy": "best_effort_redacted_prompt_samples_only",
+        "examples": []
+      }
+    },
+    "org.awdf.description": {
+      "version": "2.0.0",
+      "snapshot": {
+        "files": [
+          {
+            "path": ".agents/skills/example/SKILL.md",
+            "sha256": "e2e4e182aa6dae891917a348cd75c3163884342b87b8be54dd788063587b3153",
+            "content": "---\nname: example\ndescription: Document architecture on request.\n---\n# Example\nRead handbook before writing docs.",
+            "truncated": false
+          },
+          {
+            "path": ".codex/config.toml",
+            "sha256": "9d2cf15c60573e42ff80c698224c71005a5a17b84fd417ffe93e721a6de7f005",
+            "content": "model=\"example\"\n",
+            "truncated": false
+          },
+          {
+            "path": "AGENTS.md",
+            "sha256": "89e26e5652a5ef16dc38b0b7ceb426ca44d1ab04bca50b1e5ea356f42cd98fe2",
+            "content": "# Regole\n\nRead `handbook/`.\n\nRun `npm test` before committing.\n\nNon pubblicare senza richiesta.\n",
+            "truncated": false
+          },
+          {
+            "path": "handbook/architecture.md",
+            "sha256": "38f935c420dd0e5dea485ffabb092e3807162079ed6aa83254ceeee624431547",
+            "content": "# Architecture\nExample system design.",
+            "truncated": false
+          },
+          {
+            "path": "handbook/testing.md",
+            "sha256": "c922b9ea7fcc20c906b808fddfeb553ef80be4a320fd721a4ec85b575835c131",
+            "content": "# Tests\nUse npm test to verify changes.",
+            "truncated": false
+          },
+          {
+            "path": "package.json",
+            "sha256": "d5600ceb7d4954434aaa77158c752ecb4521528364e8528654b881c78e309ab2",
+            "content": "{\"scripts\":{\"test\":\"node --test\"}}",
+            "truncated": false
+          }
+        ],
+        "inventory_paths": [
+          ".agents/skills/example/SKILL.md",
+          ".codex/config.toml",
+          "AGENTS.md",
+          "handbook/architecture.md",
+          "handbook/testing.md",
+          "package.json"
+        ],
+        "excluded_paths": [],
+        "component_ids": [
+          "cmp_b1c0475b6a",
+          "cmp_13f2bb218e",
+          "cmp_ea61f4c70f",
+          "cmp_82037872ce",
+          "cmp_2d485b0e47",
+          "cmp_f93530a084",
+          "cmp_9cac348ec7",
+          "cmp_9c4c14ca45"
+        ],
+        "components": [
+          {
+            "id": "cmp_b1c0475b6a",
+            "kind": "tool",
+            "path": ".codex/config.toml",
+            "description": "Codex (OpenAI) rilevato tramite firme esclusive e analizzato con le regole ufficiali del vendor."
+          },
+          {
+            "id": "cmp_13f2bb218e",
+            "kind": "configuration",
+            "path": ".codex/config.toml",
+            "description": "Configurazione Codex; 2 binding surface-specific, stato sintattico unverified."
+          },
+          {
+            "id": "cmp_ea61f4c70f",
+            "kind": "document",
+            "path": "AGENTS.md",
+            "description": "Regola agents_md; 11 binding surface-specific, stato sintattico valid."
+          },
+          {
+            "id": "cmp_82037872ce",
+            "kind": "configuration",
+            "path": ".codex",
+            "description": "1 file rilevati in una directory convenzionale."
+          },
+          {
+            "id": "cmp_2d485b0e47",
+            "kind": "skill",
+            "path": ".agents/skills/example/SKILL.md",
+            "description": "Document architecture on request."
+          },
+          {
+            "id": "cmp_f93530a084",
+            "kind": "knowledge_base",
+            "path": "handbook",
+            "description": "Corpus di 2 fonti la cui consultazione è prescritta al tool AI."
+          },
+          {
+            "id": "cmp_9cac348ec7",
+            "kind": "document",
+            "path": "handbook/architecture.md",
+            "description": "Architecture\nExample system design."
+          },
+          {
+            "id": "cmp_9c4c14ca45",
+            "kind": "document",
+            "path": "handbook/testing.md",
+            "description": "Tests\nUse npm test to verify changes."
+          }
+        ],
+        "instruction_sources": [
+          {
+            "path": "AGENTS.md",
+            "tool_ids": [
+              "codex"
+            ],
+            "scope": "."
+          }
+        ],
+        "inaccessible_paths": [],
+        "profile_versions": {
+          "codex": "2.1.0"
+        },
+        "context": {
+          "declarations": [
+            {
+              "id": "codex",
+              "role": "primary",
+              "mode": "codex_cli",
+              "version": null
+            }
+          ],
+          "task_path": ".",
+          "purpose": "Maintain application architecture and tests",
+          "workflow_components": []
+        },
+        "scope": {
+          "roots": [
+            "."
+          ],
+          "excluded": [
+            "node_modules",
+            "dist",
+            ".git",
+            ".vite",
+            "coverage",
+            ".cache",
+            ".pytest_cache",
+            "__pycache__",
+            "venv",
+            ".venv",
+            "site-packages",
+            ".tools",
+            "target",
+            "vendor",
+            ".sandbox",
+            ".sandbox-bin",
+            ".sandbox-secrets",
+            ".tmp",
+            "tmp",
+            "cache",
+            "sessions",
+            "archived_sessions",
+            "sqlite",
+            "logs",
+            "memories",
+            "attachments",
+            "browser",
+            "computer-use",
+            "mcp-oauth-locks",
+            "process_manager",
+            "thread-writer-locks",
+            "visualizations",
+            "vendor_imports"
+          ],
+          "analysis_level": "deep",
+          "captured_at": "2026-10-09T22:06:06.307Z",
+          "coherence": "single_read_cache_with_change_detection; no filesystem-wide atomicity"
+        },
+        "content_policy": "redacted_line_preserving_excerpt_snapshot",
+        "id": "bdd33ae1af4fb0059512ff829a60c29b6fb805e1d68a574e2b08322cef946349",
+        "static_contracts": {
+          "version": "2.0.0",
+          "records": [
+            {
+              "tool_id": "codex",
+              "target_id": "cmp_f93530a084",
+              "scope": ".",
+              "conditions": [],
+              "exceptions": [],
+              "action": "Read",
+              "evidence": [
+                {
+                  "path": "AGENTS.md",
+                  "start_line": 3,
+                  "end_line": 3,
+                  "excerpt": "Read `handbook/`."
+                }
+              ],
+              "reference_chain": [
+                "AGENTS.md"
+              ],
+              "applicability": "applicable",
+              "required": null,
+              "conflicts": [],
+              "limitations": [
+                "Static grammar extraction; semantic consistency not reviewed. Prescribed behavior is not runtime execution."
+              ],
+              "source_path": "AGENTS.md",
+              "line": 3,
+              "excerpt": "Read `handbook/`.",
+              "method": "explicit_imperative_v1",
+              "resolved_path": "handbook",
+              "status": "contract_present",
+              "id": "contract_9c809da9eeea517b",
+              "source_component_id": "cmp_b1c0475b6a"
+            }
+          ],
+          "unassociated_component_ids": [
+            "cmp_13f2bb218e",
+            "cmp_ea61f4c70f",
+            "cmp_82037872ce",
+            "cmp_2d485b0e47"
+          ]
+        },
+        "tool_context": {
+          "requested": "auto",
+          "status": "declared",
+          "applicable_tool_ids": [
+            "codex"
+          ],
+          "primary_tool_ids": [
+            "codex"
+          ],
+          "declarations": [
+            {
+              "id": "codex",
+              "role": "primary",
+              "mode": "codex_cli",
+              "version": null
+            }
+          ],
+          "tool_modes": {
+            "codex": "codex_cli"
+          },
+          "profiles": {
+            "codex": {
+              "id": "codex",
+              "name": "Codex",
+              "vendor": "OpenAI",
+              "profile_version": "2.1.0",
+              "verification_date": "2026-09-08",
+              "verification_scope": "instruction loading documentation; remaining registry retained from 2026-08-17",
+              "supported_version_range": null,
+              "version_policy": "Unspecified versions remain unverified; no runtime effectiveness claim.",
+              "documentation": [
+                "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+                "https://learn.chatgpt.com/docs/agent-configuration/rules",
+                "https://learn.chatgpt.com/docs/config-file/config-basic",
+                "https://learn.chatgpt.com/docs/enterprise/managed-configuration"
+              ],
+              "supported_modes": [
+                "codex-cli",
+                "codex-ide",
+                "codex-cloud",
+                "codex",
+                "copilot-cloud-agent-github-com",
+                "copilot-code-review-github-com",
+                "copilot-chat-vscode",
+                "copilot-cloud-agent-vscode",
+                "copilot-cloud-agent-jetbrains",
+                "copilot-cloud-agent-eclipse",
+                "copilot-cloud-agent-xcode",
+                "copilot-cli"
+              ],
+              "recognition_registry": "scripts/lib/ai-tool-rules.mjs:artifactDefinitions",
+              "configuration_formats": [
+                "json",
+                "toml",
+                "markdown"
+              ],
+              "capabilities": [
+                "instructions",
+                "skills",
+                "integration_configuration"
+              ],
+              "loading_policy": "One non-empty instruction per directory, override first, root to task; default 32 KiB. Custom fallback/size configuration not resolved by contract extraction.",
+              "instruction_files": [
+                "AGENTS.override.md",
+                "AGENTS.md"
+              ],
+              "profile_limits": [
+                "Runtime version compatibility is not verified.",
+                "Managed settings and external homes require explicit authorized scope."
+              ]
+            },
+            "claude_code": {
+              "id": "claude_code",
+              "name": "Claude Code",
+              "vendor": "Anthropic",
+              "profile_version": "2.1.0",
+              "verification_date": "2026-09-08",
+              "verification_scope": "memory documentation; remaining registry retained from 2026-08-17",
+              "supported_version_range": null,
+              "version_policy": "Unspecified versions remain unverified; no runtime effectiveness claim.",
+              "documentation": [
+                "https://code.claude.com/docs/en/claude-directory",
+                "https://code.claude.com/docs/en/memory",
+                "https://code.claude.com/docs/en/settings",
+                "https://code.claude.com/docs/en/permissions",
+                "https://code.claude.com/docs/en/mcp"
+              ],
+              "supported_modes": [
+                "claude-code",
+                "copilot-cli-subset",
+                "copilot-cli",
+                "copilot-cloud-agent-github-com",
+                "copilot-cloud-agent-vscode",
+                "copilot-cloud-agent-jetbrains",
+                "copilot-cloud-agent-eclipse",
+                "copilot-cloud-agent-xcode"
+              ],
+              "recognition_registry": "scripts/lib/ai-tool-rules.mjs:artifactDefinitions",
+              "configuration_formats": [
+                "json",
+                "toml",
+                "markdown"
+              ],
+              "capabilities": [
+                "instructions",
+                "skills",
+                "integration_configuration"
+              ],
+              "loading_policy": "CLAUDE.md hierarchy and explicit local @ Markdown imports, up to four hops; external imports excluded from this evaluator.",
+              "instruction_files": [
+                "CLAUDE.md",
+                ".claude/CLAUDE.md",
+                "CLAUDE.local.md"
+              ],
+              "profile_limits": [
+                "Runtime version compatibility is not verified.",
+                "Managed settings and external homes require explicit authorized scope."
+              ]
+            },
+            "github_copilot": {
+              "id": "github_copilot",
+              "name": "GitHub Copilot",
+              "vendor": "GitHub",
+              "profile_version": "2.1.0",
+              "verification_date": "2026-09-08",
+              "verification_scope": "custom instruction support matrix; remaining registry retained from 2026-08-17",
+              "supported_version_range": null,
+              "version_policy": "Surface must be declared; support is not inferred across hosts.",
+              "documentation": [
+                "https://docs.github.com/en/copilot/concepts/prompting/response-customization",
+                "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+                "https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions",
+                "https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-config-dir-reference",
+                "https://docs.github.com/en/copilot/reference/hooks-reference"
+              ],
+              "supported_modes": [
+                "copilot-cli",
+                "copilot-cloud-agent",
+                "copilot-code-review-fallback",
+                "copilot-code-review",
+                "copilot-cloud-agent-github-com",
+                "copilot-code-review-github-com",
+                "copilot-chat-vscode",
+                "copilot-cloud-agent-vscode",
+                "copilot-chat-visual-studio",
+                "copilot-chat-jetbrains",
+                "copilot-cloud-agent-jetbrains",
+                "copilot-code-review-jetbrains",
+                "copilot-cloud-agent-eclipse",
+                "copilot-chat-xcode",
+                "copilot-cloud-agent-xcode",
+                "copilot-code-review-xcode",
+                "copilot-chat-github-com",
+                "copilot-code-review-vscode",
+                "copilot-code-review-visual-studio",
+                "copilot-chat-eclipse",
+                "claude-code",
+                "copilot-cli-subset",
+                "codex"
+              ],
+              "recognition_registry": "scripts/lib/ai-tool-rules.mjs:artifactDefinitions",
+              "configuration_formats": [
+                "json",
+                "toml",
+                "markdown"
+              ],
+              "capabilities": [
+                "instructions",
+                "skills",
+                "integration_configuration"
+              ],
+              "loading_policy": "Repository and path-specific instructions filtered by declared surface; unsupported surfaces remain uncertain.",
+              "instruction_files": [
+                ".github/copilot-instructions.md",
+                ".github/instructions/**/*.instructions.md",
+                "AGENTS.md"
+              ],
+              "profile_limits": [
+                "Runtime version compatibility is not verified.",
+                "Managed settings and external homes require explicit authorized scope."
+              ]
+            }
+          },
+          "purpose": "Maintain application architecture and tests"
+        },
+        "instruction_references": {
+          "references": [],
+          "issues": []
+        }
+      },
+      "instruction_sources": [
+        {
+          "path": "AGENTS.md",
+          "format": "agents_instructions",
+          "recognized_tool_ids": [
+            "codex",
+            "github_copilot"
+          ],
+          "applicable_tool_ids": [
+            "codex"
+          ],
+          "selector": null,
+          "activation": "conditional_target",
+          "scope": ".",
+          "content_status": "captured",
+          "blocks": [
+            {
+              "description": "# Regole",
+              "evidence": {
+                "path": "AGENTS.md",
+                "start_line": 1,
+                "end_line": 1,
+                "excerpt": "# Regole"
+              }
+            },
+            {
+              "description": "Read `handbook/`.",
+              "evidence": {
+                "path": "AGENTS.md",
+                "start_line": 3,
+                "end_line": 3,
+                "excerpt": "Read `handbook/`."
+              }
+            },
+            {
+              "description": "Run `npm test` before committing.",
+              "evidence": {
+                "path": "AGENTS.md",
+                "start_line": 5,
+                "end_line": 5,
+                "excerpt": "Run `npm test` before committing."
+              }
+            },
+            {
+              "description": "Non pubblicare senza richiesta.",
+              "evidence": {
+                "path": "AGENTS.md",
+                "start_line": 7,
+                "end_line": 7,
+                "excerpt": "Non pubblicare senza richiesta."
+              }
+            }
+          ]
+        }
+      ],
+      "configuration_sources": [
+        {
+          "path": ".codex/config.toml",
+          "format": "codex_project_config",
+          "syntax_status": "unverified"
+        },
+        {
+          "path": "package.json",
+          "format": "unrecognized_configuration_candidate",
+          "syntax_status": "unverified"
+        }
+      ],
+      "knowledge_bases": [
+        {
+          "component_id": "cmp_f93530a084",
+          "path": "handbook",
+          "description": "Corpus di 2 fonti la cui consultazione è prescritta al tool AI.",
+          "source_paths": [
+            "handbook/architecture.md",
+            "handbook/testing.md"
+          ],
+          "bindings": [
+            "rel_0667b9ece0"
+          ],
+          "status": "consultation_prescribed"
+        }
+      ],
+      "collection_limits": {
+        "complete_workspace": true,
+        "exclusions": [
+          "node_modules",
+          "dist",
+          ".git",
+          ".vite",
+          "coverage",
+          ".cache",
+          ".pytest_cache",
+          "__pycache__",
+          "venv",
+          ".venv",
+          "site-packages",
+          ".tools",
+          "target",
+          "vendor",
+          ".sandbox",
+          ".sandbox-bin",
+          ".sandbox-secrets",
+          ".tmp",
+          "tmp",
+          "cache",
+          "sessions",
+          "archived_sessions",
+          "sqlite",
+          "logs",
+          "memories",
+          "attachments",
+          "browser",
+          "computer-use",
+          "mcp-oauth-locks",
+          "process_manager",
+          "thread-writer-locks",
+          "visualizations",
+          "vendor_imports",
+          ".env*"
+        ],
+        "excluded_paths": [],
+        "note": "Coverage is limited to authorized roots, exclusions and supported parsers; not proof of complete machine inventory."
+      }
+    }
+  }
+}

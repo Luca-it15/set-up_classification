@@ -45,7 +45,7 @@ assert.doesNotMatch(exported.html, /Inventario della mappa/);
 assert.doesNotMatch(exported.html, /<script/i);
 assert.ok(exported.height > 1000);
 assert.ok(exported.html.includes('Content-Security-Policy'));
-const twoToolReport = { workspace: { name: 'Two tools and a wiki' }, components: [
+const twoToolReport = { extensions: { 'org.awdf.description': { snapshot: { static_contracts: { records: [] } } } }, workspace: { name: 'Two tools and a wiki' }, components: [
   { id: 'tool-a', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Codex', properties: { tool_id: 'codex' } },
   { id: 'tool-b', kind: 'tool', subtype: 'reference_ai_coding_tool', name: 'Copilot', properties: { tool_id: 'copilot' } },
   { id: 'skill-a', kind: 'skill', name: 'Only Codex', description: 'A' },
@@ -65,18 +65,18 @@ assert.doesNotMatch(copilotSection, /Only Codex|gea-wiki/);
 assert.match(twoToolHtml, /class="wiki-discovery"/);
 assert.match(twoToolHtml, /gea-wiki.*Collegamento non rilevato/);
 const citedWikiReport = structuredClone(twoToolReport);
-citedWikiReport.extensions = { 'ai-setup-classifier.instruction-links': { data: { references: [
+citedWikiReport.extensions = { ...citedWikiReport.extensions, 'ai-setup-classifier.instruction-links': { data: { references: [
   { tool_id: 'codex', target_id: 'wiki', source_path: 'AGENTS.md', binding: true }
 ] } } };
 const citedWikiHtml = createSetupExport(citedWikiReport, PALETTES.dark).html;
 assert.match(citedWikiHtml.split('id="tool-0"')[1].split('id="tool-1"')[0], /gea-wiki/);
 assert.doesNotMatch(citedWikiHtml.split('id="tool-1"')[1].split('class="wiki-discovery"')[0], /gea-wiki/);
 assert.match(citedWikiHtml, /Citata nelle istruzioni del tool/);
-const empty = createSetupExport({ workspace: { name: 'Empty' }, components: [], relationships: [] }, PALETTES.light);
+const empty = createSetupExport({ extensions: { 'org.awdf.description': { snapshot: { static_contracts: { records: [] } } } }, workspace: { name: 'Empty' }, components: [], relationships: [] }, PALETTES.light);
 assert.match(empty.svg, /Nessuna componente/);
 await assert.rejects(() => exportSetupPng({ width: 1400, height: 50000 }), /troppo grande/);
 // Round trip generated instructions through the actual scanner for both hosts.
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'awdf-builder-test-'));
+const tmp = fs.mkdtempSync(path.join(path.resolve('.tmp-evidence-checks'), 'awdf-builder-test-'));
 for (const tool of ['codex', 'claude_code']) {
   const root = path.join(tmp, tool); fs.mkdirSync(path.join(root, 'handbook'), { recursive: true });
   fs.writeFileSync(path.join(root, 'handbook', 'one.md'), '# First source');

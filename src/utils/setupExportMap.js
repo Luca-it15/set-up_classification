@@ -17,7 +17,6 @@ export const relationTone = (kind, ink) => {
     available: light ? '#6d48ac' : '#b49bff',
     observed: light ? '#916000' : '#f4c76e',
     structural: light ? '#526476' : '#91a6bd',
-    legacy_unverified: light ? '#7b8692' : '#8090a2'
   })[kind] || (light ? '#526476' : '#91a6bd');
 };
 
@@ -35,7 +34,7 @@ export function createSetupMap({ report, model, nodes, positions, edges, width, 
     '<radialGradient id="atlas-atmosphere"><stop stop-color="' + hubAccent + '" stop-opacity=".13"/><stop offset="1" stop-color="' + hubAccent + '" stop-opacity="0"/></radialGradient>',
     '<filter id="atlas-lift" x="-40%" y="-50%" width="180%" height="200%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity=".27"/></filter>'
   ];
-  for (const kind of ['contractual', 'configured', 'available', 'observed', 'structural', 'legacy_unverified']) {
+  for (const kind of ['contractual', 'configured', 'available', 'observed', 'structural']) {
     const tone = relationTone(kind, ink);
     parts.push('<marker id="atlas-arrow-' + kind + '" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="' + tone + '"/></marker>');
   }
@@ -52,7 +51,7 @@ export function createSetupMap({ report, model, nodes, positions, edges, width, 
     const kind = relationKind(edge);
     const tone = relationTone(kind, ink);
     const curve = graphEdgePath(a, b);
-    parts.push('<g class="atlas-edge"><title>' + esc(kindLabelForEdge(kind) + ' · ' + (edge.members?.length || 1) + ' ' + t('Collegamenti')) + '</title><path d="' + curve + '" fill="none" stroke="' + bg + '" stroke-width="8" stroke-linecap="round"/><path d="' + curve + '" fill="none" stroke="' + tone + '" stroke-opacity="' + (kind === 'legacy_unverified' ? '.48' : '.84') + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="' + dash(kind) + '" marker-end="url(#atlas-arrow-' + kind + ')"/></g>');
+    parts.push('<g class="atlas-edge"><title>' + esc(kindLabelForEdge(kind) + ' · ' + (edge.members?.length || 1) + ' ' + t('Collegamenti')) + '</title><path d="' + curve + '" fill="none" stroke="' + bg + '" stroke-width="8" stroke-linecap="round"/><path d="' + curve + '" fill="none" stroke="' + tone + '" stroke-opacity="' + '.84' + '" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="' + dash(kind) + '" marker-end="url(#atlas-arrow-' + kind + ')"/></g>');
   }
   if (!model.tools.length) parts.push('<text x="' + width / 2 + '" y="' + height / 2 + '" text-anchor="middle" fill="' + muted + '" font-size="18">' + esc(t('Tool AI non determinato')) + '</text>');
   nodes.forEach((node, number) => {
@@ -90,5 +89,4 @@ const kindLabelForEdge = kind => ({
   available: t('Disponibile'),
   observed: t('Osservato'),
   structural: t('Strutturale'),
-  legacy_unverified: t('Da verificare')
 })[kind] || t('Da verificare');

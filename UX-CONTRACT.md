@@ -1,79 +1,33 @@
 # UI contract
 
-Product source: README.md, schemas/*.schema.json, server.mjs, and the user specifications of 2026-09-08. Visual identity: DESIGN.md.
+Fonti prodotto: README, schemi AWDF 2.0, piano approvato e DESIGN.md.
 
 ## Canonical UI Map
 
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 |---|---|---|---|---|
-| Select/Listbox | Native select in SettingsEditor, SetupGraph and PromptLabPage | Settings schema | Native platform popup accepted | Keyboard/browser |
-| Form | SettingsEditor + App saveSettings | server.mjs settings API | Local configuration | Save failure preserves data |
-| Scrollbar | src/styles.css global baseline | DESIGN.md | Graph geometry only | Static audit + computed style |
-| Toast | App notice region | App.jsx | Persistent status/error, dismissible | Live region |
-| Navigation | App activeView | Existing three views | Map, evaluation, laboratory | Browser switching |
-| Disclosure | Native details/summary | EvaluationPage | Rule/evidence details | Keyboard/browser |
-| Map | SetupGraph | AWDF relationships and instruction links | Diagram and component list | Evidence fixtures/browser |
+| Select/Listbox | Native select in SettingsEditor, SetupGraph, PromptLabPage | AWDF 2.0 and DESIGN.md | Native controls | Keyboard/browser |
+| Form | SettingsEditor, SetupBuilderPage and App | AWDF 2.0 and DESIGN.md | Native controls | Validation, preserved draft |
+| Scrollbar | src/styles.css | AWDF 2.0 and DESIGN.md | Native controls | Static audit and browser |
+| Toast | App persistent notice live region | AWDF 2.0 and DESIGN.md | Native controls | Import failure keeps accepted result |
+| Navigation | App activeView | AWDF 2.0 and DESIGN.md | ARIA tabs with roving focus | Arrow/Home/End keys, seven separate views |
+| Disclosure | Native details/summary | AWDF 2.0 and DESIGN.md | Native controls | Evidence keyboard access |
+| Map | SetupGraph / React Flow | AWDF 2.0 and DESIGN.md | Native controls | Radial overview, ELK details, real endpoints |
 
 ## Behavior
 
-Six interface languages (it, en, es, fr, de, pt), defaulting to Italian for existing settings. Language changes preview immediately and persist through the existing Save flow and backup import/export. The document language and number locale follow the selection. Source filenames, evidence and AWDF identifiers remain literal. Navigation state stays local because imported reports may contain private workspace metadata; do not put report contents in URLs. Existing settings save updates the local server file and closes the editor only after success. Failure preserves entered values and shows a persistent message. Inventory removals are draft edits until Save.
+First load with no setup shows an empty state. Examples require explicit action. Description, checklist, instruction assessment, static simulation and observed runs are separate. No UI action initiates a scan or AI session. Imports validate formats, hashes, citations and artifact associations before replacing accepted state. Old formats are rejected with regeneration instructions.
 
-The graph must never imply use from co-presence. A category containing a connected child must describe which child is connected. Legacy relationships are not retroactively certified. Empty filters have an explicit no-results state. Rule lists are finite imported snapshots and use native disclosures; the graph limits visible nodes and preserves access via inventory.
+Configuration, availability, prescription and observation have distinct labels and line styles. Group edges retain original relation IDs. Filters and selected evidence remain local. React Flow owns keyboard navigation, zoom and pan; ELK organizes expanded nodes, limited to twelve components per page. Category filters, search, and pagination expose the full inventory. Focus fades unrelated nodes and edges; selected lines expose every original relation ID and its evidence, including grouped connections. The evidence inspector does not render the entire relationship catalog on initial load. Mobile retains the inventory and inspector without horizontal document overflow.
 
-Static quality and coverage are separate. Semantic controls without reviewed evidence remain not evaluated. Observed chat replies are not runtime success. Historical reports remain readable with a legacy notice.
+Settings preserve drafts on failure; native modal owns focus, Escape and restoration. Builder drafts survive navigation and support validation and undo. Palette controls remain shared with exports. Native HTML export escapes text, omits arbitrary snapshot data and makes structured paths opt-in. PNG rejects oversized output explicitly.
 
-## Migration and remaining verification
+Six locales: it/en/es/fr/de/pt. Source paths, evidence and identifiers stay literal. Native events, semantic reviews and inference have visible provenance. Missing evidence is uncertainty, not failure; scores and coverage stay separate. Source and date are visible on imported results.
 
-This change migrates graph, report evaluation and shared shell tokens. Settings and laboratory retain established operations. No new account, billing, permission or destructive server operation is introduced. Their existing form/API validation remains authoritative. Full multi-browser and assistive-technology verification is not claimed by the static audit.
+Verification: npm test, scripts/test-ui-v2.mjs, strict premium audit. Multi-client real runtime verification requires installed clients and authorized hooks; fixture tests are not native execution proofs.
 
-The evidence extension owns contract states. ContractPanel and RelationshipPanel are shared native disclosure owners. Simulator selectors use native platform popups with explicit label associations; no custom geometry is promised. RuntimeProofPanel validates local imports and preserves the previous accepted bundle on failure. Report import checks snapshot hashes before replacing the active report.
+Component fills follow the chosen palette with computed contrasting text. Edge hit areas are 40px; a disclosure lists visible connections as keyboard-accessible buttons. Selecting a connection reveals its origin, IDs, source paths, line references, hashes and available excerpts. Tool details list detection signals and distinguish folder inference, file configuration and explicit settings declarations. Dedicated folders identify a candidate setup, never an installed or running client.
 
-## Map and interaction update — 2026-09-09
+Shared search and pagination belong to ContentControls. Instruction sources, contracts, criteria, events and compliance reviews render at most twelve records per page, retaining source order. Clear search returns focus to the input; composition commits only after IME completion. Map filters survive tab navigation; other report searches are transient in-memory inspection controls. Paths and queries are not written to URLs.
 
-- Policy: docs/EVIDENCE-EVALUATION.md and src/evaluator/contracts.js. Only matching contract-present records draw contractual edges; configured, observed and structural relations are separately selectable. Historical relations are also visible as dashed possible links, explicitly unverified and never promoted to contracts.
-- Exact component IDs own endpoints, including nested targets and secondary tools. Parent/category aggregation must not manufacture or hide a relationship.
-- SetupGraph owns local search, category, tool, relation-kind and selection. Filters stay local because workspace paths may be sensitive. Clearing search immediately restores input focus. Inventory pages contain 24 items, resetting on search/category change.
-- Graph draws the primary tool at its stable center and up to 12 surrounding components per group; selection highlights its component group without replacing the overview. Full inventory and complete relationship register preserve access to larger reports. Mouse drag, native scrollbars, keyboard arrows and zoom/fit support exploration; touch uses native scrolling.
-- Selecting a relationship opens the target inspector and cited contract. Selecting a tool includes records matched by tool_id. No runtime success is implied.
-- SettingsEditor owns a native modal with focus containment, Escape when closing is allowed, and explicit trigger-focus restoration. Closing preserves draft state. Save failure preserves values and keeps the dialog open; App saveLock and saving prevent duplicate requests.
-- Navigation exposes aria-current and updates document titles. The evidence register uses native disclosure.
-
-The user correction restores the radial setup map as the default. All relation kinds are initially visible with distinct line patterns; the “Da verificare” filter exposes historical possible links. Selecting a resource never replaces the primary tool at the center. Missing/ambiguous primary declarations show an honest center placeholder.
-
-
-## Componenti ed elementi — 2026-09-10
-
-Per la richiesta dell’utente, la vista generale conserva il tool AI principale al centro e le componenti aggregate intorno. Una componente raggruppa elementi dello stesso tipo; un elemento è una singola unità con nome, descrizione e metadati, come “Skill evaluator”. SetupGraph mantiene la vista generale durante la selezione e apre gli elementi nel dettaglio. Le categorie canoniche e le palette esistenti restano invariate.
-
-`graphModel` conserva gli ID reali delle relazioni e proietta solo le linee sulla componente; ciascuna linea mantiene gli ID dei collegamenti rappresentati. Inventario e registro mostrano sempre i destinatari reali. La categoria di un elemento dipende dal suo tipo, anche quando appartiene a un plugin.
-
-Una configurazione riconosciuta o un catalogo del tool può stabilire un collegamento senza un contratto nelle istruzioni. Scanner e mappa distinguono disponibilità, configurazione, prescrizione e osservazione. Le voci disabilitate o incomplete non generano nuovi collegamenti operativi; il contenuto di una directory generica non basta a dimostrare disponibilità. Le prove di esecuzione restano distinte. Verifica: test-configuration-links.mjs, test-graph-model.mjs e test-design-ui.mjs.
-
-Il clic su una componente apre subito una finestra modale nativa con la lista dei suoi elementi, nomi, descrizioni e stato. SetupGraph ne gestisce apertura, chiusura con pulsante/Escape, focus e ritorno alla componente. La lista scorre internamente su schermi stretti; selezionare un elemento chiude la finestra e porta al relativo dettaglio.
-
-Zoom e navigazione: useGraphViewport gestisce una camera con traslazione libera e scala 20–300%, zoom ancorato al puntatore, trascinamento mouse/touch e pizzico. La scelta manuale dello zoom persiste durante resize e selezione; Adatta ripristina la vista centrata. Frecce e pulsanti offrono alternative al trascinamento; +/− zoomano, 0/Home adattano. I gesti sono limitati alla superficie del grafico.
-
-Palette componenti: il colore scelto controlla lo sfondo pieno e il bordo del nodo aggregato, le linee e le frecce verso la componente e gli accenti della lista elementi. Hover e selezione preservano il colore. paletteColors sceglie testo nero/bianco per contrasto sul colore utente; il tool centrale mantiene sfondo/bordo/testo configurati separatamente. Anche le categorie presenti solo in elementi annidati compaiono nelle impostazioni.
-
-## Setup builder and sharing — 2026-09-23
-
-Source: the user request for independent HTML/PNG exports and a setup builder with generated instructions. No installation, workspace overwrite or automatic provider configuration is implied.
-
-| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
-|---|---|---|---|---|
-| Local download | src/utils/download.js | Format-specific Blob/text | AWDF, settings, HTML, PNG, Markdown | Browser downloads |
-| Instruction authoring | SetupBuilder + setupBuilder.js | Explicit component draft | Codex → AGENTS.md; Claude Code → CLAUDE.md | Scanner round trips |
-| Export diagram | setupExport.js + graphModel.js | Report and user palette | HTML/full inventory; PNG/map inventory | Offline load and PNG decode |
-| Sharing modal | Modal.jsx | Existing native-dialog contract | Escape, containment, focus restoration | Browser error/retry and keyboard |
-| Builder form | Native controls + validateBuilder | SETUP_COMPONENT_TYPES | Add/edit, import from report, remove/undo | Validation focus and persistence |
-
-App owns the draft independently of the report. Session storage preserves it in the current tab across navigation and refresh. If storage fails, the draft remains in memory, a message explains the limitation, and page unload is guarded. Removal offers Undo. Invalid fields retain their values and receive associated errors and focus on submit. Generation does not clear the draft. No draft content is sent to a server. New users can enter the builder from initial settings without authorizing scan roots.
-
-New UI and generated prose follow the interface language. Names, paths, identifiers and host filenames remain literal. Conditional usage is emitted on the same line as its instruction so the scanner cannot treat it as unconditional. Runtime integrations require separate configuration.
-
-Exports retain names and descriptions. Structured component paths are opt-in; paths within free text are not automatically redacted. Configuration snapshots and arbitrary extensions are not embedded. HTML escapes text and uses a restrictive offline CSP; SVG has no external resources. PNG prevents duplicate requests while busy and retains the modal on failure for retry or HTML export. Oversized images fail explicitly instead of omitting elements.
-
-Verification: scripts/test-builder-export.mjs and scripts/test-builder-export-ui.mjs; evidence in .tmp-evidence-checks/builder-export/. Existing map and evaluation contracts remain authoritative.
-## Tool-specific map scope — 2026-09-25
-
-The native AI-tool select switches between overview and one tool. A tool view follows usable contractual, configured, available, and observed links from that tool; descendants of a linked collection remain navigable without assigning unrelated siblings. Inventory, map groups, and relationship register use the same scope. Selection resets when the tool changes. Wiki collections targeted by a recognized imperative in applicable AGENTS.md or equivalent instructions enter the tool view as structural references. A validated binding marks them connected; a citation alone remains explicitly unverified. Merely scanned collections stay discoverable separately. The offline HTML offers per-tool sections through native anchors and disclosures without scripts.
+Startup shows loading and independent API failure feedback with retry; an unconfigured workspace never blocks import behind a modal. Retry preserves pending settings and an already imported report if the server has none. Settings can close with their draft retained for this session, explicitly distinguish saved/unsaved state, validate absolute paths inline and disable edits during save. Network failures retain input. Native folder selection has a longer timeout for human interaction. Partial scores display without a numeric denominator; stale simulation results are clearly identified.

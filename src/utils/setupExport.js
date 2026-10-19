@@ -14,8 +14,8 @@ const wrap = (value, length) => String(value || '').split(/\r?\n/).flatMap(line 
   while (rest.length > length) { const space = rest.lastIndexOf(' ', length); const cut = space > length / 2 ? space : length; parts.push(rest.slice(0, cut)); rest = rest.slice(cut).trimStart(); }
   parts.push(rest); return parts;
 });
-const kindLabel = kind => t(({ contractual: 'Prescritto', configured: 'Configurato', available: 'Disponibile', observed: 'Osservato', structural: 'Strutturale', legacy_unverified: 'Da verificare' })[kind] || 'Da verificare');
-const dash = kind => ({ contractual: '', configured: '10 5', available: '3 5', observed: '14 3 3 3', structural: '2 3', legacy_unverified: '8 8' })[kind] || '8 8';
+const kindLabel = kind => t(({ contractual: 'Prescritto', configured: 'Configurato', available: 'Disponibile', observed: 'Osservato', structural: 'Strutturale' })[kind] || 'Da verificare');
+const dash = kind => ({ contractual: '', configured: '10 5', available: '3 5', observed: '14 3 3 3', structural: '2 3' })[kind] || '8 8';
 
 export function createSetupExport(report, palette, { includePaths = false, language = 'it' } = {}) {
   const model = buildGraphModel(report);
@@ -28,14 +28,14 @@ export function createSetupExport(report, palette, { includePaths = false, langu
   const nodes = [...model.tools, ...model.groups];
   model.tools.forEach((tool, index) => positions.set(tool.id, { x: width / 2 - 150, y: mapHeight / 2 - model.tools.length * 70 + index * 140, width: 300, height: 120 }));
   model.groups.forEach((group, index) => { const angle = -Math.PI / 2 + index * Math.PI * 2 / model.groups.length; positions.set(group.id, { x: width / 2 + Math.cos(angle) * (width / 2 - 190) - 125, y: mapHeight / 2 + Math.sin(angle) * (mapHeight / 2 - 190) - 56, width: 250, height: 112 }); });
-  const edgeSources = [...model.relations, ...model.availableRelations, ...model.possibleRelations, ...model.referenceRelations];
+  const edgeSources = [...model.relations, ...model.availableRelations, ...model.referenceRelations];
   const edges = projectGroupEdges(edgeSources, model.groupFor, new Set(nodes.map(node => node.id)));
   const elements = [...model.tools, ...model.elements];
   const lines = [];
   const text = (x, y, value, size = 18, fill = ink) => `<text x="${x}" y="${y}" font-size="${size}" fill="${fill}">${escapeMarkup(value)}</text>`;
   const mapSvg = createSetupMap({ report, model, nodes, positions, edges, width, height: mapHeight, palette, bg, ink, escapeMarkup, wrap, dash });
   let y = mapHeight;
-  ['contractual', 'configured', 'available', 'observed', 'structural', 'legacy_unverified'].forEach((kind, index) => {
+  ['contractual', 'configured', 'available', 'observed', 'structural'].forEach((kind, index) => {
     const x = 40 + (index % 3) * (width / 3);
     const ly = y + Math.floor(index / 3) * 35;
     lines.push(`<path d="M${x},${ly} h45" stroke="${relationTone(kind, ink)}" stroke-width="2" stroke-dasharray="${dash(kind)}"/>`, text(x + 55, ly + 5, kindLabel(kind), 16));

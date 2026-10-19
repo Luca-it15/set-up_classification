@@ -14,3 +14,12 @@ setup-scan-report.json
 
 # Local evaluator QA artifacts
 .tmp-evidence-checks/
+
+# Runtime reports may contain private task material
+.awdf-runs/
+setup-evaluation.json
+setup-evaluation.md
+prompt-run.json
+prompt-run.md
+assessment-draft.json
+run-context.json

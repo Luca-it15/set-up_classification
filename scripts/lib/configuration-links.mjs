@@ -14,7 +14,7 @@ export function configurationEntries(format, text) {
         disabled, connectable: !disabled && (match[1] === 'plugins' ? /^\s*enabled\s*=\s*true\s*(?:#.*)?$/m.test(block) : transport !== 'unknown'), transport}];
     });
   }
-  if (!['shared_mcp_configuration', 'copilot_mcp_configuration', 'claude_project_settings'].includes(format)) return [];
+  if (!['shared_mcp_configuration', 'copilot_mcp_configuration', 'copilot_user_mcp_configuration', 'claude_project_settings'].includes(format)) return [];
   let data;
   try { data = JSON.parse(text); } catch { return []; }
   if (!data || typeof data !== 'object' || Array.isArray(data)) return [];
@@ -47,4 +47,22 @@ export function configuredSkills(text) {
     const disabled = /^\s*enabled\s*=\s*false\s*(?:#.*)?$/m.test(block);
     return [{path,disabled}];
   });
+}
+
+// Input must already have passed the scanner's secret redaction. Preserve
+// unfamiliar settings as declarations instead of guessing their runtime effect.
+export function declaredSettings(text) {
+  try { const data = JSON.parse(text); if (data && typeof data === 'object') return data; } catch { /* TOML/INI below */ }
+  const values = {};
+  let section = '', arrayIndex = 0;
+  for (const line of text.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[(\[?)(.+?)\]\]?\s*(?:#.*)?$/);
+    if (header) { section = header[2] + (header[1] ? `[${arrayIndex++}]` : ''); continue; }
+    const entry = line.match(/^\s*([\w.-]+)\s*=\s*(.+?)\s*$/);
+    if (!entry) continue;
+    let value = entry[2];
+    try { value = JSON.parse(value); } catch { value = value.replace(/^'([^']*)'$/, '$1'); }
+    values[section ? `${section}.${entry[1]}` : entry[1]] = value;
+  }
+  return values;
 }

@@ -1,4 +1,4 @@
-import { CONTRACT_KEY, contractApplies, relationKind } from '../evaluator/contracts.js';
+import { contractApplies, relationKind } from '../evaluator/contracts.js';
 import { interpretPrompt } from './interpretPrompt.js';
 import { resolvePrimaryTool } from './primaryTool.js';
 
@@ -73,7 +73,7 @@ export function simulate(prompt, report, context = {}) {
     const total = evidenceScore > 0 ? Math.min(1, evidenceScore * verificationMultiplier * (component.confidence || .5)) : 0;
     return { component, exactNameMatch, total, matchedCapabilities, matchedTriggers, routePosition, routeIntent, isPrimaryTool, factors: { capability_match: capabilityMatch, trigger_match: triggerMatch, name_match: nameMatch, evidence_score: evidenceScore, verification_multiplier: verificationMultiplier } };
   }).filter(entry => entry.isPrimaryTool || (Number.isFinite(entry.routePosition) && (entry.total >= .25 || entry.exactNameMatch))).sort((a, b) => a.routePosition - b.routePosition || b.total - a.total);
-  const contracts = report.extensions?.[CONTRACT_KEY]?.records || [];
+  const contracts = report.extensions?.['org.awdf.description']?.snapshot?.static_contracts?.records || [];
   const taskContext = { ...context, tool_id: context.tool_id || primaryTool?.properties?.tool_id };
   const applicableContracts = contracts.filter(contract => contractApplies(contract, taskContext) === true);
   const uncertainContracts = contracts.filter(contract => contractApplies(contract, taskContext) === null);

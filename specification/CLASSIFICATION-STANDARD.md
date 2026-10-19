@@ -24,7 +24,7 @@ A setup component is a named entity with a distinct responsibility. A component 
 | Configuration | Settings that enable or govern other components. |
 | Validation | Tests, evals, lint, build or another automated quality control. |
 
-The labels in this table are classification concepts. `kind` is the machine-readable value in `schemas/component.schema.json`; `subtype` refines it. In AWDF 1.1, behavior contract, plugin, prompt and validation are also valid `kind` values. Older reports may encode these concepts as subtypes; consumers should retain their original kind and subtype when importing them.
+The labels in this table are classification concepts. `kind` is the machine-readable value in `schemas/component.schema.json`; `subtype` refines it. In AWDF 2.0, behavior contract, plugin, prompt and validation are also valid `kind` values. Previous formats must be regenerated; no automatic conversion.
 
 Manually supplied components use the same taxonomy. They have `verification_status: declared_only` until independent repository or runtime evidence confirms them. Their nested `elements` become child components and `contains` relationships.
 
@@ -67,7 +67,7 @@ The scanner assigns one of three mutually exclusive statuses to a detected tool.
 
 Precedence is `used` > `configured` > `mentioned`. A configuration never proves execution, and a textual mention proves neither installation nor execution. Assistant prose claiming that a tool was used is not sufficient without a structured invocation event.
 
-Alias matching must use the curated tool glossary and token boundaries. Generic words are not valid aliases. Every classified tool records top-level `usage_status`, `usage_standard` in properties, the evidence sources, confidence and verification status. `usage_status` is a separate dimension from verification; `confidence` is a legacy compatibility weight, not calibrated certainty.
+Alias matching must use the curated tool glossary and token boundaries. Generic words are not valid aliases. Every classified tool records top-level `usage_status`, `usage_standard` in properties, the evidence sources, confidence and verification status. `usage_status` is a separate dimension from verification; `confidence` is a heuristic extraction weight, not calibrated certainty.
 
 ## 4. AI coding-tool rule ownership
 

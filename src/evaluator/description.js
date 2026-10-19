@@ -1,5 +1,5 @@
 import { validateContracts } from './contracts.js';
-import { validateCitation } from './index.js';
+import { validateCitation } from './citations.js';
 export const DESCRIPTION_KEY = 'org.awdf.description';
 
 // Preserve every source line, including conditions, prohibitions and examples.
@@ -24,7 +24,7 @@ export function describeInstructions(snapshot, sources) {
 
 export function validateDescription(description) {
   const errors = [];
-  if (description?.version !== '1.0.0' || !Array.isArray(description.snapshot?.files) || !Array.isArray(description.instruction_sources)) return ['Malformed setup description'];
+  if (description?.version !== '2.0.0' || !Array.isArray(description.snapshot?.files) || !Array.isArray(description.instruction_sources)) return ['Malformed setup description'];
   const sources = description.instruction_sources;
   if (sources.some(source => !source || typeof source.path !== 'string' || !Array.isArray(source.applicable_tool_ids) || !Array.isArray(source.blocks)) || description.snapshot.files.some(file => typeof file.path !== 'string' || typeof file.content !== 'string')) return ['Malformed description sources'];
   if (!description.snapshot.tool_context || !description.snapshot.static_contracts) errors.push('Missing source tool context or declared instruction links');

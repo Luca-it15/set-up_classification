@@ -14,7 +14,7 @@ for (const excluded of ['.env', '.env.local', 'secrets/key.txt', 'credentials.js
   assert.equal(sensitiveRelativePath(excluded), true, excluded);
 }
 
-const base = path.join(os.tmpdir(), 'awdf-safety-parent');
+const base = path.join(path.resolve('.tmp-evidence-checks'), 'awdf-safety-parent');
 const root = path.join(base, 'chats', 'auth-service', 'workspace');
 assert.equal(isSensitiveSource({ localRelative: '.codex/config.toml', absolute: path.join(root, '.codex', 'config.toml') }, [root]), false);
 assert.equal(isSensitiveSource({ localRelative: 'link.json', linkTarget: path.join(root, 'secrets', 'credentials.json') }, [root]), true);
@@ -32,11 +32,12 @@ for (const sample of ['password: private-value', 'password = private-value']) {
 }
 assert.match(redactSensitiveText('file=' + path.join(root, 'config.toml'), { anonymized: true, roots: [root] }), /\[WORKSPACE_1\]/);
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'awdf-scan-safety-'));
+const temp = fs.mkdtempSync(path.join(path.resolve('.tmp-evidence-checks'), 'awdf-scan-safety-'));
 const workspace = path.join(temp, 'chats', 'auth-service', 'workspace');
 for (const [relative, content] of Object.entries({
   '.codex/config.toml': 'model = "test-model"\n',
   '.mcp.json': '{"mcpServers":{"example":{"env":{"GITHUB_TOKEN":"ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456"}}}}',
+  'AGENTS.md': 'Read `settings.yaml`.\n',
   'settings.yaml': 'password: private-value\n',
   'tests/example.txt': 'test fixture\n',
   'oauth/guide.md': '# OAuth guide',
@@ -64,13 +65,13 @@ assert.ok(snapshot.files.some(file => file.path.endsWith('.codex/config.toml')))
 assert.ok(snapshot.files.some(file => file.path.endsWith('.mcp.json')));
 assert.ok(snapshot.files.some(file => file.path.endsWith('settings.yaml') && file.content.includes('password: [REDACTED]')));
 assert.deepEqual(verifySnapshot(snapshot), []);
-assert.ok(report.evidence.some(item => item.path === null));
+assert.ok(report.evidence.length > 0);
 assert.ok(report.evidence.every(item => typeof item.sensitive === 'boolean'));
 const fullOutput = path.join(temp, 'report-full.json');
-const fullRun = spawnSync(process.execPath, ['scripts/scan-setup.mjs', workspace, fullOutput, settingsPath], { encoding: 'utf8' });
+const fullRun = spawnSync(process.execPath, ['scripts/describe-setup.mjs', workspace, fullOutput, settingsPath], { encoding: 'utf8' });
 assert.equal(fullRun.status, 0, fullRun.stderr);
 const fullReport = JSON.parse(fs.readFileSync(fullOutput, 'utf8'));
-for (const key of ['org.awdf.evaluation']) {
+for (const key of ['org.awdf.description']) {
   assert.deepEqual(verifySnapshot(fullReport.extensions[key].snapshot), [], key);
 }
 assert.ok(snapshot.excluded_paths.some(item => item.path.endsWith('.env') && item.code === 'SENSITIVE_PATH'));

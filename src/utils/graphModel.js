@@ -1,17 +1,16 @@
 import { CATEGORY_META } from '../data.js';
 import { categoryFor, isVisibleSetupComponent } from './appUtils.js';
-import { CONTRACT_KEY, relationKind } from '../evaluator/contracts.js';
+import { relationKind } from '../evaluator/contracts.js';
 
 // Preserve exact endpoints in the data; aggregate only their visual projection.
 export function buildGraphModel(report) {
   const components = report.components || [];
   const byId = new Map(components.map(item => [item.id, item]));
-  const contracts = report.extensions?.[CONTRACT_KEY]?.records || report.extensions?.['org.awdf.description']?.snapshot?.static_contracts?.records || [];
+  const contracts = report.extensions['org.awdf.description'].snapshot.static_contracts.records;
   const byContract = new Map(contracts.map(item => [item.id, item]));
   const relations = (report.relationships || []).filter(item => {
     if (!byId.has(item.source_id) || !byId.has(item.target_id)) return false;
     const kind = relationKind(item);
-    if (kind === 'legacy_unverified') return false;
     if (kind !== 'contractual') return true;
     const contract = byContract.get(item.properties?.contract_id);
     return contract?.status === 'contract_present' && contract.target_id === item.target_id
@@ -31,10 +30,10 @@ export function buildGraphModel(report) {
     referenceRelations.push({
       id: 'instruction_reference_' + key, source_id: tool.id, target_id: reference.target_id,
       type: 'references', description: 'Risorsa citata nelle istruzioni applicabili al tool; obbligo d’uso da verificare.',
-      properties: { relation_kind: 'structural', instruction_path: reference.source_path, referenced_in_instructions: true }
+      evidence_ids: (report.evidence || []).filter(evidence => evidence.path === reference.source_path).map(evidence => evidence.id),
+      properties: { relation_kind: 'structural', instruction_path: reference.source_path, line: reference.line, excerpt: reference.excerpt, derivation: 'instruction_reference', referenced_in_instructions: true }
     });
   }
-  const possibleRelations = (report.relationships || []).filter(item => relationKind(item) === 'legacy_unverified' && byId.has(item.source_id) && byId.has(item.target_id));
   const availableRelations = [];
   for (const skill of components.filter(item => item.kind === 'skill' && item.subtype !== 'skill_collection')) {
     if (skill.properties?.disabled === true || skill.properties?.enabled === false || skill.activation?.mode === 'disabled') continue;
@@ -45,7 +44,7 @@ export function buildGraphModel(report) {
     if (!source || relations.some(edge => edge.source_id === source.id && edge.target_id === skill.id && ['configured', 'available'].includes(relationKind(edge)))) continue;
     availableRelations.push({id:'available_'+source.id+'_'+skill.id,source_id:source.id,target_id:skill.id,type:'uses',
       description:'Skill disponibile nel catalogo del tool. L’attivazione dipende dal task; non richiede una citazione in AGENTS.md o CLAUDE.md.',
-      evidence_ids:skill.evidence_ids || [],properties:{relation_kind:'available'}});
+      evidence_ids:skill.evidence_ids || [],properties:{relation_kind:'available',derivation:'skill_catalog',basis_path:skill.path}});
   }
   const linkedIds = new Set(), reachable = new Set(tools.map(item => item.id));
   const usableRelations = [...relations, ...availableRelations].filter(item => ['contractual', 'configured', 'available', 'observed'].includes(relationKind(item)) && byId.get(item.target_id)?.properties?.disabled !== true && byId.get(item.target_id)?.properties?.connection_ready !== false);
@@ -70,7 +69,7 @@ export function buildGraphModel(report) {
     if (!groups.has(id)) groups.set(id,{id,name:meta.label,description:meta.description,kind:'group',category,properties:{setup_category:category},items:[]});
     groups.get(id).items.push(item); groupFor.set(item.id,id);
   }
-  return { elements: [...groups.values()].flatMap(group => group.items), components, byId, contracts, byContract, relations, possibleRelations, availableRelations, referenceRelations, instructionReferences, referencedIds, tools, linkedIds, groups:[...groups.values()], groupFor };
+  return { elements: [...groups.values()].flatMap(group => group.items), components, byId, contracts, byContract, relations, availableRelations, referenceRelations, instructionReferences, referencedIds, tools, linkedIds, groups:[...groups.values()], groupFor };
 }
 
 // Follow only evidenced, usable links from one AI tool. Parent containers preserve
@@ -108,7 +107,7 @@ export function toolScope(model, toolId) {
       parent = model.byId.get(parent)?.parent_id;
     }
   }
-  const relations = [...model.relations, ...model.availableRelations, ...model.possibleRelations, ...model.referenceRelations]
+  const relations = [...model.relations, ...model.availableRelations, ...model.referenceRelations]
     .filter(edge => visibleIds.has(edge.source_id) && visibleIds.has(edge.target_id)
       && (!toolIds.has(edge.source_id) || edge.source_id === toolId)
       && (!toolIds.has(edge.target_id) || edge.target_id === toolId));

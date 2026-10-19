@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fixture} from './lib/fixtures-v2.mjs';
+import {describeWorkspace} from './lib/describe-workspace.mjs';
 import { analyzeAiToolSetup } from './lib/ai-tool-rules.mjs';
 
 const workspaceRoot = 'C:\\workspace\\project';
@@ -300,4 +304,28 @@ const analyze = (entries, explicitTool = 'auto', selectedRoot = workspaceRoot) =
   assert.equal(result.diagnostics.some(item => item.code === 'instruction_path_near_miss'), true);
 }
 
+{
+  const directories=['.codex','.claude','.copilot','.github','.agents'].map(name=>({absolute:workspaceRoot+'\\'+name,relative:name,workspaceRoot}));
+  const result=analyzeAiToolSetup([],{readText:()=>'',directories});
+  assert.deepEqual(result.resolution.detected_tool_ids,['codex','claude_code','github_copilot']);
+  assert.ok(result.detected.every(tool=>tool.signals.every(signal=>signal.kind==='workspace_directory')&&tool.confidence===.5));
+  assert.ok(result.resolution.candidates.every(candidate=>candidate.reason==='dedicated_directory_only'));
+  assert.equal(analyzeAiToolSetup([],{readText:()=>'',directories:directories.slice(3)}).resolution.status,'none','Generic .github and shared .agents directories do not identify a client');
+}
 console.log('AI tool profile and instruction-resolution tests passed.');
+{
+  const setup=fixture('codex',{}, {tools:[],reference_tool:'auto'});
+  fs.mkdirSync(path.join(setup.workspace,'.claude'));
+  fs.mkdirSync(path.join(setup.workspace,'.copilot'));
+  fs.mkdirSync(path.join(setup.workspace,'.github'));
+  fs.mkdirSync(path.join(setup.workspace,'.tmp-evidence-checks','.claude'),{recursive:true});
+  const report=describeWorkspace([setup.workspace,setup.output,setup.settingsFile]);
+  for(const id of ['claude_code','github_copilot']) {
+    const tool=report.components.find(component=>component.subtype==='reference_ai_coding_tool'&&component.properties.tool_id===id);
+    assert.equal(tool,undefined,'Directory presence alone is outside setup description scope');
+  }
+  setup.settings.workspace.excluded=['.claude','.copilot'];
+  fs.writeFileSync(setup.settingsFile,JSON.stringify(setup.settings));
+  const excluded=describeWorkspace([setup.workspace,setup.output,setup.settingsFile]);
+  assert.deepEqual(excluded.components.filter(component=>component.subtype==='reference_ai_coding_tool').map(component=>component.properties.tool_id),['codex']);
+}

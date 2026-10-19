@@ -1,12 +1,5 @@
 # Changelog
 
-## AWDF 1.1.0
+## AWDF 2.0.0
 
-- Defined the descriptive producer profile: `org.awdf.description`, empty legacy review arrays, null scores and unknown maturity.
-- Added machine-readable component `usage_status` and taxonomy kinds for behavior contracts, plugins, prompts and validation.
-- Aligned the knowledge corpus criterion with explicit AI-host consultation rather than directory names.
-- Kept AWDF 1.0 review reports readable as historical compatibility documents.
-
-## AWDF 1.0.0
-
-Initial release introducing the document structure, components, relationships, workflows, assessments, findings, recommendations, evidence, extensions and compatibility rules.
+Descrizione pura; tre skill indipendenti; checklist software separata; cataloghi versionati e punteggi 0–100; recorder e timeline per tre client; React Flow ed ELK. Rimossi scoring 0–5, orchestrazione analisti/reviewer, attestazioni storiche, vecchi alias e compatibilità AWDF 1.x.
