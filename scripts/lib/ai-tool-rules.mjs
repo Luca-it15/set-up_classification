@@ -865,9 +865,20 @@ function candidateFromSharedArtifacts(artifacts, toolId) {
   return { tool_id: toolId, confidence: Math.max(...matches.map(item => item.confidence)), evidence_paths: [...new Set(matches.map(item => item.path))].sort(), reason: 'shared_compatibility_only' };
 }
 
-// Description entrypoints deliberately exclude independently discovered skills,
-// agents, workflows and alternate Markdown instruction formats.
+// Catalog membership is a setup entrypoint. An arbitrary SKILL.md elsewhere
+// still needs an explicit instruction/configuration reference.
+export function setupSkillOwner(file) {
+  const project = projectPath(file), local = localPath(file);
+  if (!/(?:^|\/)SKILL\.md$/.test(local)) return null;
+  if (/^\.claude\/skills\/.+\/SKILL\.md$/.test(project) || (rootName(file) === '.claude' && /^skills\/.+\/SKILL\.md$/.test(local))) return 'claude_code';
+  if (/^\.github\/skills\/.+\/SKILL\.md$/.test(project)) return 'github_copilot';
+  if (/^\.(?:codex|agents)\/skills\/.+\/SKILL\.md$/.test(project) || (['.codex', '.agents'].includes(rootName(file)) && /^skills\/.+\/SKILL\.md$/.test(local))) return 'codex';
+  return null;
+}
+
+// Agents, workflows and alternate Markdown instruction formats remain linked-only.
 export function isSetupDescriptionSeed(file) {
+  if (setupSkillOwner(file)) return true;
   if (/^(?:AGENTS|CLAUDE)\.md$/i.test(path.basename(file.localRelative))) return true;
   const definition = artifactDefinitions.find(candidate => candidate.matches(file));
   return definition?.kind === 'configuration' && definition.id !== 'claude_extension' && !/\.(md|mdx)$/i.test(file.localRelative) && !['skills', 'custom_agents'].includes(definition.category);

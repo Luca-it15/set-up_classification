@@ -40,6 +40,10 @@ node scripts/validate-awdf.mjs ai-setup.json
 
 Il collector legge solo le cartelle autorizzate; non esegue il codice trovato. Gli snapshot contengono estratti redatti, citazioni e hash, non garantiscono una cattura atomica dell'intero filesystem. Cronologia chat esclusa salvo opt-in. La redazione è best effort: revisionare gli export prima di condividerli.
 
+Le raccolte documentali consultate tramite istruzioni applicabili vengono rappresentate come knowledge base, con percorso, fonte della prescrizione e collegamento al client. Il report conserva i punti di consultazione raggiunti (indice, `AGENTS_WIKI.md`, routing dei topic) e il relativo meccanismo. Riconosce anche i link nelle tabelle `Trigger / Required context` e i percorsi Markdown con spazi codificati come `%20`. Una cartella chiamata `wiki` senza riferimenti operativi non basta; una consultazione facoltativa non diventa obbligatoria. Le wiki remote, ad esempio in Teams, richiedono un modello di connessione distinto e non vengono interrogate dallo scanner statico. Per applicare queste regole a un report già esportato occorre rigenerarlo dalle radici autorizzate.
+
+Quando la radice autorizzata contiene più progetti, le raccolte dichiarate nelle istruzioni dei progetti figli conservano il proprio scope. Se quelle istruzioni non sono applicabili al task corrente, la risorsa appare come disponibile con la dichiarazione originale, senza introdurre un contratto o un obbligo globale.
+
 ## Esplorare il setup
 
 Le sezioni separano mappa, descrizione, checklist, valutazione, simulazione statica ed esecuzioni osservate. La ricerca si può azzerare con ×; i filtri della mappa restano attivi cambiando sezione. Le liste di istruzioni, criteri e prove mostrano dodici elementi per pagina. Le frecce della tastiera, Home ed End permettono di cambiare sezione.
@@ -62,6 +66,8 @@ Per vedere le destinazioni aggiungi `--dry-run`. Le copie installate registrano 
 - [awdf-describe](skills/awdf-describe/SKILL.md): produce la descrizione AWDF 2.0.
 - [awdf-assess](skills/awdf-assess/SKILL.md): raccoglie obiettivo, task, percorso e tool, giudica ogni criterio con citazioni esatte e produce un draft. `node scripts/assess-setup.mjs ai-setup.json draft.json setup-evaluation.json` valida e calcola i risultati. Per più tool produrre file separati.
 - [awdf-prompt-evaluate](skills/awdf-prompt-evaluate/SKILL.md): esegue il prompt nella sessione corrente, mantenendone i permessi, e documenta gli eventi osservati. Non avvia sessioni AI dall'app.
+
+La descrizione include le definizioni `SKILL.md` presenti nei cataloghi standard autorizzati (`.codex/skills`, `.agents/skills`, `.claude/skills`, `.github/skills`), anche senza riferimenti in `AGENTS.md`. Riconosce sia le home autorizzate `.codex`, `.agents` e `.claude`, sia i cataloghi dei repository figli identificati tramite `.git`. Ogni skill conserva percorso e tool di riferimento; una copia personale e una di progetto restano elementi distinti. La presenza nel catalogo indica disponibilità, non esecuzione. Le skill disabilitate rimangono nell’inventario senza collegamento di disponibilità. Gli script e gli altri file di supporto vengono letti solo se raggiunti da riferimenti operativi; esempi, cache di plugin non collegate e file `SKILL.md` generici non vengono promossi automaticamente. Le cartelle esterne alle radici autorizzate richiedono un’autorizzazione separata nei settings.
 
 ## Valutazione
 

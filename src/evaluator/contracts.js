@@ -26,7 +26,8 @@ export function contractApplies(contract,context={}) {
 function referencedPaths(source,excerpt) {
  const directory=source.split('/').slice(0,-1);
  return [...excerpt.matchAll(/\x60([^\x60\n]+)\x60|\]\(([^)\s]+)\)|(?:^|\s)@([^\s]+\.md)(?=\s|$)/g)].map(match=>{
-  const value=(match[1]||match[2]||match[3]).split('#')[0];
+  let value=(match[1]||match[2]||match[3]).split('#')[0];
+  if(match[2]){try{value=decodeURIComponent(value);}catch{/* Preserve unresolved malformed escapes. */}}
   if(value.startsWith('/')||/^[a-z]:/i.test(value))return normalize(value);
   const segments=[...directory];
   for(const part of value.split('/')){if(part==='..')segments.pop();else if(part&&part!=='.')segments.push(part);}

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { snapshotId } from './snapshot.mjs';
 import { analyzeInstructionLinks, inspectInstructionReferences, applicableInstructions as applicableInstructionsForTask, instructionScope } from './instruction-links.mjs';
-import { analyzeAiToolSetup } from './ai-tool-rules.mjs';
+import { analyzeAiToolSetup, setupSkillOwner } from './ai-tool-rules.mjs';
 import { collectWorkspace } from './collect-workspace.mjs';
 import { discoverSetup } from './setup-discovery.mjs';
 import { writeDescription } from './write-description.mjs';
@@ -408,20 +408,17 @@ const skillRegistrations = toolAnalysis.artifacts.filter(item => item.format ===
 for (const skill of components.filter(item => item.kind === 'skill' && item.subtype !== 'skill_collection')) {
   const file = fileRecordIndex.get(rawComponentPaths.get(skill.id));
   if (!file) continue;
-  const local = file.localRelative.replaceAll('\\', '/');
-  const home = path.basename(file.workspaceRoot).toLowerCase();
-  const owner = /^\.claude\/skills\//.test(local) || (home === '.claude' && /^skills\//.test(local)) ? 'claude_code'
-    : /^\.(?:codex|agents)\/skills\//.test(local) || (['.codex','.agents'].includes(home) && /^skills\//.test(local)) ? 'codex' : null;
+  const owner = setupSkillOwner(file);
   const registrations = skillRegistrations.filter(entry => entry.absolute === file.absolute || isWithin(entry.absolute, file.absolute));
   const disabled = registrations.some(entry => entry.disabled);
   const sourceId = referenceToolComponentIds.get(registrations.length ? 'codex' : owner);
+  if (owner || registrations.length) skill.properties.owner_tool_id = registrations.length ? 'codex' : owner;
   if (disabled) { skill.properties.disabled = true; skill.properties.connection_ready = false; }
   if (registrations.length) {
     skill.properties.usage_status = 'configured';
     skill.evidence_ids.push(...registrations.map(entry => addEvidence('configuration', entry.artifact.path, 'Registrazione esplicita della skill nel tool.')));
   }
   if (!sourceId || disabled || skill.properties?.sensitive_content_excluded) continue;
-  skill.properties.owner_tool_id = registrations.length ? 'codex' : owner;
   relationships.push({id:`rel_available_${sourceId}_${skill.id}`,source_id:sourceId,target_id:skill.id,type:'uses',
     description:'Skill presente nel catalogo del tool e disponibile in base al task; esecuzione non verificata.',
     confidence:.5,verification_status:'declared_only',evidence_ids:[...skill.evidence_ids,...registrations.map(entry => addEvidence('configuration',entry.artifact.path,'Registrazione esplicita della skill nel tool.'))],properties:{relation_kind:registrations.length ? 'configured' : 'available'}});
@@ -606,7 +603,7 @@ for (const intended of intendedByRoot.values()) for (const item of intended) {
 }
 const analyses = roots.map(workspaceRoot => analyzeInstructionLinks({
   artifacts: toolAnalysis.artifacts.filter(item => item.file.workspaceRoot === workspaceRoot),
-  targets: components.filter(component => component.subtype !== 'reference_ai_coding_tool' && (!component.parent_id || component.subtype === 'documentation_collection' || intendedByRoot.get(workspaceRoot).some(item => item.path === rawComponentPaths.get(component.id))))
+  targets: components.filter(component => component.subtype !== 'reference_ai_coding_tool' && (!component.parent_id || component.subtype === 'documentation_collection' || component.kind === 'knowledge_base' || intendedByRoot.get(workspaceRoot).some(item => item.path === rawComponentPaths.get(component.id))))
     .map(component => ({ id: component.id, path: rawComponentPaths.get(component.id) }))
     .filter(item => roots.length === 1 || item.path === rootLabels.get(workspaceRoot) || item.path?.startsWith(rootLabels.get(workspaceRoot) + '/')),
   toolIds: toolAnalysis.resolution.applicable_tool_ids,
@@ -621,7 +618,7 @@ for (const key of ['bindings', 'gaps', 'references', 'records']) linkAnalysis[ke
 for (const binding of linkAnalysis.bindings) {
   const sourceId = referenceToolComponentIds.get(binding.tool_id);
   const targetComponent = components.find(item => item.id === binding.target_id);
-  if (targetComponent?.subtype === 'documentation_collection' && targetComponent.properties?.document_count >= 2
+  if ((targetComponent?.subtype === 'documentation_collection' || targetComponent?.kind === 'knowledge_base') && targetComponent.properties?.document_count >= 2
     && /^(?:read|consult|use|search|leggi|consulta|usa|cerca|leggere|consultare|usare|cercare)$/i.test(binding.action)) {
     const contract = linkAnalysis.records.find(record => record.tool_id === binding.tool_id && record.target_id === binding.target_id && record.line === binding.line && record.status === 'contract_present');
     if (contract) {
@@ -634,7 +631,7 @@ for (const binding of linkAnalysis.bindings) {
       targetComponent.description = `${targetComponent.properties.purpose ? targetComponent.properties.purpose + ' ' : ''}Corpus di ${targetComponent.properties.document_count} fonti la cui consultazione è prescritta al tool AI.`;
       targetComponent.properties = { ...targetComponent.properties, setup_category: 'knowledge_bases', qualification: 'instruction_bound',
         knowledge_bindings: knowledgeBindings, definition_standard: 'managed_retrievable_corpus_v1',
-        knowledge_item_count: targetComponent.properties.document_count, retrieval_mechanism: 'filesystem_collection' };
+        knowledge_item_count: targetComponent.properties.document_count, retrieval_mechanism: 'filesystem_collection', mandatory: true };
       targetComponent.tags = ['knowledge_bases'];
       for (const child of components.filter(item => item.parent_id === targetComponent.id && item.kind === 'document')) {
         child.subtype = 'knowledge_document';
@@ -654,6 +651,66 @@ for (const binding of linkAnalysis.bindings) {
   const item = evidence.find(item => item.id === evidenceId);
   item.location = `line:${binding.line}`;
   relationships.push({ id: `rel_${crypto.createHash('sha1').update(`${sourceId}:${binding.target_id}:${binding.source_path}:${binding.line}`).digest('hex').slice(0,10)}`, source_id: sourceId, target_id: binding.target_id, type: 'reads_from', description: 'Consultazione prescritta da una regola esplicita applicabile; rispetto runtime non osservato.', confidence: 1, verification_status: 'declared_only', evidence_ids: [evidenceId], properties: { relation_kind: 'contractual', contract_id: linkAnalysis.records.find(record => record.tool_id === binding.tool_id && record.target_id === binding.target_id && record.line === binding.line)?.id, binding_method: binding.method, instruction_path: reportPath(binding.source_path), line: binding.line, declared_obligation: true } });
+}
+// Represent the actual consultation entry points, with paths and source links.
+// Only already reached documents qualify; names alone never discover a corpus.
+for (const collection of components.filter(item => (item.kind === 'knowledge_base' || item.subtype === 'documentation_collection') && item.properties.document_count >= 2)) {
+  const entryPoints = components.filter(item => item.parent_id === collection.id && item.kind === 'document').flatMap(item => {
+    const name = path.posix.basename(rawComponentPaths.get(item.id));
+    const role = /^(?:index|readme)\.md$/i.test(name) ? 'index'
+      : /^AGENTS_WIKI\.md$/i.test(name) ? 'contract'
+      : /(?:topic[ _-]*routing|routing[ _-]*topic).*\.md$/i.test(name) ? 'topic_routing' : null;
+    return role ? [{ component_id: item.id, path: item.path, role }] : [];
+  });
+  // A setup-wide scan can contain instructions for child repositories outside
+  // the current task. Preserve their scoped corpus declarations as availability,
+  // without manufacturing a current-task contract.
+  if (collection.kind !== 'knowledge_base' && entryPoints.length) {
+    const declarations = discovery.references.filter(ref => ref.target_path === rawComponentPaths.get(collection.id)
+      && ref.operational && !ref.optional && !ref.configured && ref.status === 'present'
+      && /^(?:read|consult|use|search|leggi|consulta|usa|cerca|leggere|consultare|usare|cercare)$/i.test(ref.action || '')
+      && !ref.conditions.some(item => item.type === 'unresolved'));
+    const qualified = declarations.flatMap(ref => {
+      const origin = [ref.source_path, ...ref.reference_chain.toReversed()].map(source => toolAnalysis.artifacts.find(item => item.path === source && item.category === 'behavior_contract')).find(Boolean);
+      if (!origin) return [];
+      return toolAnalysis.resolution.applicable_tool_ids.filter(toolId =>
+        applicableInstructionsForTask([origin], toolId, instructionScope(origin), toolModes).length
+        && !applicableInstructions([origin], toolId, configuredWorkspace.task_path || '.', toolModes).length
+      ).map(toolId => ({ ref, origin, toolId }));
+    });
+    if (qualified.length) {
+      collection.kind = 'knowledge_base';
+      collection.subtype = 'managed_document_corpus';
+      Object.assign(collection.properties, { setup_category: 'knowledge_bases', qualification: 'scoped_consultation_declaration',
+        definition_standard: 'managed_retrievable_corpus_v1', knowledge_item_count: collection.properties.document_count,
+        retrieval_mechanism: 'filesystem_collection',
+        consultation_declarations: qualified.map(({ref, origin, toolId}) => ({ tool_id: toolId, source_path: reportPath(ref.source_path),
+          line: ref.line, scope: reportPath(instructionScope(origin)), conditions: ref.conditions, applicable_to_current_task: false,
+          reference_chain: ref.reference_chain.map(reportPath) })) });
+      collection.tags = ['knowledge_bases'];
+      for (const {ref, origin, toolId} of qualified) {
+        const ev = addEvidence('instruction_file', ref.source_path, ref.excerpt);
+        evidence.find(item => item.id === ev).location = `line:${ref.line}`;
+        collection.evidence_ids.push(ev);
+        const properties = { relation_kind: 'available', instruction_path: reportPath(ref.source_path), line: ref.line,
+          scope: reportPath(instructionScope(origin)), conditions: ref.conditions, applicable_to_current_task: false, declared_obligation: false };
+        const sources = [referenceToolComponentIds.get(toolId), ...components.filter(item => item.subtype !== 'reference_ai_coding_tool' && rawComponentPaths.get(item.id) === ref.source_path).map(item => item.id)].filter(Boolean);
+        for (const source of sources) relationships.push({ id: `rel_scoped_${source}_${collection.id}_${ref.line}`, source_id: source,
+          target_id: collection.id, type: 'references', description: 'Consultazione dichiarata nello scope del progetto; istruzioni non applicabili al task corrente.',
+          confidence: .9, verification_status: 'declared_only', evidence_ids: [ev], properties });
+      }
+    }
+  }
+  if (collection.kind !== 'knowledge_base') continue;
+  collection.properties.consultation_entry_points = entryPoints;
+  const roles = new Set(entryPoints.map(item => item.role));
+  collection.properties.consultation_mechanism = roles.has('index') && roles.has('topic_routing') ? 'index-and-topic-routing'
+    : roles.has('index') ? 'index' : roles.has('contract') ? 'contract' : 'filesystem_collection';
+  for (const entry of entryPoints) relationships.push({ id: `rel_entry_${collection.id}_${entry.component_id}`,
+    source_id: collection.id, target_id: entry.component_id, type: entry.role === 'contract' ? 'documented_by' : 'references',
+    description: `Punto di consultazione della raccolta: ${entry.role}.`, confidence: 1, verification_status: 'declared_only',
+    evidence_ids: components.find(item => item.id === entry.component_id).evidence_ids,
+    properties: { relation_kind: 'structural', consultation_role: entry.role } });
 }
 for (const ref of discovery.references.filter(item => item.operational && item.status === 'present')) {
   const source = components.find(item => item.subtype !== 'reference_ai_coding_tool' && rawComponentPaths.get(item.id) === ref.source_path);

@@ -53,10 +53,8 @@ assert.equal(configComponent.properties.declared_settings.sandbox_mode,'workspac
 const linked=(name,kind)=>report.relationships.filter(e=>e.properties?.relation_kind===kind && report.components.find(c=>c.id===e.source_id)?.subtype==='reference_ai_coding_tool' && report.components.find(c=>c.id===e.target_id)?.name===name);
 for(const name of ['active@vendor','active','claude-active@vendor','remote']) assert.equal(linked(name,'configured').length,1,name);
 for(const name of ['inactive@vendor','off','incomplete','claude-off@vendor','disabled']) assert.equal(linked(name,'configured').length,0,name);
-assert.equal(linked('Skill evaluator','available').length,0);
-assert.ok(!report.components.some(c=>c.name==='Skill evaluator'));
-assert.equal(linked('Writer','available').length,0);
-assert.ok(!report.components.some(c=>c.name==='Writer'));
+assert.equal(linked('Skill evaluator','available').length,1);
+assert.equal(linked('Writer','available').length,1);
 assert.equal(linked('Registered','configured').length,1);
 assert.equal(linked('Disabled skill','available').length,0);
 assert.ok(report.components.find(c=>c.name==='Disabled skill').properties.disabled);

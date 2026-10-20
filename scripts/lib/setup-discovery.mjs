@@ -61,13 +61,13 @@ export function discoverSetup({ files, directories, readText, roots, isWithin })
         resources.set(directory.relative, { ...directory, members, optional: ref.optional, configured: !!ref.configured });
         // Catalog definitions and navigation indexes describe the resource;
         // ordinary corpus members are never opened merely for being in it.
-        for (const member of members.filter(item => /(?:^|\/)(?:SKILL|index|README)\.md$/i.test(item.relative) && (path.dirname(item.absolute) === absolute || /(?:^|\/)SKILL\.md$/i.test(item.relative)))) {
+        for (const member of members.filter(item => /(?:^|\/)(?:SKILL|index|README|AGENTS_WIKI)\.md$/i.test(item.relative) && (path.dirname(item.absolute) === absolute || /(?:^|\/)SKILL\.md$/i.test(item.relative)))) {
           visit(member, [...chain, file.relative]);
         }
       }
     }
     completed.add(file.relative);
   }
-  for (const file of seeds) visit(file, [], !/^(AGENTS|CLAUDE)\.md$/i.test(path.basename(file.relative)));
+  for (const file of seeds) visit(file, [], /\.(?:json|jsonc|toml|ya?ml|ini|cfg)$/i.test(file.relative));
   return { files: [...selected.values()], resources: [...resources.values()], references, issues, seedPaths };
 }

@@ -40,11 +40,23 @@ function linesOf(content) {
       if (exampleDepth && heading[1].length <= exampleDepth) exampleDepth = null;
       if (/example|esempio|esempi/i.test(line)) exampleDepth = heading[1].length;
     }
-    return fenced || exampleDepth || /^\s*(?:>|#)/.test(line) ? [] : [{ line, number: index + 1 }];
+    // A later prohibition applies to its own references, not to every path on
+    // the physical line. Keep the original line for verifiable citations.
+    return fenced || exampleDepth || /^\s*(?:>|#)/.test(line) ? []
+      : line.split(/(?<=[.!?])\s+(?=(?:Do not|Don't|Never|Non|Mai)\b)/i)
+        .map(clause => ({ line: clause, original: line, number: index + 1 }));
   });
 }
 function pathsOf(line, targets = []) {
-  const marked = [...line.matchAll(/\x60([^\x60\n]+)\x60|\]\(([^)\s]+)\)|(?:^|\s)@([^\s]+\.md)(?=\s|$)/g)].map(match => ({ value: match[1] || match[2] || match[3], imported: !!match[3] }));
+  const marked = [...line.matchAll(/\x60([^\x60\n]+)\x60|\]\(([^)\s]+)\)|(?:^|\s)@([^\s]+\.md)(?=\s|$)/g)].map(match => {
+    let value = match[1] || match[2] || match[3];
+    // Decode Markdown URL paths only; literal filesystem paths stay literal.
+    if (match[2] && !/^[a-z]+:\/\//i.test(value)) {
+      const [pathname, ...fragment] = value.split('#');
+      try { value = decodeURIComponent(pathname) + (fragment.length ? '#' + fragment.join('#') : ''); } catch { /* Keep malformed escapes as an unresolved reference. */ }
+    }
+    return { value, imported: !!match[3] };
+  });
   const bare = [...line.matchAll(/(?:^|[\s("'\x60])((?:\.{1,2}\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\/?)(?=$|[\s),:;.!?\x60])/g)]
     .map(match => match[1].replace(/[.,;:!?]+$/, ''))
     .filter(value => targets.some(target => normalize(value) === target || normalize(value).startsWith(target + '/')))
@@ -60,15 +72,20 @@ function resolve(source, value) {
 }
 // Discovery keeps optional availability separate from contractual obligations.
 export function setupResourceReferences(content, targets = [], { claudeImports = false } = {}) {
-  return linesOf(content).flatMap(({ line, number }) => {
+  let requiredContextTable = false;
+  return linesOf(content).flatMap(({ line, original, number }) => {
+    if (!line.trim().startsWith('|')) requiredContextTable = false;
+    if (/^\s*\|\s*Trigger\s*\|\s*Required context\s*\|/i.test(line)) requiredContextTable = true;
+    const routing = requiredContextTable && !/^\s*\|\s*(?:Trigger\b|[-:])/i.test(line);
     const command = directive(line);
     const optional = /\b(?:may|can|optional|optionally|puoi|facoltativ[oaie])\b/i.test(line);
     const optionalAction = optional && /\b(?:read|consult|use|follow|search|leggi|consulta|usa|segui|cerca|leggere|consultare|usare)\b/i.test(line);
     const negated = /\b(?:not|never|don't|non|mai)\b/i.test(line);
     return pathsOf(line, targets).map(ref => ({
-      value: ref.value, line: number, excerpt: line,
-      operational: !negated && (!!command || optionalAction || (ref.imported && claudeImports)),
-      optional: !!optional, conditions: command?.conditions || [], imported: ref.imported
+      value: ref.value, line: number, excerpt: original,
+      action: command?.action || null,
+      operational: !negated && (!!command || routing || optionalAction || (ref.imported && claudeImports)),
+      optional: !!optional, conditions: command?.conditions || (routing ? [{ type: 'unresolved', value: line.split('|')[1].trim() }] : []), imported: ref.imported
     }));
   });
 }
@@ -105,13 +122,13 @@ export function inspectInstructionReferences({ artifacts, files, readText, refer
     visitedPaths.add(source);
     let content;
     try { content = readText(file); } catch { issues.push({ code: 'instruction_reference_unreadable', path: source }); return; }
-    for (const { line, number } of linesOf(content)) for (const ref of pathsOf(line).filter(ref => /\.md(?:#.*)?$/i.test(ref.value))) {
+    for (const { line, original, number } of linesOf(content)) for (const ref of pathsOf(line).filter(ref => /\.md(?:#.*)?$/i.test(ref.value))) {
       const resolved = resolve(source, ref.value);
       if (!resolved) continue;
       if (resolved.outside) { issues.push({ code: 'instruction_reference_outside_scope', path: source, line: number }); continue; }
       const targetFile = byPath.get(resolved.path);
       const effectiveStatus = referenceStatus(resolved.path, targetFile);
-      references.push({ source_path: source, target_path: resolved.path, line: number, excerpt: line, status: effectiveStatus });
+      references.push({ source_path: source, target_path: resolved.path, line: number, excerpt: original, status: effectiveStatus });
       if (effectiveStatus !== 'present') issues.push({ code: 'instruction_reference_' + effectiveStatus, path: source, target_path: resolved.path, line: number });
       // Navigation links do not load instructions. Only recognized directives/imports do.
       const command = directive(line);
@@ -136,7 +153,7 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
       if (chain.includes(source) || chain.length > (toolId === 'claude_code' ? 4 : 16)) return;
       let content; try { content = readText(file); } catch { return; }
       let listCondition = null;
-      for (const { line, number } of linesOf(content)) {
+      for (const { line, original, number } of linesOf(content)) {
         if (/^\s*Per richieste del tipo\b/i.test(line) && /:\s*$/.test(line)) {
           listCondition = { type: 'task_kind', value: 'documentation_query' };
           continue;
@@ -144,10 +161,10 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
         if (!line.trim() || (listCondition && !/^\s*[-*]\s+/.test(line))) listCondition = null;
         const command = directive(line);
         if (command && listCondition) command.conditions.push(listCondition);
-        const citation = { path: source, start_line: number, end_line: number, excerpt: line };
+        const citation = { path: source, start_line: number, end_line: number, excerpt: original };
         for (const ref of pathsOf(line, command ? targetPaths : [])) {
           const resolved = resolve(source, ref.value); if (!resolved) continue;
-          instructions.push({ source, line: number, excerpt: line, resolved, command, root, chain: [...chain, source], evidence: [...citations, citation] });
+          instructions.push({ source, line: number, excerpt: original, negated: /\b(?:not|never|don't|non|mai)\b/i.test(line), resolved, command, root, chain: [...chain, source], evidence: [...citations, citation] });
           const targetFile = byPath.get(resolved.path);
           if (!resolved.outside && targetFile && /\.md$/i.test(resolved.path) && ((command && !command.conditions.length) || (ref.imported && toolId === 'claude_code'))) walk(targetFile, root, [...chain, source], [...citations, citation]);
         }
@@ -173,7 +190,7 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
       const workflow = intended.find(item => item.tool_id === toolId && normalize(item.path) === targetPath && within(item.scope || '.', taskPath));
       const related = referencesByTarget.get(target.id) || [];
       const operational = related.filter(item => item.command);
-      const conflict = related.some(item => /\b(?:not|never|don't|non|mai)\b/i.test(item.excerpt));
+      const conflict = related.some(item => item.negated);
       for (const item of related) references.push({ tool_id: toolId, target_id: target.id, source_path: item.source, line: item.line, excerpt: item.excerpt, binding: !!item.command });
       for (const item of operational) {
         if (item.resolved.outside || (files && !exists(item.resolved.path)) || conflict || item.command.conditions.some(condition => condition.type === 'unresolved') || incomplete) continue;
