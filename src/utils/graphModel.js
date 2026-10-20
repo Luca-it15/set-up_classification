@@ -59,6 +59,10 @@ export function buildGraphModel(report) {
   const groups = new Map(), groupFor = new Map();
   for (const item of components.filter(isVisibleSetupComponent)) {
     if (tools.some(tool => tool.id === item.id)) continue;
+    // Documents remain evidence, not a separate map category. Consultation
+    // entry points belong to the knowledge base and do not count as extra nodes.
+    if (categoryFor(item) === 'documentation') continue;
+    if (item.kind === 'document' && categoryFor(item) === 'knowledge_bases' && byId.get(item.parent_id)?.kind === 'knowledge_base') continue;
     // Documentation is visible in the setup map only when an AI-host link
     // reaches the document or its collection. It remains in the AWDF inventory.
     if ((item.kind === 'document' && item.subtype !== 'behavior_contract' && !linkedIds.has(item.id) && !linkedIds.has(item.parent_id) && !referencedIds.has(item.id) && !referencedIds.has(item.parent_id))

@@ -20,6 +20,8 @@ First load with no setup shows an empty state. Examples require explicit action.
 
 Configuration, availability, prescription and observation have distinct labels and line styles. Group edges retain original relation IDs. Filters and selected evidence remain local. React Flow owns keyboard navigation, zoom and pan; ELK organizes expanded nodes, limited to twelve components per page. Category filters, search, and pagination expose the full inventory. Focus fades unrelated nodes and edges; selected lines expose every original relation ID and its evidence, including grouped connections. The evidence inspector does not render the entire relationship catalog on initial load. Mobile retains the inventory and inspector without horizontal document overflow.
 
+Knowledge collections appear under Knowledge base. Documentation is not a separate map category; indexes and collection documents remain report evidence and consultation entry points, rather than separate map elements. Standalone documents retain their type and are not promoted to knowledge bases merely to display them.
+
 Settings preserve drafts on failure; native modal owns focus, Escape and restoration. Builder drafts survive navigation and support validation and undo. Palette controls remain shared with exports. Native HTML export escapes text, omits arbitrary snapshot data and makes structured paths opt-in. PNG rejects oversized output explicitly.
 
 Six locales: it/en/es/fr/de/pt. Source paths, evidence and identifiers stay literal. Native events, semantic reviews and inference have visible provenance. Missing evidence is uncertainty, not failure; scores and coverage stay separate. Source and date are visible on imported results.

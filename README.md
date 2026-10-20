@@ -57,6 +57,8 @@ Quando la radice autorizzata contiene più progetti, le raccolte dichiarate nell
 
 Il collegamento operativo diretto all’indice di una raccolta ne rappresenta anche l’elemento knowledge base, conservando l’indice come punto di consultazione. Se un contratto locale collegato identifica la radice della raccolta, ad esempio `llm-wiki/AGENTS.md` con `llm-wiki/wiki/index.md`, l’elemento è `llm-wiki`. I file interni di supporto delle skill, come `references`, `scripts`, `assets` e `agents/openai.yaml`, appartengono alla skill: restano nelle prove raccolte ma non diventano elementi autonomi della mappa. Le risorse esterne richiamate dalla skill mantengono la propria identità.
 
+La mappa mostra le raccolte nella categoria Knowledge base, senza una categoria Documentazione separata. Indici e documenti della raccolta restano nel report e tra i punti di consultazione; non aggiungono elementi alla mappa. Un documento singolo non diventa automaticamente una knowledge base.
+
 ## Esplorare il setup
 
 Le sezioni separano mappa, descrizione, checklist, valutazione, simulazione statica ed esecuzioni osservate. La ricerca si può azzerare con ×; i filtri della mappa restano attivi cambiando sezione. Le liste di istruzioni, criteri e prove mostrano dodici elementi per pagina. Le frecce della tastiera, Home ed End permettono di cambiare sezione.

@@ -276,13 +276,18 @@ for (const policy of ['relative', 'absolute', 'anonymized']) {
   }
   assert.ok(!model.groups.find(item => item.category === 'documentation')?.items.some(item => item.path.includes('/skills/review/')));
   assert.ok(result.description.snapshot.files.some(item => item.path.endsWith('/references/details.md')));
-  assert.ok(model.elements.some(item => (item.kind === 'knowledge_base' || item.subtype === 'documentation_collection')
+  assert.ok(model.components.some(item => (item.kind === 'knowledge_base' || item.subtype === 'documentation_collection')
     && /(?:^|\/)shared-handbook$/.test(item.path)), 'External resources referenced by a skill remain independent collections');
   const wiki = model.components.find(item => item.kind === 'knowledge_base' && item.name === 'llm-wiki');
   assert.ok(wiki, policy);
   assert.equal(wiki.properties.mandatory, true);
   assert.ok(wiki.properties.consultation_entry_points.some(item => item.role === 'index' && item.path.endsWith('/llm-wiki/wiki/index.md')));
   assert.ok(model.groups.find(item => item.category === 'knowledge_bases')?.items.some(item => item.id === wiki.id));
+  assert.ok(!model.groups.some(item => item.category === 'documentation'));
+  for (const entry of wiki.properties.consultation_entry_points) {
+    assert.ok(model.byId.has(entry.component_id), 'Consultation evidence remains available');
+    if (model.byId.get(entry.component_id).subtype === 'knowledge_document') assert.ok(!model.elements.some(item => item.id === entry.component_id));
+  }
   assert.doesNotMatch(JSON.stringify(result.description.snapshot), /WIKI_CORPUS_MUST_NOT_BE_READ|EXTERNAL_CORPUS_MUST_NOT_BE_READ|UNBOUND_WIKI_MUST_NOT_BE_READ|NEVER_EXECUTE_THIS_SCRIPT/);
 }
 

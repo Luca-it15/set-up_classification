@@ -137,6 +137,14 @@ try{
     const current=JSON.parse(fs.readFileSync(path.resolve(process.env.AWDF_UI_REPORT)));
     await page.locator(`.atlas[data-report-id=${JSON.stringify(current.metadata.report_id)}]`).waitFor({timeout:120000});
     assert.equal(Number((await page.locator('.atlas-summary b').nth(1).innerText()).replace(/\D/g,'')),buildGraphModel(current).elements.length);
+    assert.equal(await page.locator('.atlas-category-list button').filter({hasText:'Documentazione'}).count(),0);
+    if(current.components.some(item=>item.kind==='knowledge_base'&&item.name==='llm-wiki')){
+      await page.locator('.atlas-category-list button').filter({hasText:'Knowledge base'}).click();
+      await page.locator('.react-flow__node').filter({hasText:'llm-wiki'}).waitFor();
+      assert.equal(await page.locator('.react-flow__node').filter({hasText:'index.md'}).count(),0);
+      await page.screenshot({path:path.join(base,'map-knowledge-base.png'),fullPage:true,animations:'disabled'});
+      await page.getByRole('button',{name:'Panoramica',exact:true}).click();
+    }
     const boxes=await page.locator('.react-flow__node').evaluateAll(nodes=>nodes.map(node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};}));
     for(let i=0;i<boxes.length;i++)for(let j=i+1;j<boxes.length;j++)assert.ok(!(boxes[i].left<boxes[j].right-1&&boxes[j].left<boxes[i].right-1&&boxes[i].top<boxes[j].bottom-1&&boxes[j].top<boxes[i].bottom-1),'Overview nodes must not overlap');
     await page.screenshot({path:path.join(base,'map-current-workspace.png'),fullPage:true,animations:'disabled'});

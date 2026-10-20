@@ -41,6 +41,8 @@ Three columns on wide screens (inspector below the map at <=1550px): searchable 
 
 Description, checklist, contextual assessment, static simulation and native run timeline have separate views. Score and coverage are distinct; absent evidence does not become failure. Native disclosures expose citations. Empty state asks for import or explicit example. Do not load examples silently.
 
+The map represents knowledge collections as Knowledge base elements. Documentation has no separate map category: indexes and collection documents remain in report evidence and consultation entry points, without adding nodes or inflating collection counts. A standalone document is not automatically promoted to a knowledge base.
+
 ## Tokens and accessibility
 
 Dark slate background, lighter surfaces, high-contrast text, cyan focus/navigation and semantic category hues. All uncertain/failed states have text labels. Light mode remaps shell tokens, while custom canvas palettes remain independent. Use runtime --ui-* tokens, installed system body font at 15px and mono headings/data, 8px controls and 16px panels. No external font downloads.
