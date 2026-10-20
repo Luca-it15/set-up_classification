@@ -427,7 +427,8 @@ for (const skill of components.filter(item => item.kind === 'skill' && item.subt
 const representedResourcePaths = new Set(components.map(component => rawComponentPaths.get(component.id)));
 for (const resource of discovery.resources) {
   const documents = resource.members.filter(file => /\.(?:md|mdx|txt|adoc|rst)$/i.test(file.relative));
-  const index = files.find(file => path.dirname(file.absolute) === resource.absolute && /^(?:index|readme)\.md$/i.test(path.basename(file.relative)));
+  const index = files.find(file => file.relative === resource.consultation_index)
+    || files.find(file => path.dirname(file.absolute) === resource.absolute && /^(?:index|readme)\.md$/i.test(path.basename(file.relative)));
   const purpose = index ? textDetails(index).description : null;
   const skillCatalog = resource.members.some(file => /(?:^|\/)SKILL\.md$/i.test(file.relative));
   if (representedResourcePaths.has(resource.relative)) continue;
@@ -456,9 +457,29 @@ for (const component of components.filter(item => item.path && item.subtype !== 
   if (parent) component.parent_id = components.find(item => rawComponentPaths.get(item.id) === parent.relative)?.id || null;
 }
 
+// A skill and its internal definitions, references and assets form one setup
+// element. Keep reached support artifacts and their evidence in the inventory,
+// but classify them under their owning skill rather than as documentation.
+const skillOwners = components.filter(item => item.kind === 'skill').map(skill => ({
+  skill, directory: path.posix.dirname(rawComponentPaths.get(skill.id))
+})).sort((a, b) => b.directory.length - a.directory.length);
+for (const component of components.filter(item => item.kind !== 'skill' && item.subtype !== 'reference_ai_coding_tool')) {
+  const raw = rawComponentPaths.get(component.id);
+  const owner = skillOwners.find(item => raw?.startsWith(item.directory + '/'));
+  if (!owner) continue;
+  component.parent_id = owner.skill.id;
+  component.properties.original_subtype = component.subtype;
+  component.subtype = 'agent_skill_artifact';
+  component.properties.setup_category = 'skills';
+  component.tags = ['skills'];
+  owner.skill.properties.support_artifacts ||= [];
+  owner.skill.properties.support_artifacts.push({ component_id: component.id, path: component.path, kind: component.kind });
+}
+
 // Optional consultation can identify a corpus without inventing an obligation.
 for (const component of components.filter(item => item.subtype === 'documentation_collection' && item.properties.document_count >= 2)) {
-  const refs = discovery.references.filter(ref => ref.target_path === rawComponentPaths.get(component.id) && ref.operational);
+  const refs = discovery.references.filter(ref => (ref.target_path === rawComponentPaths.get(component.id)
+    || ref.target_path === discovery.resources.find(resource => resource.relative === rawComponentPaths.get(component.id))?.consultation_index) && ref.operational);
   if (refs.length && refs.every(ref => ref.optional && !ref.configured) && refs.some(ref => /\b(?:read|consult|search|leggi|consulta|cerca|leggere|consultare)\b/i.test(ref.excerpt))) {
     component.kind = 'knowledge_base';
     component.subtype = 'managed_document_corpus';
@@ -658,7 +679,7 @@ for (const collection of components.filter(item => (item.kind === 'knowledge_bas
   const entryPoints = components.filter(item => item.parent_id === collection.id && item.kind === 'document').flatMap(item => {
     const name = path.posix.basename(rawComponentPaths.get(item.id));
     const role = /^(?:index|readme)\.md$/i.test(name) ? 'index'
-      : /^AGENTS_WIKI\.md$/i.test(name) ? 'contract'
+      : /^(?:AGENTS_WIKI|AGENTS|CLAUDE)\.md$/i.test(name) ? 'contract'
       : /(?:topic[ _-]*routing|routing[ _-]*topic).*\.md$/i.test(name) ? 'topic_routing' : null;
     return role ? [{ component_id: item.id, path: item.path, role }] : [];
   });
@@ -666,7 +687,8 @@ for (const collection of components.filter(item => (item.kind === 'knowledge_bas
   // the current task. Preserve their scoped corpus declarations as availability,
   // without manufacturing a current-task contract.
   if (collection.kind !== 'knowledge_base' && entryPoints.length) {
-    const declarations = discovery.references.filter(ref => ref.target_path === rawComponentPaths.get(collection.id)
+    const declarations = discovery.references.filter(ref => (ref.target_path === rawComponentPaths.get(collection.id)
+      || entryPoints.some(entry => entry.path === reportPath(ref.target_path)))
       && ref.operational && !ref.optional && !ref.configured && ref.status === 'present'
       && /^(?:read|consult|use|search|leggi|consulta|usa|cerca|leggere|consultare|usare|cercare)$/i.test(ref.action || '')
       && !ref.conditions.some(item => item.type === 'unresolved'));
@@ -677,7 +699,9 @@ for (const collection of components.filter(item => (item.kind === 'knowledge_bas
         applicableInstructionsForTask([origin], toolId, instructionScope(origin), toolModes).length
         && !applicableInstructions([origin], toolId, configuredWorkspace.task_path || '.', toolModes).length
       ).map(toolId => ({ ref, origin, toolId }));
-    });
+    }).filter((item, index, all) => all.findIndex(other => other.toolId === item.toolId
+      && other.origin.path === item.origin.path && other.ref.source_path === item.ref.source_path
+      && other.ref.line === item.ref.line) === index);
     if (qualified.length) {
       collection.kind = 'knowledge_base';
       collection.subtype = 'managed_document_corpus';
@@ -695,7 +719,7 @@ for (const collection of components.filter(item => (item.kind === 'knowledge_bas
         const properties = { relation_kind: 'available', instruction_path: reportPath(ref.source_path), line: ref.line,
           scope: reportPath(instructionScope(origin)), conditions: ref.conditions, applicable_to_current_task: false, declared_obligation: false };
         const sources = [referenceToolComponentIds.get(toolId), ...components.filter(item => item.subtype !== 'reference_ai_coding_tool' && rawComponentPaths.get(item.id) === ref.source_path).map(item => item.id)].filter(Boolean);
-        for (const source of sources) relationships.push({ id: `rel_scoped_${source}_${collection.id}_${ref.line}`, source_id: source,
+        for (const source of sources) relationships.push({ id: `rel_scoped_${source}_${collection.id}_${ref.line}_${toolId}`, source_id: source,
           target_id: collection.id, type: 'references', description: 'Consultazione dichiarata nello scope del progetto; istruzioni non applicabili al task corrente.',
           confidence: .9, verification_status: 'declared_only', evidence_ids: [ev], properties });
       }

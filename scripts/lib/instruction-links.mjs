@@ -194,6 +194,10 @@ export function analyzeInstructionLinks({ artifacts, targets, toolIds, readText,
       for (const item of related) references.push({ tool_id: toolId, target_id: target.id, source_path: item.source, line: item.line, excerpt: item.excerpt, binding: !!item.command });
       for (const item of operational) {
         if (item.resolved.outside || (files && !exists(item.resolved.path)) || conflict || item.command.conditions.some(condition => condition.type === 'unresolved') || incomplete) continue;
+        // Several entry points on the same instruction line may resolve to one
+        // collection. They express one contract, whose identity is line-based.
+        if (candidates.some(candidate => candidate.source_path === item.source && candidate.line === item.line
+          && JSON.stringify(candidate.reference_chain) === JSON.stringify(item.chain))) continue;
         candidates.push({ tool_id: toolId, target_id: target.id, source_path: item.source, line: item.line, excerpt: item.excerpt, method: 'explicit_imperative_v1',
           scope: instructionScope(item.root), conditions: [...item.command.conditions, ...(item.root.selector ? [{type:'path_glob',values:Array.isArray(item.root.selector)?item.root.selector:String(item.root.selector).split(',').map(value=>value.trim())}] : [])], exceptions: [], action: item.command.action,
           reference_chain: item.chain, evidence: item.evidence, resolved_path: item.resolved.path, applicability: 'applicable',

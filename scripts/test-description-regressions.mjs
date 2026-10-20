@@ -247,6 +247,61 @@ assert.equal(optionalKb.description.snapshot.static_contracts.records.length, 0)
 
 const skillDefinition = name => `---\nname: ${name}\ndescription: Local setup capability.\n---\n# ${name}\n`;
 for (const policy of ['relative', 'absolute', 'anonymized']) {
+  const result = await scan('skill-support-and-indexed-wiki-' + policy, [{
+    ...config,
+    'AGENTS.md': 'Read `project/AGENTS.md`.',
+    '.codex/skills/review/SKILL.md': skillDefinition('review') + '\nRead `references/rules.md`.\nUse `scripts/`.\nRead `agents/openai.yaml`.\nConsult `../../../shared-handbook/`.',
+    '.codex/skills/review/references/rules.md': '# Internal rules\nRead `details.md`.',
+    '.codex/skills/review/references/details.md': '# Skill details',
+    '.codex/skills/review/scripts/run.py': 'NEVER_EXECUTE_THIS_SCRIPT',
+    '.codex/skills/review/agents/openai.yaml': 'interface:\n  display_name: Review\n',
+    'shared-handbook/index.md': '# Shared handbook',
+    'shared-handbook/topic.md': 'EXTERNAL_CORPUS_MUST_NOT_BE_READ',
+    'project/AGENTS.md': 'Read `llm-wiki/AGENTS.md` and `llm-wiki/wiki/index.md`.',
+    'project/llm-wiki/AGENTS.md': '# Wiki contract\nRead `wiki/index.md` and consult the relevant pages.',
+    'project/llm-wiki/wiki/index.md': '# Domain knowledge\n[Topic](concepts/topic.md)',
+    'project/llm-wiki/wiki/concepts/topic.md': 'WIKI_CORPUS_MUST_NOT_BE_READ',
+    'unbound-wiki/index.md': '# Unbound',
+    'unbound-wiki/topic.md': 'UNBOUND_WIKI_MUST_NOT_BE_READ'
+  }], { path_policy: policy });
+  const model = buildGraphModel(result.report);
+  const skill = model.components.find(item => item.kind === 'skill' && item.name === 'review');
+  assert.ok(skill);
+  assert.equal(skill.properties.support_artifacts.length, 4);
+  for (const support of skill.properties.support_artifacts) {
+    const component = model.byId.get(support.component_id);
+    assert.equal(component.parent_id, skill.id);
+    assert.equal(component.subtype, 'agent_skill_artifact');
+    assert.ok(!model.elements.some(item => item.id === component.id));
+  }
+  assert.ok(!model.groups.find(item => item.category === 'documentation')?.items.some(item => item.path.includes('/skills/review/')));
+  assert.ok(result.description.snapshot.files.some(item => item.path.endsWith('/references/details.md')));
+  assert.ok(model.elements.some(item => (item.kind === 'knowledge_base' || item.subtype === 'documentation_collection')
+    && /(?:^|\/)shared-handbook$/.test(item.path)), 'External resources referenced by a skill remain independent collections');
+  const wiki = model.components.find(item => item.kind === 'knowledge_base' && item.name === 'llm-wiki');
+  assert.ok(wiki, policy);
+  assert.equal(wiki.properties.mandatory, true);
+  assert.ok(wiki.properties.consultation_entry_points.some(item => item.role === 'index' && item.path.endsWith('/llm-wiki/wiki/index.md')));
+  assert.ok(model.groups.find(item => item.category === 'knowledge_bases')?.items.some(item => item.id === wiki.id));
+  assert.doesNotMatch(JSON.stringify(result.description.snapshot), /WIKI_CORPUS_MUST_NOT_BE_READ|EXTERNAL_CORPUS_MUST_NOT_BE_READ|UNBOUND_WIKI_MUST_NOT_BE_READ|NEVER_EXECUTE_THIS_SCRIPT/);
+}
+
+const indexOnlyScoped = await scan('index-only-child-wiki', [{ ...config,
+  'project/AGENTS.md': 'Read `llm-wiki/AGENTS.md` and `llm-wiki/wiki/index.md`.',
+  'project/llm-wiki/AGENTS.md': 'Read `wiki/index.md` before editing the wiki.',
+  'project/llm-wiki/wiki/index.md': '# Domain knowledge',
+  'project/llm-wiki/wiki/topic.md': 'SCOPED_CORPUS_MUST_NOT_BE_READ'
+}]);
+const indexedScopedKb = indexOnlyScoped.report.components.find(item => item.kind === 'knowledge_base' && item.name === 'llm-wiki');
+assert.ok(indexedScopedKb);
+assert.equal(indexedScopedKb.properties.qualification, 'scoped_consultation_declaration');
+assert.equal(indexedScopedKb.properties.mandatory, undefined);
+assert.ok(indexedScopedKb.properties.consultation_declarations.every(item => item.applicable_to_current_task === false));
+assert.ok(!indexOnlyScoped.report.relationships.some(item => item.target_id === indexedScopedKb.id && item.properties.relation_kind === 'contractual'));
+const indexedScopedModel = buildGraphModel(indexOnlyScoped.report);
+assert.ok(toolScope(indexedScopedModel, indexedScopedModel.tools.find(item => item.properties.tool_id === 'codex').id).visibleIds.has(indexedScopedKb.id));
+
+for (const policy of ['relative', 'absolute', 'anonymized']) {
   const result = await scan('setup-skill-catalogs-' + policy, [{
     'config.toml': 'model="fixture"\n[[skills.config]]\npath="skills/disabled/SKILL.md"\nenabled=false\n',
     'AGENTS.md': 'Use project conventions.',

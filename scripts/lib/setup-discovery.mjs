@@ -69,5 +69,34 @@ export function discoverSetup({ files, directories, readText, roots, isWithin })
     completed.add(file.relative);
   }
   for (const file of seeds) visit(file, [], /\.(?:json|jsonc|toml|ya?ml|ini|cfg)$/i.test(file.relative));
+
+  // An explicitly consulted index identifies its corpus even when no directive
+  // names the directory. Keep corpus enumeration metadata-only. A reached local
+  // instruction contract can identify the collection above a nested index.
+  for (const ref of references.filter(item => item.operational && item.status === 'present' && !item.configured)) {
+    const index = selected.get(ref.target_path);
+    if (!index || !/^index\.md$/i.test(path.basename(index.absolute))) continue;
+    if (seeds.some(file => /(?:^|\/)SKILL\.md$/i.test(file.relative) && isWithin(path.dirname(file.absolute), index.absolute))) continue;
+    const indexDirectory = path.dirname(index.absolute);
+    const contracts = [...selected.values()].filter(file => /^(?:AGENTS|CLAUDE)\.md$/i.test(path.basename(file.absolute))
+      && isWithin(path.dirname(file.absolute), index.absolute)
+      && path.dirname(file.absolute) !== index.workspaceRoot
+      && !isWithin(path.dirname(file.absolute), selected.get(ref.source_path).absolute)
+      && references.some(edge => edge.operational && edge.status === 'present' && edge.target_path === file.relative));
+    const contract = contracts.sort((a, b) => path.dirname(b.absolute).length - path.dirname(a.absolute).length)[0];
+    const absolute = contract ? path.dirname(contract.absolute) : indexDirectory;
+    const directory = directoriesByAbsolute.get(absolute);
+    if (!directory) continue;
+    if ([...resources.values()].some(resource => isWithin(resource.absolute, absolute))) continue;
+    const members = files.filter(file => isWithin(absolute, file.absolute));
+    if (members.filter(file => /\.(?:md|mdx|txt|adoc|rst)$/i.test(file.relative)).length < 2) continue;
+    // A nested index directory belongs to the explicitly linked collection
+    // contract above it, rather than becoming a second corpus named "wiki".
+    for (const resource of resources.values()) {
+      if (isWithin(absolute, resource.absolute) && isWithin(resource.absolute, index.absolute)) resources.delete(resource.relative);
+    }
+    resources.set(directory.relative, { ...directory, members, optional: ref.optional, configured: false,
+      consultation_index: index.relative });
+  }
   return { files: [...selected.values()], resources: [...resources.values()], references, issues, seedPaths };
 }

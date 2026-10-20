@@ -55,6 +55,8 @@ Le raccolte documentali consultate tramite istruzioni applicabili vengono rappre
 
 Quando la radice autorizzata contiene più progetti, le raccolte dichiarate nelle istruzioni dei progetti figli conservano il proprio scope. Se quelle istruzioni non sono applicabili al task corrente, la risorsa appare come disponibile con la dichiarazione originale, senza introdurre un contratto o un obbligo globale.
 
+Il collegamento operativo diretto all’indice di una raccolta ne rappresenta anche l’elemento knowledge base, conservando l’indice come punto di consultazione. Se un contratto locale collegato identifica la radice della raccolta, ad esempio `llm-wiki/AGENTS.md` con `llm-wiki/wiki/index.md`, l’elemento è `llm-wiki`. I file interni di supporto delle skill, come `references`, `scripts`, `assets` e `agents/openai.yaml`, appartengono alla skill: restano nelle prove raccolte ma non diventano elementi autonomi della mappa. Le risorse esterne richiamate dalla skill mantengono la propria identità.
+
 ## Esplorare il setup
 
 Le sezioni separano mappa, descrizione, checklist, valutazione, simulazione statica ed esecuzioni osservate. La ricerca si può azzerare con ×; i filtri della mappa restano attivi cambiando sezione. Le liste di istruzioni, criteri e prove mostrano dodici elementi per pagina. Le frecce della tastiera, Home ed End permettono di cambiare sezione.
