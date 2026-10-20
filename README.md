@@ -22,6 +22,17 @@ npm start
 
 Per Claude Code usa `npm run setup:claude_code`; per Copilot CLI `npm run setup:github_copilot`. Questi comandi eseguono `npm ci` e installano le tre skill a livello progetto. Non installano il client AI e non avviano sessioni. Aprire http://127.0.0.1:3000: senza descrizione l’app mostra uno stato vuoto. Gli esempi richiedono un’azione esplicita.
 
+`npm start` compila sempre il frontend in `dist` e poi avvia un unico server per l’interfaccia compilata e le API locali. È il comando completo per usare l’app: non occorre avviare il backend separatamente. Se la build fallisce, il server non viene avviato, anche se esiste una build precedente.
+
+| Comando | Comportamento |
+|---|---|
+| `npm start` | Compila e avvia app e backend insieme. |
+| `npm run dev` | Avvia app e backend con Vite e aggiornamento automatico dei sorgenti. |
+| `npm run build` | Genera soltanto `dist`. |
+| `npm run preview` | Avvia app e backend dalla build esistente, senza ricompilare. |
+
+L’indirizzo predefinito è `http://127.0.0.1:3000`; `AWDF_HOST` e `AWDF_PORT` consentono di cambiarlo. `preview` richiede una build già generata. Nessun comando apre automaticamente il browser.
+
 La [guida di installazione ed esecuzione](docs/INSTALLATION.md) include installazione dei client, scope personale, workspace esterni, hook e comandi completi del flusso.
 
 Nelle impostazioni autorizzare cartelle assolute, selezionare tool principale, scope del task e policy dei percorsi. Salvare `ai-setup-settings.json`, quindi eseguire `npm run describe:setup`. In alternativa, per la prima configurazione da terminale:
@@ -89,7 +100,7 @@ HTML offline e PNG includono il registro completo. I percorsi strutturati sono o
 
 ## Verifica
 
-`npm test` esegue test del modello, scope, isolamento, hash, citazioni, condizioni, scoring, recorder, concorrenza, interruzioni, redazione ed export e poi la build. `npm run test:ui` richiede Playwright (`AWDF_NODE_MODULES` può indicare il runtime disponibile) e verifica mappa, ELK, tastiera, importazioni e mobile.
+`npm test` esegue test del modello, scope, isolamento, hash, citazioni, condizioni, scoring, recorder, concorrenza, interruzioni, redazione, export e server e poi la build. `npm run test:server` verifica separatamente il servizio di `dist`, le API locali, la protezione dei percorsi, la modalità sviluppo e il blocco dell’avvio se la build fallisce. `npm run test:ui` richiede Playwright (`AWDF_NODE_MODULES` può indicare il runtime disponibile) e verifica mappa, ELK, tastiera, importazioni e mobile.
 
 I test degli adattatori usano fixture dichiarate, non prove di esecuzione reale dei client. La verifica reale richiede ogni client installato e una sessione con hook autorizzati. Nessuna traccia sintetica viene presentata come runtime reale.
 

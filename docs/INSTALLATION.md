@@ -130,6 +130,17 @@ npm test
 npm run build
 ```
 
-L’app su http://127.0.0.1:3000 legge il setup nel runtime oppure importa JSON esterni. Importare valutazioni e run dopo la descrizione associata. L’app non avvia scansioni o sessioni AI.
+`npm start` genera sempre `dist` prima di avviare il server. Un errore di compilazione interrompe l’avvio, anche se è presente una build precedente. Lo stesso server espone l’interfaccia compilata e le API locali: non occorre avviare un backend separato.
+
+| Comando | Comportamento |
+|---|---|
+| `npm start` | Compila il frontend e avvia app e backend insieme. |
+| `npm run dev` | Avvia app e backend in sviluppo con Vite e aggiornamento automatico dei sorgenti. |
+| `npm run build` | Genera soltanto la build in `dist`. |
+| `npm run preview` | Serve la build esistente e le API locali, senza compilare. |
+
+Se la build manca, `npm run preview` termina indicando di usare `npm start` oppure `npm run build`. L’indirizzo predefinito è http://127.0.0.1:3000; le variabili d’ambiente `AWDF_HOST` e `AWDF_PORT` permettono di cambiarlo. Nessun comando apre automaticamente il browser.
+
+L’app legge il setup nel runtime oppure importa JSON esterni. Importare valutazioni e run dopo la descrizione associata. L’app non avvia scansioni o sessioni AI.
 
 La [verifica reale dei client](CLIENT-VERIFICATION.md) rimane distinta dai test con fixture. Per il test browser opzionale serve Playwright e un browser installato; `AWDF_NODE_MODULES` può indicare un runtime Playwright già disponibile.
