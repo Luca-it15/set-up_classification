@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createAppServer } from '../server.mjs';
 import { DEFAULT_SETTINGS } from '../src/defaultSettings.js';
 
@@ -17,7 +17,8 @@ async function fixture(t) {
   const base = path.join(root, '.tmp-evidence-checks');
   await fs.mkdir(base, { recursive: true });
   const directory = await fs.mkdtemp(path.join(base, 'server-'));
-  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  // Windows may release process/file handles shortly after a child closes.
+  t.after(() => fs.rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   await fs.writeFile(path.join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
   return directory;
 }
@@ -138,12 +139,17 @@ test('Server CLI uses environment address and explicit development mode', { time
   await fs.symlink(path.join(root, 'node_modules'), path.join(directory, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
   await fs.writeFile(path.join(directory, 'index.html'), html);
   await fs.writeFile(path.join(directory, 'main.js'), 'console.log("cli-dev");');
+  // On Windows child.kill() forcibly terminates Node, bypassing Vite cleanup.
+  // A test-only preload delivers SIGTERM inside the child so the actual CLI
+  // shutdown handler runs on every platform, without a production shutdown API.
+  const shutdownHook = path.join(directory, 'shutdown.mjs');
+  await fs.writeFile(shutdownHook, "process.once('message', message => { if (message === 'shutdown') process.emit('SIGTERM'); });\n");
   for (const args of [[], ['--dev']]) {
-    const child = spawn(process.execPath, [path.join(directory, 'server.mjs'), ...args], {
+    const child = spawn(process.execPath, ['--import', pathToFileURL(shutdownHook).href, path.join(directory, 'server.mjs'), ...args], {
       cwd: directory, env: { ...process.env, AWDF_HOST: '127.0.0.1', AWDF_PORT: '0' },
-      windowsHide: true, stdio: ['ignore', 'pipe', 'pipe']
+      windowsHide: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc']
     });
-    const exited = once(child, 'exit');
+    const closed = once(child, 'close');
     try {
       const base = await new Promise((resolve, reject) => {
         let output = '';
@@ -162,8 +168,10 @@ test('Server CLI uses environment address and explicit development mode', { time
       assert.equal((await response.text()).includes('/@vite/client'), args.includes('--dev'));
       assert.equal(await (await fetch(`${base}/api/report`)).json(), null);
     } finally {
-      child.kill();
-      await exited;
+      if (child.exitCode === null && child.signalCode === null && child.connected) child.send('shutdown');
+      const [code, signal] = await closed;
+      assert.equal(code, 0, 'CLI must shut down cleanly before fixture removal');
+      assert.equal(signal, null);
     }
   }
 });
